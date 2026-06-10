@@ -22,9 +22,22 @@ issus de la vidéo #33 « Investir dans le quantique en 2026 »). Langue de l'in
   relançable manuellement (`workflow_dispatch`). Doit être **idempotent** (upsert partout).
 - **Recharts** pour les graphiques. Charte : navy `#0a1628` / or `#c9a84c`,
   Playfair Display (titres), DM Sans (corps), JetBrains Mono (données chiffrées).
-- Données marché : **Twelve Data** (tier gratuit) en V1. ⚠️ Vérifier au backfill que INFQ
-  (NYSE depuis le 17/02/2026) est couvert ; sinon le signaler avant de coder un contournement.
+- Données marché : **Yahoo Finance** via `yfinance` (Python) en V1 ; migration vers Twelve Data
+  prévue en V2. ⚠️ Vérifier au backfill que INFQ (NYSE depuis le 17/02/2026) est couvert ;
+  sinon le signaler avant de coder un contournement.
 - Cache : pages en ISR, revalidation 24 h (les données ne changent qu'une fois par jour).
+
+## Ingestion (Python / GitHub Actions)
+
+Les scripts de backfill et d'ingestion quotidienne sont en **Python** (`scripts/`),
+indépendants de l'app Next.js. GitHub Actions les exécute directement.
+
+- **Isolation du fournisseur** : tout appel `yfinance` est encapsulé dans un seul module
+  (`scripts/market_data.py`). En V2, seul ce fichier change pour passer à Twelve Data.
+- **Résilience** : yfinance est non officiel (scraping Yahoo). Le cron doit :
+  - réessayer chaque ticker en cas d'échec réseau (3 tentatives, backoff exponentiel) ;
+  - envoyer une alerte (GitHub Actions notice / email) si un ticker échoue après les réessais ;
+  - **ne jamais écrire un snapshot partiel** — upsert atomique ou rollback complet pour la journée.
 
 ## Schéma SQL (Supabase)
 
