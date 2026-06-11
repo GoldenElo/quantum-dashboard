@@ -16,13 +16,15 @@ from supabase import create_client, Client
 
 from market_data import fetch_adj_close, fetch_eurusd, check_ticker_coverage
 
-load_dotenv()
+load_dotenv(dotenv_path="../.env.local")  # Next.js convention pour les vars locales
+load_dotenv()  # fallback : .env standard
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-# ─── TODO : renseigner avec la date de publication de la vidéo #33 ────────────
-# Format : "YYYY-MM-DD"   exemple : "2026-01-15"
-INCEPTION_DATE: str | None = None  # TODO_INCEPTION_DATE
+# ─── TODO : remplacer par la date de publication réelle de la vidéo #33 ──────
+# Valeur provisoire de développement — à mettre à jour avant la mise en prod.
+# Format : "YYYY-MM-DD"   exemple : "2026-06-15"
+INCEPTION_DATE: str = "2026-06-01"  # TODO_INCEPTION_DATE : date réelle vidéo #33
 # ─────────────────────────────────────────────────────────────────────────────
 
 INITIAL_CAPITAL_EUR = 10_000.0

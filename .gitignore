@@ -38,6 +38,7 @@ yarn-error.log*
 # Python scripts
 scripts/__pycache__/
 scripts/*.pyc
+scripts/.venv/
 
 # vercel
 .vercel
