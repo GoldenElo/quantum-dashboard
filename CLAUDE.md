@@ -143,11 +143,15 @@ Chaque colonne doit sommer à 100 % — vérifier par un test.
 
 ## Ordre de développement
 
-1. Init Next.js + Supabase + schéma SQL + seed des 3 portefeuilles (quantités d'inception).
-2. Script de backfill des prix depuis l'inception.
-3. Cron GitHub Actions : ingestion quotidienne + calcul des snapshots (idempotent).
-4. Pages : accueil puis `/portefeuille/[id]`, charte appliquée, disclaimer partout.
-5. Déploiement Netlify + variables d'env + test du cron de bout en bout.
+1. ✅ Init Next.js + Supabase + schéma SQL + seed des 3 portefeuilles (quantités d'inception).
+2. ✅ Script de backfill des prix depuis l'inception.
+3. ✅ Cron GitHub Actions : ingestion quotidienne + calcul des snapshots (idempotent).
+4. ✅ Pages : accueil puis `/portefeuille/[id]`, charte appliquée, disclaimer partout.
+5. ✅ Déploiement Netlify + variables d'env + test du cron de bout en bout.
+
+**État actuel (2026-06-12) : V1 en production sur Netlify. Cron quotidien actif (lun–ven 22h30 UTC).
+⚠️ Date d'inception provisoire `2026-06-01` — à remplacer par la date réelle de publication de la
+vidéo #33 dans la table `portfolio` (et relancer le backfill + seed depuis cette date).**
 
 Tests minimum : poids = 100 % par profil, idempotence du cron (double exécution = même résultat),
 calcul de volatilité vérifié contre un cas connu.
