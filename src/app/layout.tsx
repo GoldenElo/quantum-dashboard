@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, Inter, JetBrains_Mono } from "next/font/google";
 import Footer from "@/components/Footer";
+import SiteHeader from "@/components/SiteHeader";
 import "./globals.css";
 
 const ibmPlexSans = IBM_Plex_Sans({
@@ -35,6 +36,7 @@ export default function RootLayout({
     <html lang="fr" className={`${ibmPlexSans.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
       <body>
         <div className="site-wrapper">
+          <SiteHeader />
           {children}
           <Footer />
         </div>

@@ -1,0 +1,45 @@
+import Image from 'next/image';
+
+const YOUTUBE_URL = 'https://www.youtube.com/@InvestisseuseQuantique';
+
+export default function SiteHeader() {
+  return (
+    <header className="site-header">
+      <div className="site-header-inner">
+
+        {/* Marque — gauche */}
+        <a href="/" className="site-header-brand" aria-label="L'Investisseuse Quantique — accueil">
+          <Image
+            src="/logo.png"
+            alt="L'Investisseuse Quantique"
+            width={160}
+            height={40}
+            priority
+            className="site-header-logo"
+          />
+          <span className="site-header-name">L&apos;Investisseuse Quantique</span>
+        </a>
+
+        {/* Slot de navigation — V2 : indices sectoriels / V3 : vue secteur */}
+        <nav className="site-header-nav" aria-label="Navigation principale" />
+
+        {/* Actions — droite */}
+        <div className="site-header-actions">
+          <a
+            href={YOUTUBE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="site-header-yt"
+            aria-label="Chaîne YouTube L'Investisseuse Quantique (nouvel onglet)"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1C24 15.9 24 12 24 12s0-3.9-.5-5.8zM9.75 15.5V8.5l6.25 3.5-6.25 3.5z"/>
+            </svg>
+            YouTube
+          </a>
+        </div>
+
+      </div>
+    </header>
+  );
+}

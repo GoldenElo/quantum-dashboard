@@ -20,7 +20,6 @@ export default async function HomePage() {
   return (
     <main className="page">
       <header className="home-header">
-        <p className="home-eyebrow">L&apos;Investisseuse Quantique</p>
         <h1 className="home-title">Dashboard Quantique</h1>
         <p className="home-subtitle">
           Suivi de 3 portefeuilles fictifs à but pédagogique — données de clôture à J&#8209;1
