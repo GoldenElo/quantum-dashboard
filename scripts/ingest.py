@@ -23,7 +23,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-TICKERS = ["GOOGL", "IBM", "NVDA", "IONQ", "QBTS", "LAES", "INFQ", "QTUM"]
+TICKERS = ["GOOGL", "IBM", "NVDA", "IONQ", "QBTS", "LAES", "INFQ", "QNTM.L"]
 INITIAL_CAPITAL_USD = 10_000.0
 BATCH_SIZE = 500
 

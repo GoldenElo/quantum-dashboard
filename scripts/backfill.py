@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 INCEPTION_DATE = date(2026, 6, 1)
-TICKERS = ["GOOGL", "IBM", "NVDA", "IONQ", "QBTS", "LAES", "INFQ", "QTUM"]
+TICKERS = ["GOOGL", "IBM", "NVDA", "IONQ", "QBTS", "LAES", "INFQ", "QNTM.L"]
 BATCH_SIZE = 500
 
 

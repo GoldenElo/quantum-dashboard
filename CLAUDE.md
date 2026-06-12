@@ -104,7 +104,8 @@ Les quantités sont calculées une seule fois par le script de seed :
 | LAES | SEALSQ | pure-player | — | 9 % | 12 % |
 | INFQ | Infleqtion | pure-player | — | — | 10 % |
 
-Benchmark de comparaison affiché sur tous les graphiques : **QTUM** (et lui seul en V1).
+Benchmark de comparaison affiché sur tous les graphiques : **QNTM.L** — VanEck Quantum Computing UCITS ETF
+(LSE, devise USD, ticker yfinance validé, ISIN IE000S5XPDL3 env.). Remplace QTUM depuis la migration 002.
 Chaque colonne doit sommer à 100 % — vérifier par un test.
 
 ## Calculs (dans le cron, jamais dans le front)
@@ -118,11 +119,11 @@ Chaque colonne doit sommer à 100 % — vérifier par un test.
 ## UI (V1) — public, sobre, sans surcharge
 
 - **Page d'accueil** : 3 cartes compactes (nom du profil, valeur, perf depuis l'inception,
-  vol 30 j) + une courbe comparative unique (3 profils + QTUM, base 100).
+  vol 30 j) + une courbe comparative unique (3 profils + QNTM.L, base 100).
   **Aucun détail de composition sur l'accueil.**
 - **Détail consultable sans alourdir** : chaque carte mène à `/portefeuille/[id]`
   (page dédiée, partageable, bonne pour le SEO) : camembert des poids actuels vs inception,
-  tableau des lignes (ticker, quantité, valeur, contribution à la perf), courbe du profil vs QTUM,
+  tableau des lignes (ticker, quantité, valeur, contribution à la perf), courbe du profil vs QNTM.L,
   rappel du disclaimer en tête de page.
 - Footer global : disclaimer + « Données : clôtures à J-1 » + signature
   « L'Investisseuse Quantique · Analyse · Chiffres · Sans hype ».

@@ -38,7 +38,7 @@ ASSETS = [
     {"ticker": "QBTS",  "name": "D-Wave",        "category": "pure_player",    "exchange": "NYSE",   "currency": "USD"},
     {"ticker": "LAES",  "name": "SEALSQ",        "category": "pure_player",    "exchange": "NASDAQ", "currency": "USD"},
     {"ticker": "INFQ",  "name": "Infleqtion",    "category": "pure_player",    "exchange": "NYSE",   "currency": "USD"},
-    {"ticker": "QTUM",  "name": "Defiance Quantum ETF", "category": "etf",    "exchange": "NYSE",   "currency": "USD"},
+    {"ticker": "QNTM.L", "name": "VanEck Quantum Computing UCITS ETF", "category": "etf", "exchange": "LSE", "currency": "USD"},
 ]
 
 # ─── Allocations officielles (poids à l'inception) ───────────────────────────
@@ -113,7 +113,7 @@ def seed(db: Client, inception: date) -> None:
 
     # ── 2. Récupération des prix d'inception ────────────────────────────────
     logger.info("Récupération des prix d'inception (%s)…", inception)
-    prices = fetch_adj_close(tickers_needed + ["QTUM"], start=inception, end=inception)
+    prices = fetch_adj_close(tickers_needed + ["QNTM.L"], start=inception, end=inception)
 
     # ── 3. Insertion des assets ─────────────────────────────────────────────
     logger.info("Upsert des assets…")

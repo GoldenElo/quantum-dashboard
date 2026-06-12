@@ -1,23 +1,47 @@
-export default function Home() {
-  return (
-    <main className="home">
-      <div className="hero">
-        <p className="label">L&apos;Investisseuse Quantique</p>
-        <h1>Dashboard Quantique</h1>
-        <p className="subtitle">
-          Suivi de 3 portefeuilles fictifs à but pédagogique — bientôt disponible
-        </p>
-      </div>
+import { fetchHomepageData } from '@/lib/api';
+import PortfolioCard from '@/components/PortfolioCard';
+import ComparativeChart from '@/components/ComparativeChart';
+import type { SeriesConfig } from '@/components/ComparativeChart';
 
-      <footer className="disclaimer">
-        À titre informatif uniquement. Ceci n&apos;est pas un conseil en investissement.
-        Portefeuilles fictifs à but pédagogique. Données de clôture à J-1, sans garantie
-        d&apos;exactitude.
-        <br />
-        <span className="sig">
-          L&apos;Investisseuse Quantique · Analyse · Chiffres · Sans hype
-        </span>
-      </footer>
+export const revalidate = 86400;
+
+const COMPARATIVE_SERIES: SeriesConfig[] = [
+  { key: 'defensif',  label: 'Défensif',     color: '#4f9eff' },
+  { key: 'dynamique', label: 'Dynamique',    color: '#c9a84c' },
+  { key: 'agressif',  label: 'Agressif',     color: '#ff6b6b' },
+  { key: 'benchmark', label: 'VanEck UCITS', color: '#6b7280', dashed: true },
+];
+
+export default async function HomePage() {
+  const { summaries, chartData } = await fetchHomepageData();
+
+  return (
+    <main className="page">
+      <header className="home-header">
+        <p className="home-eyebrow">L&apos;Investisseuse Quantique</p>
+        <h1 className="home-title">Dashboard Quantique</h1>
+        <p className="home-subtitle">
+          Suivi de 3 portefeuilles fictifs à but pédagogique — données de clôture à J&#8209;1
+        </p>
+      </header>
+
+      <section aria-label="Portefeuilles">
+        <div className="cards-grid">
+          {summaries.map(s => (
+            <PortfolioCard key={s.id} summary={s} />
+          ))}
+        </div>
+      </section>
+
+      <section className="section" aria-label="Performance comparative">
+        <h2 className="section-title">Performance comparative — base 100</h2>
+        <div className="chart-container">
+          <ComparativeChart data={chartData} series={COMPARATIVE_SERIES} />
+        </div>
+        <p className="chart-note">
+          Base 100 à la date d&apos;inception · Benchmark : VanEck Quantum Computing UCITS ETF (QNTM.L)
+        </p>
+      </section>
     </main>
   );
 }
