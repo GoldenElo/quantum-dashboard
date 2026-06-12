@@ -7,6 +7,9 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  # Faux positifs du scanner : URL de projet et clé anon sont publiques par conception.
+  # SUPABASE_SERVICE_KEY reste protégée (non listée ici).
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL,NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY"
 
 # Variables d'environnement à configurer dans le dashboard Netlify :
 # SUPABASE_URL        → URL du projet Supabase
