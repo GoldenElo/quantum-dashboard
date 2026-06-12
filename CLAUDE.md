@@ -134,7 +134,8 @@ Chaque colonne doit sommer à 100 % — vérifier par un test.
 ## Phasage
 
 - **V1 (maintenant)** : tout ce qui précède.
-- **V1.5** : portefeuille personnel (table `transaction`, TWR vs MWR) — ne rien anticiper en V1.
+- **V1.5** : portefeuille personnel — données et décisions actées ci-dessous, implémentation à venir.
+  Ne rien anticiper dans le code V1 (pas de table `transaction`, pas de route dédiée).
 - **V2** : indicateurs sectoriels (market cap totale pure-players, P/S agrégé) —
   prévoir seulement que `asset.category` permet déjà l'agrégation.
 - **V3** : « CoinMarketCap du quantique » + bubbles D3. ⚠️ Avant toute V3 publique à fort trafic :
@@ -185,6 +186,34 @@ Style Grafana sombre — identité visuelle YouTube de la chaîne.
 | Agressif | `#B877D9` | Plein |
 | VanEck UCITS (QNTM.L) | `#94A3B8` | Pointillé |
 | Portefeuille personnel (V1.5) | `#FF9830` | Plein — couleur unique, réservée |
+
+## Données V1.5 — Portefeuille personnel (ne pas implémenter avant la V1.5)
+
+### Positions (toutes en USD)
+
+| Ticker | Enveloppe | Quantité | PRU (USD) | Note |
+|---|---|---|---|---|
+| IONQ | CTO | 179 | 25,54 | |
+| QBTS | CTO | 160 | 11,90 | |
+| IBM | CTO | 11 | 172,00 | |
+| LAES | CTO | 669 | 2,36 | |
+| GOOGL | CTO | 7 | 301,08 | |
+| GOOGL | PER | 19,7722 | 228,45 | PRU reconstitué (coût = valeur − PV antérieure) |
+
+Devise confirmée : **USD** pour tous les PRU.
+
+### Décisions actées
+
+- **Date de référence** : suivi de la performance depuis une date d'intégration à définir
+  (la PV antérieure à cette date est contexte statique, non suivie).
+- **Comparaison** : perf du portefeuille personnel vs benchmarks uniquement depuis la date d'intégration.
+- **GOOGL consolidé** : CTO + PER agrégés à l'affichage (poids % total), avec détail par enveloppe
+  accessible dans le tableau.
+- **Visibilité publique** : base 100 et poids % uniquement — les montants (valeur, PRU, coût total)
+  sont masqués en public et visibles uniquement après authentification (Supabase Auth).
+- **Série graphique** : `#FF9830` (orange), couleur unique réservée à cette série dans toute l'UI.
+- **Méthode de calcul** : TWR (Time-Weighted Return) pour la perf globale, MWR pour le rendement
+  personnel. Les deux seront affichés.
 
 ## Backlog / pistes futures
 
