@@ -133,9 +133,8 @@ Chaque colonne doit sommer à 100 % — vérifier par un test.
 
 ## Phasage
 
-- **V1 (maintenant)** : tout ce qui précède.
-- **V1.5** : portefeuille personnel — données et décisions actées ci-dessous, implémentation à venir.
-  Ne rien anticiper dans le code V1 (pas de table `transaction`, pas de route dédiée).
+- **V1 (fait)** : tout ce qui précède.
+- **V1.5 (fait)** : portefeuille personnel implémenté — voir section "Données V1.5" ci-dessous.
 - **V2** : indicateurs sectoriels (market cap totale pure-players, P/S agrégé) —
   prévoir seulement que `asset.category` permet déjà l'agrégation.
 - **V3** : « CoinMarketCap du quantique » + bubbles D3. ⚠️ Avant toute V3 publique à fort trafic :
@@ -148,10 +147,19 @@ Chaque colonne doit sommer à 100 % — vérifier par un test.
 3. ✅ Cron GitHub Actions : ingestion quotidienne + calcul des snapshots (idempotent).
 4. ✅ Pages : accueil puis `/portefeuille/[id]`, charte appliquée, disclaimer partout.
 5. ✅ Déploiement Netlify + variables d'env + test du cron de bout en bout.
+6. ✅ V1.5 : portefeuille personnel — migration 003, seed_personal.py, auth Supabase,
+   page `/portefeuille/personnel` (force-dynamic), confidentialité stricte.
 
-**État actuel (2026-06-12) : V1 en production sur Netlify. Cron quotidien actif (lun–ven 22h30 UTC).
-⚠️ Date d'inception provisoire `2026-06-01` — à remplacer par la date réelle de publication de la
-vidéo #33 dans la table `portfolio` (et relancer le backfill + seed depuis cette date).**
+**État actuel (2026-06-12) : V1.5 implémentée. Date d'inception définitive : `2026-06-01`.**
+
+**Checklist de mise en service V1.5 (à faire manuellement) :**
+1. Appliquer la migration `supabase/migrations/003_v1_5_personal_portfolio.sql` dans le dashboard Supabase.
+2. Désactiver les inscriptions publiques : Supabase > Authentication > Settings > "Disable sign ups".
+3. Récupérer la `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Supabase > Project Settings > API > anon public).
+4. Ajouter `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_ANON_KEY` dans les variables Netlify.
+5. Exécuter `cd scripts && python seed_personal.py` (après migration + backfill déjà en base).
+6. Exécuter `python ingest.py` pour générer les snapshots du portefeuille personnel.
+7. Tester `/portefeuille/personnel` en public (pas de montant) puis connectée (montants visibles).
 
 Tests minimum : poids = 100 % par profil, idempotence du cron (double exécution = même résultat),
 calcul de volatilité vérifié contre un cas connu.

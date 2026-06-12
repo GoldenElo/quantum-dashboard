@@ -21,11 +21,7 @@ load_dotenv()  # fallback : .env standard
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-# ─── TODO : remplacer par la date de publication réelle de la vidéo #33 ──────
-# Valeur provisoire de développement — à mettre à jour avant la mise en prod.
-# Format : "YYYY-MM-DD"   exemple : "2026-06-15"
-INCEPTION_DATE: str = "2026-06-01"  # TODO_INCEPTION_DATE : date réelle vidéo #33
-# ─────────────────────────────────────────────────────────────────────────────
+INCEPTION_DATE: str = "2026-06-01"
 
 INITIAL_CAPITAL_USD = 10_000.0
 
@@ -162,14 +158,6 @@ def seed(db: Client, inception: date) -> None:
 
 def main() -> None:
     _assert_weights_sum_to_one()
-
-    if INCEPTION_DATE is None:
-        logger.error(
-            "INCEPTION_DATE non renseignée dans scripts/seed.py. "
-            "Remplacer la valeur None par la date de publication de la vidéo #33 "
-            "(format 'YYYY-MM-DD'), puis relancer."
-        )
-        sys.exit(1)
 
     inception = date.fromisoformat(INCEPTION_DATE)
     db = _supabase_client()

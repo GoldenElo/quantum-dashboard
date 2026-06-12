@@ -228,6 +228,7 @@ button { cursor: pointer; }
 .badge-defensif  { background: rgba(87,148,242,0.15);  color: #5794F2; }
 .badge-dynamique { background: rgba(56,189,248,0.15);  color: #38BDF8; }
 .badge-agressif  { background: rgba(184,119,217,0.15); color: #B877D9; }
+.badge-personnel { background: rgba(255,152,48,0.15);  color: #FF9830; }
 
 .card-date {
   font-size: 0.72rem;
@@ -442,6 +443,184 @@ button { cursor: pointer; }
   color: var(--text-muted);
   white-space: nowrap;
 }
+
+/* ── Card private hint ── */
+.card-private-hint {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  padding: 0.35rem 0;
+}
+
+/* ── Account badge (portefeuille personnel) ── */
+.account-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-family: var(--font-mono), monospace;
+  background: var(--border);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ── Private data banner (PV latente) ── */
+.private-banner {
+  background: rgba(255,152,48,0.06);
+  border: 1px solid rgba(255,152,48,0.2);
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.private-banner-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.private-banner-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.private-banner-value {
+  font-size: 1.25rem;
+  color: var(--text);
+}
+
+.private-banner-note {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono), monospace;
+  border-top: 1px solid rgba(255,152,48,0.15);
+  padding-top: 0.6rem;
+  margin-top: 0.2rem;
+}
+
+/* ── Page connexion ── */
+.connexion-wrap {
+  max-width: 380px;
+  margin: 4rem auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.connexion-title {
+  font-size: 1.6rem;
+  color: var(--text);
+}
+
+.connexion-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: -0.75rem;
+}
+
+.connexion-error {
+  background: rgba(242,73,92,0.1);
+  border: 1px solid rgba(242,73,92,0.3);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 0.82rem;
+  color: var(--negative);
+}
+
+.connexion-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.connexion-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.connexion-input {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.6rem 0.75rem;
+  color: var(--text);
+  font-family: var(--font-body), Arial, sans-serif;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.connexion-input:focus {
+  border-color: var(--accent-blue);
+}
+
+.connexion-btn {
+  background: var(--accent-blue);
+  border: none;
+  border-radius: 4px;
+  padding: 0.65rem 1rem;
+  color: #fff;
+  font-family: var(--font-body), Arial, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: opacity 0.15s;
+  margin-top: 0.25rem;
+}
+
+.connexion-btn:hover { opacity: 0.85; }
+
+.connexion-back {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.connexion-back a { color: var(--text-muted); transition: color 0.15s; }
+.connexion-back a:hover { color: var(--cyan); }
+
+/* ── Déconnexion (page personnel) ── */
+.connexion-signout-wrap {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  text-align: right;
+}
+
+.connexion-signout-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.4rem 0.9rem;
+  color: var(--text-muted);
+  font-family: var(--font-body), Arial, sans-serif;
+  font-size: 0.78rem;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.connexion-signout-btn:hover {
+  border-color: var(--negative);
+  color: var(--negative);
+}
+
+/* ── Footer auth link ── */
+.footer-auth-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.footer-auth-link:hover { color: var(--cyan); }
 
 /* ── Footer ── */
 .site-footer {

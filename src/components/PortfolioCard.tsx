@@ -2,13 +2,14 @@ import type { PortfolioSummary } from '@/lib/api';
 import { formatUSD, formatPct, formatDate } from '@/lib/format';
 
 const PROFILE_LABELS: Record<string, string> = {
-  defensif: 'Défensif',
+  defensif:  'Défensif',
   dynamique: 'Dynamique',
-  agressif: 'Agressif',
+  agressif:  'Agressif',
+  personnel: 'Personnel',
 };
 
 export default function PortfolioCard({ summary }: { summary: PortfolioSummary }) {
-  const { id, name, inception_date, value_usd, perf_cumul, vol_30d, latestDate } = summary;
+  const { id, name, inception_date, value_usd, perf_cumul, vol_30d, latestDate, isPrivate } = summary;
   const perfSign = perf_cumul == null ? '' : perf_cumul >= 0 ? 'positive' : 'negative';
 
   return (
@@ -22,7 +23,11 @@ export default function PortfolioCard({ summary }: { summary: PortfolioSummary }
 
       <h2 className="card-name">{name}</h2>
 
-      <p className="card-value mono">{formatUSD(value_usd)}</p>
+      {isPrivate ? (
+        <p className="card-private-hint mono">Données privées</p>
+      ) : (
+        <p className="card-value mono">{formatUSD(value_usd)}</p>
+      )}
 
       <div className="card-stats">
         <div className="card-stat">

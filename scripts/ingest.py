@@ -90,12 +90,14 @@ def _load_prices(db: Client) -> pd.DataFrame:
 
 
 def _load_positions(db: Client) -> dict[str, dict[str, float]]:
-    """{portfolio_id: {ticker: quantity}}."""
+    """{portfolio_id: {ticker: total_quantity}} — agrège les comptes (ex. GOOGL CTO + PER)."""
     res = db.table("position").select("portfolio_id, ticker, quantity").execute()
     positions: dict[str, dict[str, float]] = {}
     for row in res.data:
         pid = row["portfolio_id"]
-        positions.setdefault(pid, {})[row["ticker"]] = float(row["quantity"])
+        ticker = row["ticker"]
+        positions.setdefault(pid, {})
+        positions[pid][ticker] = positions[pid].get(ticker, 0.0) + float(row["quantity"])
     return positions
 
 

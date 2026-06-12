@@ -7,10 +7,11 @@ import type { SeriesConfig } from '@/components/ComparativeChart';
 export const revalidate = 86400;
 
 const COMPARATIVE_SERIES: SeriesConfig[] = [
-  { key: 'defensif',  label: 'Défensif',     color: '#5794F2' },
-  { key: 'dynamique', label: 'Dynamique',    color: '#38BDF8' },
-  { key: 'agressif',  label: 'Agressif',     color: '#B877D9' },
-  { key: 'benchmark', label: 'VanEck UCITS', color: '#94A3B8', dashed: true },
+  { key: 'defensif',  label: 'Défensif',         color: '#5794F2' },
+  { key: 'dynamique', label: 'Dynamique',         color: '#38BDF8' },
+  { key: 'agressif',  label: 'Agressif',          color: '#B877D9' },
+  { key: 'personnel', label: 'Mon portefeuille',  color: '#FF9830' },
+  { key: 'benchmark', label: 'VanEck UCITS',      color: '#94A3B8', dashed: true },
 ];
 
 export default async function HomePage() {

@@ -18,6 +18,10 @@ export default function Footer() {
         >
           YouTube ↗
         </a>
+        {' · '}
+        <a href="/connexion" className="footer-auth-link">
+          Connexion
+        </a>
       </p>
     </footer>
   );
