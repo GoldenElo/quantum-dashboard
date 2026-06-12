@@ -147,3 +147,9 @@ Chaque colonne doit sommer à 100 % — vérifier par un test.
 
 Tests minimum : poids = 100 % par profil, idempotence du cron (double exécution = même résultat),
 calcul de volatilité vérifié contre un cas connu.
+
+## Backlog / pistes futures
+
+- Évaluer la migration de Supabase vers Netlify Database (Postgres/Neon) pour centraliser
+  l'hébergement — point d'attention : Supabase fournit aussi l'auth du mode propriétaire prévu
+  en V1.5, une migration devrait résoudre l'auth autrement. À réévaluer après la V1.5.
