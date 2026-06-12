@@ -20,8 +20,10 @@ issus de la vidéo #33 « Investir dans le quantique en 2026 »). Langue de l'in
 - **Supabase** (Postgres) — accès serveur uniquement, clé service en variable d'env Netlify.
 - **GitHub Actions** : cron d'ingestion du lundi au vendredi à 22h30 UTC (après clôture US),
   relançable manuellement (`workflow_dispatch`). Doit être **idempotent** (upsert partout).
-- **Recharts** pour les graphiques. Charte : navy `#0a1628` / or `#c9a84c`,
-  Playfair Display (titres), DM Sans (corps), JetBrains Mono (données chiffrées).
+- **Recharts** pour les graphiques. Charte : style Grafana sombre — voir section "Charte graphique" ci-dessous.
+- **Polices** : IBM Plex Sans (titres `--font-heading`), Inter (corps `--font-body`),
+  JetBrains Mono (tous les chiffres : valeurs, perfs, dates, axes, tooltips `--font-mono`).
+  Playfair Display et DM Sans sont supprimés.
 - Données marché : **Yahoo Finance** via `yfinance` (Python) en V1 ; migration vers Twelve Data
   prévue en V2. ⚠️ Vérifier au backfill que INFQ (NYSE depuis le 17/02/2026) est couvert ;
   sinon le signaler avant de coder un contournement.
@@ -148,6 +150,41 @@ Chaque colonne doit sommer à 100 % — vérifier par un test.
 
 Tests minimum : poids = 100 % par profil, idempotence du cron (double exécution = même résultat),
 calcul de volatilité vérifié contre un cas connu.
+
+## Charte graphique (tokens CSS)
+
+Style Grafana sombre — identité visuelle YouTube de la chaîne.
+
+| Token CSS | Valeur | Usage |
+|---|---|---|
+| `--bg-page` | `#060B1E` | Fond de page |
+| `--bg-panel` | `#0D1530` | Cartes, graphiques, tableaux |
+| `--border` | `#1E2B4D` | Bordures 1px partout |
+| `--accent-blue` | `#2E7FE8` | Liens, actions, accents |
+| `--cyan` | `#38BDF8` | Hover, surbrillances, ticker dans le tableau |
+| `--text` | `#FFFFFF` | Texte principal |
+| `--text-muted` | `#A9B8D4` | Texte secondaire — JAMAIS plus sombre |
+| `--positive` | `#73BF69` | Hausse — toujours coloré, jamais gris |
+| `--negative` | `#F2495C` | Baisse — toujours coloré, jamais gris |
+
+**Règles dures :**
+- Aucun texte plus sombre que `#A9B8D4` sur fond sombre.
+- Les chiffres de perf sont toujours colorés (`--positive` / `--negative`), jamais gris.
+- `#C9A84C` (or) est **supprimé** du projet — aucune occurrence autorisée.
+- `#FF9830` (orange) est **strictement réservé** à la future série "portefeuille personnel" (V1.5).
+  Ne jamais utiliser cette couleur ailleurs dans l'UI.
+- Coins arrondis : 6px max. Pas d'ombres portées. Pas de dégradés décoratifs.
+- En-têtes de panneau (`.section-title`, `.pie-title`) : petites capitales uppercase, 11-12px, `--text-muted`.
+
+**Séries des graphiques :**
+
+| Série | Couleur | Style |
+|---|---|---|
+| Défensif | `#5794F2` | Plein |
+| Dynamique | `#38BDF8` | Plein |
+| Agressif | `#B877D9` | Plein |
+| VanEck UCITS (QNTM.L) | `#94A3B8` | Pointillé |
+| Portefeuille personnel (V1.5) | `#FF9830` | Plein — couleur unique, réservée |
 
 ## Backlog / pistes futures
 

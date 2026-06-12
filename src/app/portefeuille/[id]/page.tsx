@@ -10,9 +10,9 @@ import AllocationPie from '@/components/AllocationPie';
 export const revalidate = 86400;
 
 const PORTFOLIO_COLORS: Record<string, string> = {
-  defensif:  '#4f9eff',
-  dynamique: '#c9a84c',
-  agressif:  '#ff6b6b',
+  defensif:  '#5794F2',
+  dynamique: '#38BDF8',
+  agressif:  '#B877D9',
 };
 
 const PORTFOLIO_LABELS: Record<string, string> = {

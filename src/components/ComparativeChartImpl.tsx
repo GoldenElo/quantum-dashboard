@@ -17,22 +17,22 @@ export default function ComparativeChartImpl({ data, series }: Props) {
     <div style={{ width: '100%', height: 340 }}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1e3a5f" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#1E2B4D" vertical={false} />
           <XAxis
             dataKey="date"
             tickFormatter={formatShortDate}
-            tick={{ fill: '#6b7280', fontSize: 11 }}
+            tick={{ fill: '#A9B8D4', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
             axisLine={false} tickLine={false} minTickGap={40}
           />
           <YAxis
             tickFormatter={v => `${(v as number).toFixed(1)}`}
-            tick={{ fill: '#6b7280', fontSize: 11 }}
+            tick={{ fill: '#A9B8D4', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
             axisLine={false} tickLine={false} width={52}
             domain={['auto', 'auto']}
           />
           <Tooltip
-            contentStyle={{ background: '#0f2044', border: '1px solid #1e3a5f', borderRadius: 6, fontSize: 12 }}
-            labelStyle={{ color: '#e8eaf0', marginBottom: 4 }}
+            contentStyle={{ background: '#0D1530', border: '1px solid #1E2B4D', borderRadius: 6, fontSize: 12 }}
+            labelStyle={{ color: '#FFFFFF', marginBottom: 4, fontFamily: 'JetBrains Mono, monospace' }}
             labelFormatter={(label) => formatShortDate(String(label))}
             formatter={(value, name) => {
               const v = typeof value === 'number' ? value : 0;
@@ -43,7 +43,7 @@ export default function ComparativeChartImpl({ data, series }: Props) {
           <Legend
             formatter={(value: string) => {
               const s = series.find(s => s.key === value);
-              return <span style={{ color: '#e8eaf0', fontSize: 12 }}>{s?.label ?? value}</span>;
+              return <span style={{ color: '#A9B8D4', fontSize: 12 }}>{s?.label ?? value}</span>;
             }}
           />
           {series.map(s => (

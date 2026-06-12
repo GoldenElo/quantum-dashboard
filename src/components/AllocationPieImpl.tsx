@@ -32,7 +32,8 @@ function SinglePie({ data, title }: { data: Slice[]; title: string }) {
               ))}
             </Pie>
             <Tooltip
-              contentStyle={{ background: '#0f2044', border: '1px solid #1e3a5f', borderRadius: 6, fontSize: 12 }}
+              contentStyle={{ background: '#0D1530', border: '1px solid #1E2B4D', borderRadius: 6, fontSize: 12 }}
+              labelStyle={{ color: '#FFFFFF' }}
               formatter={(value, name) => {
                 const v = typeof value === 'number' ? value : 0;
                 const slice = data.find(d => d.ticker === String(name));
@@ -42,7 +43,7 @@ function SinglePie({ data, title }: { data: Slice[]; title: string }) {
             <Legend
               formatter={(value: string) => {
                 const s = data.find(d => d.ticker === value);
-                return <span style={{ color: '#e8eaf0', fontSize: 11 }}>{s?.name ?? value}</span>;
+                return <span style={{ color: '#A9B8D4', fontSize: 11 }}>{s?.name ?? value}</span>;
               }}
             />
           </PieChart>

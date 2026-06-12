@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
-import { Playfair_Display, DM_Sans, JetBrains_Mono } from "next/font/google";
+import { IBM_Plex_Sans, Inter, JetBrains_Mono } from "next/font/google";
 import Footer from "@/components/Footer";
 import "./globals.css";
 
-const playfair = Playfair_Display({
+const ibmPlexSans = IBM_Plex_Sans({
   subsets: ["latin"],
-  variable: "--font-playfair",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-heading",
   display: "swap",
 });
 
-const dmSans = DM_Sans({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-dm",
+  variable: "--font-body",
   display: "swap",
 });
 
@@ -31,7 +32,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="fr" className={`${playfair.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}>
+    <html lang="fr" className={`${ibmPlexSans.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
       <body>
         <div className="site-wrapper">
           {children}
