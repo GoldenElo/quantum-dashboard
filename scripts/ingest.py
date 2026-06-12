@@ -101,21 +101,30 @@ def _load_positions(db: Client) -> dict[str, dict[str, float]]:
     return positions
 
 
+def _load_initial_capitals(db: Client) -> dict[str, float]:
+    """{portfolio_id: initial_capital_usd} — lu depuis la table portfolio."""
+    res = db.table("portfolio").select("id, initial_capital_usd").execute()
+    return {row["id"]: float(row["initial_capital_usd"]) for row in res.data}
+
+
 # ─── Calcul des snapshots ─────────────────────────────────────────────────────
 
 def compute_snapshots(
     positions: dict[str, dict[str, float]],
     prices: pd.DataFrame,
+    initial_capitals: dict[str, float],
 ) -> list[dict]:
     """
     Calcule value_usd, perf_cumul, vol_30d/90j (annualisées), max_drawdown
     pour chaque (portfolio_id, date) où toutes les données sont disponibles.
+    Utilise initial_capitals[portfolio_id] pour perf_cumul (capital propre à chaque portefeuille).
     Lève RuntimeError si un ticker requis est absent de price_daily.
     """
     rows: list[dict] = []
 
     for pid, pos in positions.items():
         tickers = list(pos.keys())
+        initial = initial_capitals.get(pid, INITIAL_CAPITAL_USD)
 
         missing_tickers = [t for t in tickers if t not in prices.columns]
         if missing_tickers:
@@ -135,7 +144,7 @@ def compute_snapshots(
         qty = pd.Series({t: pos[t] for t in tickers})
         value_usd = sub.dot(qty).sort_index()
 
-        perf_cumul   = value_usd / INITIAL_CAPITAL_USD - 1.0
+        perf_cumul   = value_usd / initial - 1.0
         daily_ret    = value_usd.pct_change()
         vol_30d      = daily_ret.rolling(30, min_periods=30).std() * sqrt(252)
         vol_90d      = daily_ret.rolling(90, min_periods=90).std() * sqrt(252)
@@ -173,8 +182,9 @@ def main() -> None:
 
     # 2. Chargement de toutes les données de la base
     logger.info("Chargement des données de la base…")
-    prices    = _load_prices(db)
-    positions = _load_positions(db)
+    prices           = _load_prices(db)
+    positions        = _load_positions(db)
+    initial_capitals = _load_initial_capitals(db)
 
     if prices.empty:
         logger.error("price_daily vide — impossible de calculer les snapshots.")
@@ -190,7 +200,7 @@ def main() -> None:
         len(positions), len(prices.index),
     )
     try:
-        snapshot_rows = compute_snapshots(positions, prices)
+        snapshot_rows = compute_snapshots(positions, prices, initial_capitals)
     except RuntimeError as exc:
         logger.error("Erreur de calcul des snapshots : %s", exc)
         sys.exit(1)
