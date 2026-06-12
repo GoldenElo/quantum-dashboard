@@ -14,12 +14,12 @@ function SinglePie({ data, title }: { data: Slice[]; title: string }) {
   return (
     <div className="pie-wrap">
       <p className="pie-title">{title}</p>
-      <div style={{ width: '100%', height: 220 }}>
+      <div style={{ width: '100%', height: 260 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
+          <PieChart margin={{ top: 20, right: 20, bottom: 0, left: 20 }}>
             <Pie
               data={data} dataKey="weight" nameKey="ticker"
-              cx="50%" cy="50%" outerRadius={80}
+              cx="50%" cy="52%" outerRadius={72}
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               label={(p: any) => {
                 const w = p.weight as number | undefined;
@@ -41,6 +41,7 @@ function SinglePie({ data, title }: { data: Slice[]; title: string }) {
               }}
             />
             <Legend
+              wrapperStyle={{ paddingTop: '12px' }}
               formatter={(value: string) => {
                 const s = data.find(d => d.ticker === value);
                 return <span style={{ color: '#A9B8D4', fontSize: 11 }}>{s?.name ?? value}</span>;
@@ -53,12 +54,12 @@ function SinglePie({ data, title }: { data: Slice[]; title: string }) {
   );
 }
 
-type Props = { current: Slice[]; inception: Slice[] };
+type Props = { current: Slice[]; inception: Slice[]; inceptionDateLabel: string };
 
-export default function AllocationPieImpl({ current, inception }: Props) {
+export default function AllocationPieImpl({ current, inception, inceptionDateLabel }: Props) {
   return (
     <div className="pies-container">
-      <SinglePie data={inception} title="Poids à l'inception" />
+      <SinglePie data={inception} title={`Poids au ${inceptionDateLabel}`} />
       <SinglePie data={current}   title="Poids actuels" />
     </div>
   );

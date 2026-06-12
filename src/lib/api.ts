@@ -4,6 +4,7 @@ export type PortfolioSummary = {
   id: string;
   name: string;
   description: string | null;
+  inception_date: string;
   value_usd: number | null;
   perf_cumul: number | null;
   vol_30d: number | null;
@@ -70,7 +71,7 @@ export async function fetchHomepageData(): Promise<HomepageData> {
   const [portfoliosResult, ...latestSnapshotResults] = await Promise.all([
     supabase
       .from('portfolio')
-      .select('id, name, description, initial_capital_usd')
+      .select('id, name, description, initial_capital_usd, inception_date')
       .in('id', [...PORTFOLIO_IDS]),
     ...PORTFOLIO_IDS.map(id =>
       supabase
@@ -108,6 +109,7 @@ export async function fetchHomepageData(): Promise<HomepageData> {
       id,
       name: meta?.name ?? id,
       description: meta?.description ?? null,
+      inception_date: meta?.inception_date ?? '',
       value_usd: snap?.value_usd ?? null,
       perf_cumul: snap?.perf_cumul ?? null,
       vol_30d: snap?.vol_30d ?? null,

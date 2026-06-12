@@ -8,7 +8,7 @@ const PROFILE_LABELS: Record<string, string> = {
 };
 
 export default function PortfolioCard({ summary }: { summary: PortfolioSummary }) {
-  const { id, name, value_usd, perf_cumul, vol_30d, latestDate } = summary;
+  const { id, name, inception_date, value_usd, perf_cumul, vol_30d, latestDate } = summary;
   const perfSign = perf_cumul == null ? '' : perf_cumul >= 0 ? 'positive' : 'negative';
 
   return (
@@ -22,11 +22,11 @@ export default function PortfolioCard({ summary }: { summary: PortfolioSummary }
 
       <h2 className="card-name">{name}</h2>
 
-      <p className={`card-value mono ${perfSign}`}>{formatUSD(value_usd)}</p>
+      <p className="card-value mono">{formatUSD(value_usd)}</p>
 
       <div className="card-stats">
         <div className="card-stat">
-          <span className="stat-label">Perf. depuis l&apos;inception</span>
+          <span className="stat-label">Perf. depuis le {formatDate(inception_date)}</span>
           <span className={`stat-value mono ${perfSign}`}>{formatPct(perf_cumul)}</span>
         </div>
         <div className="card-stat">

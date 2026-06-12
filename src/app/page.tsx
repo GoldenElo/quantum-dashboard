@@ -1,4 +1,5 @@
 import { fetchHomepageData } from '@/lib/api';
+import { formatDate } from '@/lib/format';
 import PortfolioCard from '@/components/PortfolioCard';
 import ComparativeChart from '@/components/ComparativeChart';
 import type { SeriesConfig } from '@/components/ComparativeChart';
@@ -14,6 +15,7 @@ const COMPARATIVE_SERIES: SeriesConfig[] = [
 
 export default async function HomePage() {
   const { summaries, chartData } = await fetchHomepageData();
+  const inceptionDate = summaries[0]?.inception_date ?? '';
 
   return (
     <main className="page">
@@ -39,7 +41,7 @@ export default async function HomePage() {
           <ComparativeChart data={chartData} series={COMPARATIVE_SERIES} />
         </div>
         <p className="chart-note">
-          Base 100 à la date d&apos;inception · Benchmark : VanEck Quantum Computing UCITS ETF (QNTM.L)
+          Base 100 depuis le {formatDate(inceptionDate)} · Benchmark : VanEck Quantum Computing UCITS ETF (QNTM.L)
         </p>
       </section>
     </main>

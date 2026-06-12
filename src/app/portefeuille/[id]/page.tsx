@@ -73,7 +73,7 @@ export default async function PortfolioDetailPage({ params }: Props) {
         )}
         {snap && (
           <p className="detail-description" style={{ marginTop: '0.25rem' }}>
-            Au {formatDate(snap.date)} · Inception : {formatDate(detail.inception_date)}
+            Au {formatDate(snap.date)} · Depuis le {formatDate(detail.inception_date)}
           </p>
         )}
       </div>
@@ -82,12 +82,12 @@ export default async function PortfolioDetailPage({ params }: Props) {
         <div className="stats-grid">
           <div className="stat-box">
             <span className="stat-label">Valeur</span>
-            <span className={`stat-value mono ${snap && snap.value_usd >= detail.initial_capital_usd ? 'positive' : snap ? 'negative' : ''}`}>
+            <span className="stat-value mono">
               {formatUSD(snap?.value_usd)}
             </span>
           </div>
           <div className="stat-box">
-            <span className="stat-label">Perf. depuis l&apos;inception</span>
+            <span className="stat-label">Perf. depuis le {formatDate(detail.inception_date)}</span>
             <span className={`stat-value mono ${snap && snap.perf_cumul >= 0 ? 'positive' : snap ? 'negative' : ''}`}>
               {formatPct(snap?.perf_cumul)}
             </span>
@@ -139,14 +139,18 @@ export default async function PortfolioDetailPage({ params }: Props) {
           />
         </div>
         <p className="chart-note">
-          Base 100 à la date d&apos;inception · Benchmark en tirets : VanEck Quantum Computing UCITS ETF (QNTM.L)
+          Base 100 depuis le {formatDate(detail.inception_date)} · Benchmark en tirets : VanEck Quantum Computing UCITS ETF (QNTM.L)
         </p>
       </section>
 
       <section className="section" aria-label="Allocation">
         <h2 className="section-title">Allocation</h2>
         <div className="chart-container">
-          <AllocationPie current={currentPie} inception={inceptionPie} />
+          <AllocationPie
+            current={currentPie}
+            inception={inceptionPie}
+            inceptionDateLabel={formatDate(detail.inception_date)}
+          />
         </div>
       </section>
 

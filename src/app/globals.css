@@ -268,8 +268,9 @@ button { cursor: pointer; }
 }
 
 .stat-box .stat-value {
-  font-size: 1.4rem;
+  font-size: 1.15rem;
   display: block;
+  white-space: nowrap;
 }
 
 /* ── Allocation pies ── */

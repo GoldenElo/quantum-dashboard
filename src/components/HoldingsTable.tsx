@@ -25,7 +25,7 @@ export default function HoldingsTable({ holdings }: { holdings: HoldingRow[] }) 
             <th className="right">Prix</th>
             <th className="right">Valeur</th>
             <th className="right">Poids actuel</th>
-            <th className="right hide-mobile">Poids inception</th>
+            <th className="right hide-mobile">Poids initial</th>
             <th className="right">Contribution</th>
           </tr>
         </thead>
