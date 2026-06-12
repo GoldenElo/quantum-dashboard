@@ -77,32 +77,6 @@ def fetch_adj_close(
     return df
 
 
-@_retry
-def fetch_eurusd(start: date, end: date) -> pd.Series:
-    """
-    Retourne une Series (index=date) du taux EUR/USD de clôture.
-    Ticker yfinance : EURUSD=X
-    """
-    end_excl = end + timedelta(days=1)
-    raw = yf.download(
-        tickers="EURUSD=X",
-        start=start.isoformat(),
-        end=end_excl.isoformat(),
-        auto_adjust=True,
-        progress=False,
-    )
-
-    if raw.empty:
-        raise ValueError(f"Taux EUR/USD introuvable entre {start} et {end}")
-
-    close = raw["Close"]
-    # .squeeze() sur une Series à 1 élément renvoie un scalaire ; on l'évite.
-    if isinstance(close, pd.DataFrame):
-        close = close.iloc[:, 0]
-    series = close.copy()
-    series.index = pd.to_datetime(series.index).date
-    return series
-
 
 @_retry
 def fetch_ohlcv(

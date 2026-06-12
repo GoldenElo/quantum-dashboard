@@ -14,7 +14,7 @@ from datetime import date
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-from market_data import fetch_adj_close, fetch_eurusd, check_ticker_coverage
+from market_data import fetch_adj_close, check_ticker_coverage
 
 load_dotenv(dotenv_path="../.env.local")  # Next.js convention pour les vars locales
 load_dotenv()  # fallback : .env standard
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 INCEPTION_DATE: str = "2026-06-01"  # TODO_INCEPTION_DATE : date réelle vidéo #33
 # ─────────────────────────────────────────────────────────────────────────────
 
-INITIAL_CAPITAL_EUR = 10_000.0
+INITIAL_CAPITAL_USD = 10_000.0
 
 # ─── Référentiel des assets ───────────────────────────────────────────────────
 ASSETS = [
@@ -114,15 +114,6 @@ def seed(db: Client, inception: date) -> None:
     # ── 2. Récupération des prix d'inception ────────────────────────────────
     logger.info("Récupération des prix d'inception (%s)…", inception)
     prices = fetch_adj_close(tickers_needed + ["QTUM"], start=inception, end=inception)
-    eurusd = fetch_eurusd(start=inception, end=inception)
-
-    if inception not in eurusd.index:
-        raise ValueError(
-            f"Taux EUR/USD introuvable pour {inception}. "
-            "Vérifier que c'est bien un jour de cotation."
-        )
-    rate = float(eurusd[inception])
-    logger.info("EUR/USD au %s : %.4f", inception, rate)
 
     # ── 3. Insertion des assets ─────────────────────────────────────────────
     logger.info("Upsert des assets…")
@@ -136,7 +127,7 @@ def seed(db: Client, inception: date) -> None:
             "name":                p["name"],
             "description":         p["description"],
             "inception_date":      inception.isoformat(),
-            "initial_capital_eur": INITIAL_CAPITAL_EUR,
+            "initial_capital_usd": INITIAL_CAPITAL_USD,
         }
         for pid, p in PORTFOLIOS.items()
     ]
@@ -152,8 +143,7 @@ def seed(db: Client, inception: date) -> None:
                     "Vérifier que c'est bien un jour de cotation US."
                 )
             adj_close = float(prices.loc[inception, ticker])
-            # quantity = (10000 × poids × EURUSD) / adj_close
-            quantity = (INITIAL_CAPITAL_EUR * weight * rate) / adj_close
+            quantity = (INITIAL_CAPITAL_USD * weight) / adj_close
             position_rows.append({
                 "portfolio_id":  pid,
                 "ticker":        ticker,

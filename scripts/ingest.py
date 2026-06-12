@@ -16,7 +16,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-from market_data import fetch_ohlcv, fetch_eurusd, last_close_date
+from market_data import fetch_ohlcv, last_close_date
 
 load_dotenv(dotenv_path="../.env.local")
 load_dotenv()
@@ -24,7 +24,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 TICKERS = ["GOOGL", "IBM", "NVDA", "IONQ", "QBTS", "LAES", "INFQ", "QTUM"]
-INITIAL_CAPITAL_EUR = 10_000.0
+INITIAL_CAPITAL_USD = 10_000.0
 BATCH_SIZE = 500
 
 
@@ -43,7 +43,7 @@ def _upsert_batched(db: Client, table: str, rows: list[dict]) -> None:
 
 def ingest_prices(db: Client, close_date: date) -> bool:
     """
-    Récupère les prix de clôture pour close_date et les insère dans price_daily et fx_rate.
+    Récupère les prix de clôture pour close_date et les insère dans price_daily.
     Retourne False si aucune cotation n'existe pour cette date (jour férié US),
     True si l'ingestion a réussi.
     Lève RuntimeError en cas d'échec réseau (→ exit 1 dans main).
@@ -52,7 +52,6 @@ def ingest_prices(db: Client, close_date: date) -> bool:
     try:
         ohlcv = fetch_ohlcv(TICKERS, start=close_date, end=close_date)
     except ValueError as exc:
-        # Données manquantes = jour férié US ou marché fermé
         logger.warning("Aucune cotation le %s — jour férié US ? (%s)", close_date, exc)
         return False
     # RuntimeError (échec réseau après retries) remonte jusqu'à main → exit 1
@@ -72,22 +71,8 @@ def ingest_prices(db: Client, close_date: date) -> bool:
                 "volume":    int(vol) if pd.notna(vol) else None,
             })
 
-    logger.info("Téléchargement EUR/USD pour le %s…", close_date)
-    try:
-        fx_series = fetch_eurusd(start=close_date, end=close_date)
-    except ValueError as exc:
-        logger.warning("Taux EUR/USD manquant le %s (%s)", close_date, exc)
-        return False
-
-    rows_fx = [
-        {"pair": "EURUSD", "date": str(dt)[:10], "rate": round(float(rate), 6)}
-        for dt, rate in fx_series.items()
-        if pd.notna(rate)
-    ]
-
-    logger.info("Upsert %d lignes price_daily + %d lignes fx_rate…", len(rows_price), len(rows_fx))
+    logger.info("Upsert de %d lignes dans price_daily…", len(rows_price))
     _upsert_batched(db, "price_daily", rows_price)
-    _upsert_batched(db, "fx_rate", rows_fx)
     return True
 
 
@@ -102,22 +87,6 @@ def _load_prices(db: Client) -> pd.DataFrame:
     df["date"] = pd.to_datetime(df["date"]).dt.date
     df["adj_close"] = df["adj_close"].astype(float)
     return df.pivot(index="date", columns="ticker", values="adj_close")
-
-
-def _load_fx(db: Client) -> pd.Series:
-    """Series (index=date, valeurs=taux EURUSD)."""
-    res = (
-        db.table("fx_rate")
-        .select("date, rate")
-        .eq("pair", "EURUSD")
-        .limit(10_000)
-        .execute()
-    )
-    if not res.data:
-        return pd.Series(dtype=float)
-    df = pd.DataFrame(res.data)
-    df["date"] = pd.to_datetime(df["date"]).dt.date
-    return df.set_index("date")["rate"].astype(float)
 
 
 def _load_positions(db: Client) -> dict[str, dict[str, float]]:
@@ -135,10 +104,9 @@ def _load_positions(db: Client) -> dict[str, dict[str, float]]:
 def compute_snapshots(
     positions: dict[str, dict[str, float]],
     prices: pd.DataFrame,
-    fx: pd.Series,
 ) -> list[dict]:
     """
-    Calcule value_eur, perf_cumul, vol_30d/90j (annualisées), max_drawdown
+    Calcule value_usd, perf_cumul, vol_30d/90j (annualisées), max_drawdown
     pour chaque (portfolio_id, date) où toutes les données sont disponibles.
     Lève RuntimeError si un ticker requis est absent de price_daily.
     """
@@ -153,24 +121,24 @@ def compute_snapshots(
                 f"Portefeuille {pid} : tickers absents de price_daily : {missing_tickers}"
             )
 
-        # Dates avec données complètes pour ce portefeuille ET taux FX disponible
-        mask = prices[tickers].notna().all(axis=1) & prices.index.isin(fx.index)
+        # Dates avec données complètes pour ce portefeuille
+        mask = prices[tickers].notna().all(axis=1)
         valid_dates = prices.index[mask]
         if len(valid_dates) == 0:
             logger.warning("Aucune date valide pour le portefeuille %s.", pid)
             continue
 
-        # Série de valeur EUR : Σ(qty_i × adj_close_i) / EURUSD
+        # Série de valeur USD : Σ(qty_i × adj_close_i)
         sub = prices.loc[valid_dates, tickers]
         qty = pd.Series({t: pos[t] for t in tickers})
-        value_eur = (sub.dot(qty) / fx[valid_dates]).sort_index()
+        value_usd = sub.dot(qty).sort_index()
 
-        perf_cumul   = value_eur / INITIAL_CAPITAL_EUR - 1.0
-        daily_ret    = value_eur.pct_change()
+        perf_cumul   = value_usd / INITIAL_CAPITAL_USD - 1.0
+        daily_ret    = value_usd.pct_change()
         vol_30d      = daily_ret.rolling(30, min_periods=30).std() * sqrt(252)
         vol_90d      = daily_ret.rolling(90, min_periods=90).std() * sqrt(252)
-        running_peak = value_eur.cummax()
-        max_dd       = (value_eur / running_peak - 1.0).cummin()
+        running_peak = value_usd.cummax()
+        max_dd       = (value_usd / running_peak - 1.0).cummin()
 
         for dt in valid_dates:
             v30 = vol_30d[dt]
@@ -178,7 +146,7 @@ def compute_snapshots(
             rows.append({
                 "portfolio_id": pid,
                 "date":         str(dt),
-                "value_eur":    round(float(value_eur[dt]), 4),
+                "value_usd":    round(float(value_usd[dt]), 4),
                 "perf_cumul":   round(float(perf_cumul[dt]), 8),
                 "vol_30d":      None if pd.isna(v30) else round(float(v30), 8),
                 "vol_90d":      None if pd.isna(v90) else round(float(v90), 8),
@@ -200,16 +168,14 @@ def main() -> None:
     has_new_prices = ingest_prices(db, close_date)
     if not has_new_prices:
         logger.info("Pas de nouveau prix — pas de nouvelle clôture à ingérer.")
-        # On poursuit quand même pour calculer les snapshots manquants éventuels.
 
     # 2. Chargement de toutes les données de la base
     logger.info("Chargement des données de la base…")
     prices    = _load_prices(db)
-    fx        = _load_fx(db)
     positions = _load_positions(db)
 
-    if prices.empty or fx.empty:
-        logger.error("price_daily ou fx_rate vide — impossible de calculer les snapshots.")
+    if prices.empty:
+        logger.error("price_daily vide — impossible de calculer les snapshots.")
         sys.exit(1)
 
     if not positions:
@@ -222,7 +188,7 @@ def main() -> None:
         len(positions), len(prices.index),
     )
     try:
-        snapshot_rows = compute_snapshots(positions, prices, fx)
+        snapshot_rows = compute_snapshots(positions, prices)
     except RuntimeError as exc:
         logger.error("Erreur de calcul des snapshots : %s", exc)
         sys.exit(1)

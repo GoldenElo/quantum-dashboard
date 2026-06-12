@@ -11,7 +11,7 @@ issus de la vidéo #33 « Investir dans le quantique en 2026 »). Langue de l'in
   Portefeuilles fictifs à but pédagogique. Données de clôture à J-1, sans garantie d'exactitude. »
 - Aucune donnée temps réel. Tout est pré-calculé en base par le cron ; le front ne calcule rien
   et n'appelle jamais l'API de marché.
-- Devise d'affichage : **EUR**. Les prix US sont convertis via le taux EUR/USD de clôture du jour.
+- Devise d'affichage : **USD**. Tout est nativement en dollars, aucune conversion de devise.
 - Toujours utiliser `adj_close` (ajusté splits/dividendes), jamais le close brut.
 
 ## Stack
@@ -59,19 +59,12 @@ create table price_daily (
   primary key (ticker, date)
 );
 
-create table fx_rate (
-  pair text not null,          -- 'EURUSD'
-  date date not null,
-  rate numeric not null,
-  primary key (pair, date)
-);
-
 create table portfolio (
   id text primary key,         -- 'defensif' | 'dynamique' | 'agressif'
   name text not null,
   description text,
   inception_date date not null,
-  initial_capital_eur numeric not null default 10000
+  initial_capital_usd numeric not null default 10000
 );
 
 create table position (
@@ -85,7 +78,7 @@ create table position (
 create table snapshot_daily (
   portfolio_id text references portfolio(id),
   date date not null,
-  value_eur numeric not null,
+  value_usd numeric not null,
   perf_cumul numeric not null,      -- value/initial_capital - 1
   vol_30d numeric,                  -- annualisée, null si < 30 obs
   vol_90d numeric,
@@ -96,10 +89,10 @@ create table snapshot_daily (
 
 ## Les 3 portefeuilles (allocations officielles, figées)
 
-Capital initial : **10 000 € chacun**.
+Capital initial : **10 000 $ chacun**.
 **Date d'inception : `[À RENSEIGNER — date de publication de la vidéo #33]`.**
 Les quantités sont calculées une seule fois par le script de seed :
-`quantity = (10000 × poids × taux EURUSD inception) / adj_close inception` — puis plus jamais modifiées.
+`quantity = (10000 × poids) / adj_close inception` — puis plus jamais modifiées.
 
 | Ticker | Société | Catégorie | Défensif | Dynamique | Agressif |
 |---|---|---|---|---|---|
@@ -116,8 +109,8 @@ Chaque colonne doit sommer à 100 % — vérifier par un test.
 
 ## Calculs (dans le cron, jamais dans le front)
 
-- `value_eur` = Σ quantity × adj_close / taux EURUSD du jour
-- `perf_cumul` = value_eur / 10000 − 1
+- `value_usd` = Σ quantity × adj_close
+- `perf_cumul` = value_usd / 10000 − 1
 - Volatilité = écart-type des rendements quotidiens × √252, fenêtres glissantes 30 j et 90 j
 - `max_drawdown` = creux maximal depuis le plus-haut historique du portefeuille
 - Jours sans cotation (week-ends, fériés US) : aucun snapshot, aucune erreur, aucun doublon
@@ -147,10 +140,10 @@ Chaque colonne doit sommer à 100 % — vérifier par un test.
 ## Ordre de développement
 
 1. Init Next.js + Supabase + schéma SQL + seed des 3 portefeuilles (quantités d'inception).
-2. Script de backfill des prix et du taux EURUSD depuis l'inception.
+2. Script de backfill des prix depuis l'inception.
 3. Cron GitHub Actions : ingestion quotidienne + calcul des snapshots (idempotent).
 4. Pages : accueil puis `/portefeuille/[id]`, charte appliquée, disclaimer partout.
 5. Déploiement Netlify + variables d'env + test du cron de bout en bout.
 
 Tests minimum : poids = 100 % par profil, idempotence du cron (double exécution = même résultat),
-calcul de volatilité vérifié contre un cas connu, conversion EUR correcte.
+calcul de volatilité vérifié contre un cas connu.

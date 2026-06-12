@@ -25,16 +25,6 @@ create table if not exists price_daily (
 );
 
 -- ─────────────────────────────────────────────
--- Taux de change EUR/USD de clôture
--- ─────────────────────────────────────────────
-create table if not exists fx_rate (
-  pair  text    not null,  -- ex. 'EURUSD'
-  date  date    not null,
-  rate  numeric not null,
-  primary key (pair, date)
-);
-
--- ─────────────────────────────────────────────
 -- Portefeuilles
 -- ─────────────────────────────────────────────
 create table if not exists portfolio (
@@ -42,7 +32,7 @@ create table if not exists portfolio (
   name                text    not null,
   description         text,
   inception_date      date    not null,
-  initial_capital_eur numeric not null default 10000
+  initial_capital_usd numeric not null default 10000
 );
 
 -- ─────────────────────────────────────────────
@@ -62,8 +52,8 @@ create table if not exists position (
 create table if not exists snapshot_daily (
   portfolio_id  text    not null references portfolio (id),
   date          date    not null,
-  value_eur     numeric not null,
-  perf_cumul    numeric not null,  -- value_eur / initial_capital_eur - 1
+  value_usd     numeric not null,
+  perf_cumul    numeric not null,  -- value_usd / initial_capital_usd - 1
   vol_30d       numeric,           -- annualisée (null si < 30 observations)
   vol_90d       numeric,
   max_drawdown  numeric,
@@ -75,4 +65,3 @@ create table if not exists snapshot_daily (
 -- ─────────────────────────────────────────────
 create index if not exists idx_price_daily_date    on price_daily (date);
 create index if not exists idx_snapshot_daily_date on snapshot_daily (date);
-create index if not exists idx_fx_rate_date        on fx_rate (date);

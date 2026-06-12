@@ -1,6 +1,5 @@
 """
-Backfill des prix (price_daily) et du taux EUR/USD (fx_rate)
-depuis l'inception jusqu'à la dernière clôture disponible.
+Backfill des prix (price_daily) depuis l'inception jusqu'à la dernière clôture disponible.
 
 Usage : python scripts/backfill.py
 Idempotent — upsert partout. Ne crée aucune ligne pour les jours sans cotation.
@@ -15,7 +14,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-from market_data import fetch_ohlcv, fetch_eurusd, last_close_date
+from market_data import fetch_ohlcv, last_close_date
 
 load_dotenv(dotenv_path="../.env.local")
 load_dotenv()
@@ -72,43 +71,15 @@ def backfill_prices(db: Client, start: date, end: date) -> dict[str, dict]:
     return stats
 
 
-def backfill_fx(db: Client, start: date, end: date) -> dict[str, dict]:
-    logger.info("Téléchargement EUR/USD %s → %s…", start, end)
-    series = fetch_eurusd(start=start, end=end)
 
-    if series.empty:
-        logger.error("Données EUR/USD vides — backfill interrompu.")
-        sys.exit(1)
-
-    rows = [
-        {"pair": "EURUSD", "date": str(dt)[:10], "rate": round(float(rate), 6)}
-        for dt, rate in series.items()
-        if pd.notna(rate)
-    ]
-    logger.info("Upsert de %d lignes dans fx_rate…", len(rows))
-    _upsert_batched(db, "fx_rate", rows)
-    logger.info("fx_rate : OK")
-
-    return {
-        "EURUSD": {
-            "count": len(rows),
-            "first": series.index.min(),
-            "last":  series.index.max(),
-        }
-    }
-
-
-def print_control_table(
-    price_stats: dict[str, dict],
-    fx_stats: dict[str, dict],
-) -> None:
+def print_control_table(price_stats: dict[str, dict]) -> None:
     ticker_counts = [v["count"] for v in price_stats.values()]
     ref = max(ticker_counts) if ticker_counts else 0
 
     W = 68
     print()
     print("─" * W)
-    print(f"  {'Ticker/Paire':<12} {'Lignes':>7}  {'Première date':<13} {'Dernière date':<13} Statut")
+    print(f"  {'Ticker':<12} {'Lignes':>7}  {'Première date':<13} {'Dernière date':<13} Statut")
     print("─" * W)
 
     for ticker in TICKERS:
@@ -122,11 +93,6 @@ def print_control_table(
             f"  {ticker:<12} {v['count']:>7}  {str(v['first']):<13} {str(v['last']):<13} {status}"
         )
 
-    print("─" * W)
-    for key, v in fx_stats.items():
-        print(
-            f"  {key:<12} {v['count']:>7}  {str(v['first']):<13} {str(v['last']):<13} OK"
-        )
     print("─" * W)
     print()
 
@@ -144,8 +110,7 @@ def main() -> None:
     db = _supabase_client()
     end = last_close_date()
     price_stats = backfill_prices(db, start=INCEPTION_DATE, end=end)
-    fx_stats    = backfill_fx(db, start=INCEPTION_DATE, end=end)
-    print_control_table(price_stats, fx_stats)
+    print_control_table(price_stats)
 
 
 if __name__ == "__main__":
