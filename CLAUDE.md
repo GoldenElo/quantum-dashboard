@@ -135,10 +135,7 @@ Chaque colonne doit sommer à 100 % — vérifier par un test.
 
 - **V1 (fait)** : tout ce qui précède.
 - **V1.5 (fait)** : portefeuille personnel implémenté — voir section "Données V1.5" ci-dessous.
-- **V2** : indicateurs sectoriels (market cap totale pure-players, P/S agrégé) —
-  prévoir seulement que `asset.category` permet déjà l'agrégation.
-- **V3** : « CoinMarketCap du quantique » + bubbles D3. ⚠️ Avant toute V3 publique à fort trafic :
-  licence de données commerciale (le tier gratuit ne le permet pas).
+- **V2+ (roadmap)** : voir section "Roadmap incrémentale" ci-dessous.
 
 ## Ordre de développement
 
@@ -227,8 +224,159 @@ Devise confirmée : **USD** pour tous les PRU.
 - **Méthode de calcul** : TWR (Time-Weighted Return) pour la perf globale, MWR pour le rendement
   personnel. Les deux seront affichés.
 
-## Backlog / pistes futures
+## Roadmap incrémentale — vers le CoinMarketCap du quantique
 
-- Évaluer la migration de Supabase vers Netlify Database (Postgres/Neon) pour centraliser
-  l'hébergement — point d'attention : Supabase fournit aussi l'auth du mode propriétaire prévu
-  en V1.5, une migration devrait résoudre l'auth autrement. À réévaluer après la V1.5.
+**Cible finale :** un tableau de bord sectoriel de référence — classement vivant, mur de bulles,
+agrégats pure-players, contrats et actualités — le tout cohérent et sans dette technique.
+
+**Principe directeur :** chaque semaine construit sur la précédente.
+Les fondations de données arrivent d'abord (S1–S2) ; l'affichage les consomme ensuite (S3–S4) ;
+l'éditorial et les intégrations tierces viennent en dernier car ils ne bloquent rien.
+Ne jamais stocker en base ce qui peut être calculé à la volée depuis `price_daily` ou `asset`.
+
+---
+
+### S1 — Capitalisations boursières (fondation de données #1)
+
+**Ce qui est construit :** une table `shares_outstanding` (ticker, date, shares, source) peuplée
+trimestriellement depuis les fiches SEC (Form 10-Q/10-K) pour les tickers US, et depuis les
+rapports annuels pour LAES (SIX). Un script Python `scripts/fetch_shares.py` exécuté manuellement
+ou via `workflow_dispatch` ; pas encore de cron automatique (les mises à jour sont trimestrielles).
+`market_cap_usd = shares × adj_close` calculé à la volée côté API, jamais stocké.
+
+**Dépendances :** aucune — fondation autonome. `asset.category` permet déjà le filtre pure-players.
+
+**Schéma :**
+```sql
+create table shares_outstanding (
+  ticker      text references asset(ticker),
+  date        date not null,     -- date de publication du rapport
+  shares      bigint not null,   -- nombre d'actions en circulation
+  source      text not null,     -- 'SEC-10Q' | 'SEC-10K' | 'annual-report'
+  primary key (ticker, date)
+);
+```
+
+---
+
+### S2 — Variations multi-horizons (fondation de données #2)
+
+**Ce qui est construit :** enrichissement de l'ingestion quotidienne pour calculer et stocker
+`change_1d`, `change_1w`, `change_1m`, `change_ytd`, `change_1y` dans une table
+`price_change` (ticker, date, …). Tout est dérivé de `price_daily` déjà en base —
+aucun appel réseau supplémentaire. Idempotent (upsert).
+
+**Dépendances :** S1 non requise. Réutilise `price_daily` à 100 %.
+
+**Schéma :**
+```sql
+create table price_change (
+  ticker      text references asset(ticker),
+  date        date not null,
+  change_1d   numeric,   -- variation 1 jour
+  change_1w   numeric,   -- variation 5 jours ouvrés
+  change_1m   numeric,   -- variation ~21 jours ouvrés
+  change_ytd  numeric,   -- depuis le 1er janvier
+  change_1y   numeric,   -- 252 jours ouvrés
+  primary key (ticker, date)
+);
+```
+
+---
+
+### S3 — Le Mur rouge/vert avec sélecteur d'horizon
+
+**Ce qui est construit :** page `/mur` — grille de bulles SVG/D3 (ou Recharts Treemap en fallback).
+Taille de chaque bulle = `market_cap_usd` (de S1). Couleur = variation selon l'horizon sélectionné
+(de S2) : `--positive` si hausse, `--negative` si baisse, intensité proportionnelle.
+Sélecteur d'horizon : 1J / 1S / 1M / YTD / 1A. ISR 24 h — données J-1, pas de temps réel.
+Filtre par `asset.category` : tous / pure-players / géants / infrastructure / ETF.
+
+**Dépendances :** S1 (tailles) + S2 (couleurs). Sans S1 les bulles ont toutes la même taille ;
+livrer quand même une version dégradée si S1 est partielle.
+
+**Note technique :** si D3 alourdit le bundle, démarrer avec Recharts `<Treemap>` et migrer en S7
+quand le besoin visuel est confirmé. ⚠️ Avant mise en prod à fort trafic : vérifier la licence
+yfinance (usage commercial) ou migrer vers Twelve Data.
+
+---
+
+### S4 — Classement et agrégats sectoriels
+
+**Ce qui est construit :** page `/secteur` avec :
+- tableau classement par `market_cap_usd` décroissante (tous tickers + filtrable) ;
+- encart "Pure-players quantiques" : market cap totale agrégée + variation moyenne pondérée ;
+- colonne "Exposition quantique déclarée vs réelle" pour les ETF (QNTM.L et ajouts futurs) :
+  poids quantum déclaré dans le prospectus vs poids effectif calculé depuis les holdings publics
+  (donnée éditoriale, stockée dans `asset_meta`).
+
+**Dépendances :** S1 (market cap) + S2 (variations). `asset.category` déjà en place pour les agrégats.
+
+**Schéma additionnel :**
+```sql
+create table asset_meta (
+  ticker              text primary key references asset(ticker),
+  quantum_weight_pct  numeric,   -- exposition quantique déclarée (ETF)
+  notes               text
+);
+```
+
+---
+
+### S5 — Suivi des contrats majeurs (éditorial)
+
+**Ce qui est construit :** table `contract` (éditoriale, saisie manuelle) + section sur la page
+`/secteur` ou dans les pages détail `/portefeuille/[id]` : liste des contrats publiés,
+filtrables par ticker. Pas d'automatisation — source = annonces officielles + presse spécialisée.
+
+**Dépendances :** aucune dépendance aux S1–S4. Peut être livré indépendamment,
+mais positionné ici car S3–S4 saturent la valeur des deux premières semaines.
+
+**Schéma :**
+```sql
+create table contract (
+  id          serial primary key,
+  ticker      text references asset(ticker),
+  client      text not null,
+  amount_usd  numeric,           -- null si non divulgué
+  announced   date not null,
+  source_url  text,
+  notes       text
+);
+```
+
+---
+
+### S6 — Fil X @InvestQuantique
+
+**Ce qui est construit :** intégration du fil X (Twitter) de la chaîne via l'API X v2
+(bearer token) ou widget embarqué officiel. Affiché en sidebar ou en bas de l'accueil.
+Cron de rafraîchissement toutes les heures (dans GitHub Actions ou Netlify Scheduled Function).
+Cache ISR court (1 h) sur la section concernée uniquement.
+
+**Dépendances :** aucune dépendance aux briques de données.
+Positionné ici car les fonctionnalités d'analyse (S1–S4) ont plus de valeur perçue à livrer avant.
+
+**Point d'attention :** l'API X v2 Basic tier est limitée à 500 000 tweets lus/mois —
+suffisant pour un fil personnel faible volume. Surveiller le quota dès la mise en prod.
+
+---
+
+### S7 — Coin articles / news
+
+**Ce qui est construit :** section éditoriale légère sur l'accueil ou page `/news` :
+articles rédigés par la chaîne (Markdown stocké en base ou fichiers statiques MDX),
++ fil RSS optionnel de sources externes (IEEE Spectrum Quantum, The Quantum Insider).
+Pas de LLM, pas de génération automatique — curation humaine uniquement.
+
+**Dépendances :** aucune. Livré en dernier car il ne débloque aucune brique de données
+et peut être alimenté progressivement après la mise en ligne des fonctionnalités S1–S6.
+
+---
+
+### Note infrastructure
+
+- Migration Supabase → Netlify Database (Postgres/Neon) à réévaluer après S4 :
+  Supabase fournit l'auth V1.5, la migration doit résoudre l'auth autrement.
+- Licence de données commerciale requise avant tout fort trafic public sur le Mur (S3) :
+  yfinance est non officiel, Twelve Data ou Refinitiv pour la V commerciale.
