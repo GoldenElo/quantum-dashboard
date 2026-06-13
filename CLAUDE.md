@@ -380,3 +380,111 @@ et peut être alimenté progressivement après la mise en ligne des fonctionnali
   Supabase fournit l'auth V1.5, la migration doit résoudre l'auth autrement.
 - Licence de données commerciale requise avant tout fort trafic public sur le Mur (S3) :
   yfinance est non officiel, Twelve Data ou Refinitiv pour la V commerciale.
+
+---
+
+## S8 — Données publiques du secteur quantique (recensement puis intégration)
+
+**Objectif :** exploiter les gisements de données publiques mondiales sur le quantique
+d'un point de vue investisseur — contrats gouvernementaux, subventions de recherche,
+standards de cryptographie, publications scientifiques, programmes nationaux.
+
+**Méthode en deux temps, sans exception :**
+1. **Recensement exhaustif et priorisé AVANT tout développement.** Chaque source candidate
+   est évaluée sur les cinq critères ci-dessous et soumise à une requête de test réelle.
+   Une source qui ne répond pas à la requête de test est écartée ou marquée "à réévaluer".
+2. **Intégration feature par feature.** Une source = une feature livrable indépendante.
+   Si le volume est élevé, étaler sur plusieurs sous-versions (S8a, S8b, …).
+   Ne jamais bloquer une feature sur une source non encore testée.
+
+**Critères de priorisation (à appliquer à chaque source) :**
+
+| Critère | Description |
+|---|---|
+| **Fiabilité** | Source primaire officielle vs agrégateur vs scraping non officiel |
+| **Accès** | API sans clé (idéal) / API avec clé / scraping HTML (risque de casse) |
+| **Pertinence investisseur** | L'information change-t-elle l'analyse d'un titre ou du secteur ? |
+| **Effort d'intégration** | Volume de données, format (JSON/XML/CSV/PDF), fréquence de mise à jour |
+| **Différenciation éditoriale** | Cette donnée existe-t-elle déjà chez des concurrents grand public ? |
+
+**Règle de la chaîne :** toute source doit être validée par une vraie requête (curl ou script)
+avant d'entrer en développement. Le résultat de la requête de test est consigné dans ce fichier
+lors du recensement. Afficher une source non testée est interdit.
+
+---
+
+### Sources candidates identifiées
+
+#### USAspending.gov — contrats fédéraux US par société
+- **Type :** API REST officielle, sans clé, données du gouvernement américain.
+- **URL de base :** `https://api.usaspending.gov/api/v2/`
+- **Pertinence :** contrats Defense/DOE/NSF attribués aux pure-players quantiques (IonQ, D-Wave, etc.).
+  Candidat fort pour **remonter en S5** et remplacer le suivi de contrats manuel :
+  les contrats fédéraux sont détectés automatiquement au lieu d'être saisis à la main.
+- **Accès :** public, sans authentification, rate limit généreux.
+- **Requête de test à valider :**
+  ```bash
+  curl "https://api.usaspending.gov/api/v2/search/spending_by_award/" \
+    -H "Content-Type: application/json" \
+    -d '{"filters":{"keywords":["quantum"],"award_type_codes":["A","B","C","D"]},"limit":5}'
+  ```
+- **Statut :** ⬜ non testé — à valider avant développement.
+
+#### arXiv — preprints quantiques
+- **Type :** API XML (Atom), sans clé.
+- **URL de base :** `https://export.arxiv.org/api/query`
+- **Pertinence :** signal précoce sur les avancées techniques ; pertinent pour l'angle éditorial
+  (articles/news S7) mais faible valeur investisseur directe. Différenciation éditoriale élevée
+  si filtré sur les tickers (ex. papiers co-signés par IonQ, IBM Quantum, etc.).
+- **Accès :** public, sans authentification, 3 req/s max.
+- **Requête de test à valider :**
+  ```bash
+  curl "https://export.arxiv.org/api/query?search_query=ti:quantum+computing&max_results=3&sortBy=submittedDate"
+  ```
+- **Statut :** ⬜ non testé — à valider avant développement.
+
+#### NIST — cryptographie post-quantique (standards PQC)
+- **Type :** pages statiques + publications PDF, pas d'API structurée.
+- **URL de référence :** `https://csrc.nist.gov/projects/post-quantum-cryptography`
+- **Pertinence :** contexte réglementaire important (FIPS 203/204/205 publiés en 2024) ;
+  impacte les valorisations des pure-players crypto-quantique (LAES/SEALSQ).
+  Donnée éditoriale plutôt que flux automatisable.
+- **Accès :** scraping HTML ou curation manuelle — pas d'API.
+- **Effort :** élevé pour automatiser, faible si curation manuelle dans `asset_meta` ou `contract`.
+- **Statut :** ⬜ non testé — probablement curation manuelle plutôt qu'intégration automatique.
+
+#### NSF Awards — subventions de recherche quantique US
+- **Type :** API REST officielle, sans clé.
+- **URL de base :** `https://api.nsf.gov/services/v1/awards.json`
+- **Pertinence :** subventions NSF aux universités et entreprises sur le quantique ;
+  indicateur de l'écosystème de recherche mais lien ténu avec les cours boursiers.
+  Meilleure valeur pour l'angle "écosystème" que pour l'angle "investisseur direct".
+- **Accès :** public, sans authentification.
+- **Requête de test à valider :**
+  ```bash
+  curl "https://api.nsf.gov/services/v1/awards.json?keyword=quantum+computing&dateStart=01/01/2025&printFields=id,title,awardeeName,fundsObligatedAmt"
+  ```
+- **Statut :** ⬜ non testé — à valider avant développement.
+
+#### Programmes nationaux non-US
+Sources à évaluer après les sources US (fiabilité et accès plus variables) :
+
+| Programme | Périmètre | Accès estimé | Pertinence investisseur | À évaluer |
+|---|---|---|---|---|
+| **EU Quantum Flagship** | Budget 1 Md€, projets financés | Site web + PDF, pas d'API connue | Moyenne — contexte réglementaire EU | Curation manuelle probable |
+| **Plan quantique français** | 1,8 Md€, appels à projets ANR/BPI | Données ANR via data.gouv.fr (API possible) | Moyenne — peu de cotés directs | API data.gouv.fr à tester |
+| **Programme quantique turc (TÜBİTAK)** | Budget et projets | Site en turc, accès incertain | Faible — aucun coté direct connu | Fiabilité à évaluer en priorité |
+
+**Règle pour les programmes non-US :** ne pas afficher tant qu'une requête de test n'a pas
+retourné des données structurées exploitables. Les PDF et pages HTML non structurées
+sont classés "curation manuelle" et traités comme S5 (éditorial).
+
+---
+
+### Ordre d'intégration recommandé (à confirmer après test des requêtes)
+
+1. **USAspending.gov** — remonter en S5 si le test valide la granularité par société.
+   Effort faible, fiabilité maximale (source primaire fédérale), différenciation élevée.
+2. **NSF Awards** — S8a, après USAspending. Complète l'angle "contrats & subventions".
+3. **arXiv** — S8b, intégré dans S7 (news/articles) comme flux de preprints filtrés.
+4. **NIST PQC + programmes nationaux** — curation manuelle dans `asset_meta`, pas d'API.
