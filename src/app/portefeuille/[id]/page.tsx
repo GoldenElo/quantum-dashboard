@@ -157,7 +157,7 @@ export default async function PortfolioDetailPage({ params }: Props) {
       <section className="section" aria-label="Composition">
         <h2 className="section-title">Composition</h2>
         <div className="chart-container" style={{ padding: '0' }}>
-          <HoldingsTable holdings={detail.holdings} />
+          <HoldingsTable holdings={detail.holdings} inceptionDate={detail.inception_date} />
         </div>
       </section>
     </main>

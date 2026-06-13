@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import type { Metadata } from 'next';
 import { fetchPersonnelPublicData, fetchPersonnelPrivateData } from '@/lib/api';
-import { formatUSD, formatPct, formatDate, formatQty } from '@/lib/format';
+import { formatUSD, formatPct, formatDate } from '@/lib/format';
 import Disclaimer from '@/components/Disclaimer';
 import DetailChart from '@/components/DetailChart';
 import AllocationPie from '@/components/AllocationPie';
@@ -253,6 +253,7 @@ type PrivateHolding = {
   value_usd: number;
   avg_cost_usd: number | null;
   latent_gain: number | null;
+  perf_since_purchase: number | null;
 };
 
 function PersonnelHoldingsTable({
@@ -287,17 +288,17 @@ function PersonnelHoldingsTable({
             <th className="right">Poids actuel</th>
             <th className="right hide-mobile">Poids initial</th>
             {/* Colonnes privées — absentes du HTML si non authentifiée */}
-            {isAuthenticated && <th className="right">Quantité</th>}
-            {isAuthenticated && <th className="right">Prix</th>}
-            {isAuthenticated && <th className="right">Valeur</th>}
             {isAuthenticated && <th className="right">PRU</th>}
-            {isAuthenticated && <th className="right">PV depuis achat</th>}
+            {isAuthenticated && <th className="right">Prix actuel</th>}
+            {isAuthenticated && <th className="right">Perf. depuis achat</th>}
+            {isAuthenticated && <th className="right">Plus-value ($)</th>}
           </tr>
         </thead>
         <tbody>
           {publicHoldings.map(h => {
             const priv = isAuthenticated ? privateMap.get(`${h.ticker}:${h.account}`) : undefined;
-            const latentSign = priv?.latent_gain == null ? '' : priv.latent_gain >= 0 ? 'positive' : 'negative';
+            const perfSign = priv?.perf_since_purchase == null ? '' : priv.perf_since_purchase >= 0 ? 'positive' : 'negative';
+            const pvSign   = priv?.latent_gain == null ? '' : priv.latent_gain >= 0 ? 'positive' : 'negative';
             return (
               <tr key={`${h.ticker}-${h.account}`}>
                 <td className="ticker mono">{h.ticker}</td>
@@ -308,19 +309,18 @@ function PersonnelHoldingsTable({
                 <td className="right mono">{formatPct(h.current_weight)}</td>
                 <td className="right mono hide-mobile">{formatPct(h.target_weight)}</td>
                 {isAuthenticated && (
-                  <td className="right mono">{priv ? formatQty(priv.quantity) : '—'}</td>
+                  <td className="right mono">{priv?.avg_cost_usd != null ? formatUSD(priv.avg_cost_usd) : '—'}</td>
                 )}
                 {isAuthenticated && (
                   <td className="right mono">{priv ? formatUSD(priv.adj_close) : '—'}</td>
                 )}
                 {isAuthenticated && (
-                  <td className="right mono">{priv ? formatUSD(priv.value_usd) : '—'}</td>
+                  <td className={`right mono ${perfSign}`}>
+                    {priv?.perf_since_purchase != null ? formatPct(priv.perf_since_purchase) : '—'}
+                  </td>
                 )}
                 {isAuthenticated && (
-                  <td className="right mono">{priv?.avg_cost_usd != null ? formatUSD(priv.avg_cost_usd) : '—'}</td>
-                )}
-                {isAuthenticated && (
-                  <td className={`right mono ${latentSign}`}>
+                  <td className={`right mono ${pvSign}`}>
                     {priv?.latent_gain != null ? formatUSD(priv.latent_gain) : '—'}
                   </td>
                 )}

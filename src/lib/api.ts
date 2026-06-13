@@ -39,7 +39,7 @@ export type HoldingRow = {
   value_usd: number;
   current_weight: number;
   target_weight: number;
-  perf_contribution: number;
+  perf_since_inception: number | null;  // (prix actuel − prix inception) / prix inception
 };
 
 export type DayReturn = {
@@ -101,7 +101,8 @@ export type PersonnelPrivateHolding = {
   value_usd: number;
   current_weight: number;
   avg_cost_usd: number | null;
-  latent_gain: number | null;   // (adj_close − avg_cost_usd) × quantity
+  latent_gain: number | null;        // (adj_close − avg_cost_usd) × quantity = Plus-value ($)
+  perf_since_purchase: number | null; // (adj_close − avg_cost_usd) / avg_cost_usd
 };
 
 export type PersonnelPrivateData = {
@@ -277,7 +278,7 @@ export async function fetchPortfolioDetail(id: string): Promise<PortfolioDetail 
   const holdings: HoldingRow[] = positions
     .map(pos => {
       const price = latestPrices.get(pos.ticker) ?? 0;
-      const inceptionPrice = inceptionPrices.get(pos.ticker) ?? 0;
+      const inceptionPrice = inceptionPrices.get(pos.ticker) ?? null;
       const value = pos.quantity * price;
       return {
         ticker: pos.ticker,
@@ -288,10 +289,10 @@ export async function fetchPortfolioDetail(id: string): Promise<PortfolioDetail 
         value_usd: value,
         current_weight: totalValue > 0 ? value / totalValue : 0,
         target_weight: pos.target_weight,
-        perf_contribution:
-          portfolio.initial_capital_usd > 0
-            ? (pos.quantity * (price - inceptionPrice)) / portfolio.initial_capital_usd
-            : 0,
+        perf_since_inception:
+          inceptionPrice != null && inceptionPrice > 0
+            ? (price - inceptionPrice) / inceptionPrice
+            : null,
       };
     })
     .sort((a, b) => b.value_usd - a.value_usd);
@@ -505,6 +506,9 @@ export async function fetchPersonnelPrivateData(): Promise<PersonnelPrivateData 
       if (latentGain != null) {
         totalLatentGain = (totalLatentGain ?? 0) + latentGain;
       }
+      const perfSincePurchase = pos.avg_cost_usd != null && pos.avg_cost_usd > 0
+        ? (price - pos.avg_cost_usd) / pos.avg_cost_usd
+        : null;
       return {
         ticker: pos.ticker,
         name: resolvePersonnelAsset(pos)?.name ?? pos.ticker,
@@ -515,6 +519,7 @@ export async function fetchPersonnelPrivateData(): Promise<PersonnelPrivateData 
         current_weight: totalValue > 0 ? value / totalValue : 0,
         avg_cost_usd: pos.avg_cost_usd,
         latent_gain: latentGain,
+        perf_since_purchase: perfSincePurchase,
       };
     })
     .sort((a, b) => b.value_usd - a.value_usd);
