@@ -1,7 +1,75 @@
-# Quantum Dashboard — L'Investisseuse Quantique
+# The Quantum Wall — L'Investisseuse Quantique
 
-Dashboard **public** de suivi de 3 portefeuilles quantiques fictifs (benchmarks pédagogiques
-issus de la vidéo #33 « Investir dans le quantique en 2026 »). Langue de l'interface : **français**.
+**The Quantum Wall** est le nom officiel du produit. L'éditeur est la chaîne **L'Investisseuse Quantique**.
+Ces deux entités sont distinctes : le produit peut évoluer de nom ou de périmètre indépendamment de la marque.
+
+Dashboard public de suivi de portefeuilles quantiques fictifs (benchmarks pédagogiques
+issus de la vidéo #33 « Investir dans le quantique en 2026 »). Langue par défaut : **français**.
+
+## Vision produit & contraintes d'architecture long terme
+
+Ces contraintes s'appliquent **dès maintenant** à chaque ligne de code écrite.
+Ce ne sont pas des features à implémenter plus tard — ce sont des rails à ne jamais enfreindre.
+Principe directeur : **prévoir la place sans construire prématurément** — l'architecture
+ne doit jamais s'opposer à ces ajouts, mais on n'écrit pas de code mort en attendant.
+
+### 1. Nom du produit
+
+Le produit s'appelle **The Quantum Wall**. L'éditeur est **L'Investisseuse Quantique**.
+- Utiliser "The Quantum Wall" dans les métadonnées (`<title>`, `og:site_name`), les mentions légales
+  et les communications produit.
+- Utiliser "L'Investisseuse Quantique" pour la signature éditoriale, le footer et le branding chaîne.
+- Ne jamais mélanger les deux dans le même contexte sémantique.
+
+### 2. Monétisation freemium (fondation posée, paliers à venir)
+
+**Ne rien implémenter du paiement maintenant.** Mais chaque décision d'architecture doit rendre
+l'ajout de paliers possible sans refonte.
+
+- **Niveaux d'accès** : `public` → `free_authenticated` → `paid` (noms définitifs à figer lors
+  de l'implémentation). L'auth Supabase déjà en place (session serveur, `@supabase/ssr`) est
+  la fondation — les paliers supérieurs s'y greffent via un champ `plan` sur le profil utilisateur.
+- **Règle de codage** : toute page ou route API qui retourne des données doit pouvoir recevoir
+  un paramètre de niveau d'accès requis sans restructuration. Privilégier les Server Components
+  qui lisent la session et décident du contenu rendu — c'est déjà le pattern en place pour le perso.
+- **Ce qu'on ne fait pas** : aucune table `subscription`, aucun webhook Stripe, aucune logique
+  de paiement dans le code tant que le modèle commercial n'est pas arrêté.
+
+### 3. Emplacements publicitaires (slots)
+
+Des slots publicitaires sont réservés structurellement dans le layout — vides aujourd'hui,
+pour ne pas redécouper les pages lors de l'activation.
+
+**Emplacements prévus (vides, sans markup publicitaire) :**
+- Sous le `<SiteHeader>`, avant le `<main>` : slot horizontal (`ad-slot-top`)
+- Entre la section des cartes et le graphique comparatif (homepage) : slot inline (`ad-slot-mid`)
+- En bas de chaque page détail, avant le footer : slot horizontal (`ad-slot-bottom`)
+
+**Règle de codage** : les slots sont des `<div className="ad-slot ad-slot-{id}" aria-hidden="true" />`
+vides, sans texte ni image. Leur présence dans le DOM n'affecte pas le layout (hauteur 0 quand vides).
+Ne jamais mettre de vrai contenu publicitaire sans accord éditorial explicite.
+
+### 4. Internationalisation (i18n) — règle dure dès maintenant
+
+**Aucun texte d'interface en dur dans le code à partir de la prochaine feature.**
+Tout libellé visible par l'utilisateur passe par un système de traduction.
+Le français est la langue par défaut. L'anglais sera ajouté en remplissant un fichier de
+traductions — sans toucher au code des composants.
+
+**Ossature à mettre en place dès la prochaine évolution :**
+- Un fichier `src/i18n/fr.ts` contenant tous les libellés français sous forme de clés typées.
+- Un hook/helper `t(key)` utilisé dans les composants à la place des strings littérales.
+- Les nouvelles features naissent directement avec leurs libellés dans `fr.ts` — aucune exception.
+- Les libellés existants (V1/V1.5) sont migrés au fil des modifications, pas en une seule passe.
+
+**Ce qu'on ne fait pas maintenant** : aucune lib i18n externe (next-intl, i18next…), aucun routing
+`/fr/` ou `/en/` — juste le fichier de traductions et le helper. La lib et le routing arrivent
+quand la deuxième langue est prête.
+
+**Règle de revue** : tout PR qui introduit un string littéral d'interface sans passer par `t()`
+est refusé à partir de la première feature post-V1.5.
+
+---
 
 ## Règles non négociables
 
