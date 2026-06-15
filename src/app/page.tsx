@@ -12,6 +12,7 @@ const COMPARATIVE_SERIES: SeriesConfig[] = [
   { key: 'agressif',  label: 'Agressif',          color: '#B877D9' },
   { key: 'personnel', label: 'Mon portefeuille',  color: '#FF9830' },
   { key: 'benchmark', label: 'VanEck UCITS',      color: '#94A3B8', dashed: true },
+  { key: 'nasdaq100', label: 'Nasdaq-100',        color: '#CBD5E1', dashed: true, strokeWidth: 1.5 },
 ];
 
 export default async function HomePage() {
@@ -41,7 +42,7 @@ export default async function HomePage() {
           <ComparativeChart data={chartData} series={COMPARATIVE_SERIES} />
         </div>
         <p className="chart-note">
-          Base 100 depuis le {formatDate(inceptionDate)} · Benchmark : VanEck Quantum Computing UCITS ETF (QNTM.L)
+          Base 100 depuis le {formatDate(inceptionDate)} · Benchmarks en tirets : VanEck Quantum Computing UCITS ETF (QNTM.L) · Nasdaq-100 (QQQ)
         </p>
       </section>
     </main>

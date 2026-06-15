@@ -8,6 +8,7 @@ export type SeriesConfig = {
   label: string;
   color: string;
   dashed?: boolean;
+  strokeWidth?: number;
 };
 
 // dynamic(ssr:false) is valid here because this IS a 'use client' module

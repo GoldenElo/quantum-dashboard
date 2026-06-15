@@ -52,7 +52,7 @@ export default function ComparativeChartImpl({ data, series }: Props) {
               type="monotone"
               dataKey={s.key}
               stroke={s.color}
-              strokeWidth={2}
+              strokeWidth={s.strokeWidth ?? 2}
               strokeDasharray={s.dashed ? '5 3' : undefined}
               dot={data.length < 30}
               activeDot={{ r: 4 }}

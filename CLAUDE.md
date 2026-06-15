@@ -178,6 +178,11 @@ Benchmark de comparaison affiché sur tous les graphiques : **QNTM.L** — VanEc
 (LSE, devise USD, ticker yfinance validé, ISIN IE000S5XPDL3 env.). Remplace QTUM depuis la migration 002.
 Chaque colonne doit sommer à 100 % — vérifier par un test.
 
+**Étalon de marché** (graphique comparatif accueil uniquement) : **QQQ** — Invesco Nasdaq-100 ETF
+(NASDAQ, USD). Série gris clair (`#CBD5E1`), pointillé fin, base 100 depuis l'inception.
+**Ne jamais inclure QQQ dans les portefeuilles, les snapshots, ni les agrégats sectoriels futurs.**
+C'est une référence de marché d'affichage uniquement — en base : `asset.category = 'etf'`.
+
 ## Calculs (dans le cron, jamais dans le front)
 
 - `value_usd` = Σ quantity × adj_close
@@ -262,6 +267,7 @@ Style Grafana sombre — identité visuelle YouTube de la chaîne.
 | Dynamique | `#38BDF8` | Plein |
 | Agressif | `#B877D9` | Plein |
 | VanEck UCITS (QNTM.L) | `#94A3B8` | Pointillé |
+| Nasdaq-100 (QQQ) | `#CBD5E1` | Pointillé fin (strokeWidth 1.5) — étalon marché accueil uniquement |
 | Portefeuille personnel (V1.5) | `#FF9830` | Plein — couleur unique, réservée |
 
 ## Données V1.5 — Portefeuille personnel (ne pas implémenter avant la V1.5)

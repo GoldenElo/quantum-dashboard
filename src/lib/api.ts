@@ -22,6 +22,7 @@ export type ChartPoint = {
   agressif: number | null;
   benchmark: number | null;
   personnel: number | null;
+  nasdaq100: number | null;
   [extra: string]: number | null | string;
 };
 
@@ -139,7 +140,7 @@ export async function fetchHomepageData(): Promise<HomepageData> {
 
   const portfolios = portfoliosResult.data ?? [];
 
-  const [allSnapshotsResult, benchmarkResult] = await Promise.all([
+  const [allSnapshotsResult, benchmarkResult, nasdaqResult] = await Promise.all([
     supabase
       .from('snapshot_daily')
       .select('portfolio_id, date, value_usd')
@@ -150,10 +151,16 @@ export async function fetchHomepageData(): Promise<HomepageData> {
       .select('date, adj_close')
       .eq('ticker', BENCHMARK_TICKER)
       .order('date', { ascending: true }),
+    supabase
+      .from('price_daily')
+      .select('date, adj_close')
+      .eq('ticker', 'QQQ')
+      .order('date', { ascending: true }),
   ]);
 
   const allSnapshots = allSnapshotsResult.data ?? [];
   const benchmarkPrices = benchmarkResult.data ?? [];
+  const nasdaqPrices = nasdaqResult.data ?? [];
 
   const summaries: PortfolioSummary[] = ALL_IDS.map((id, i) => {
     const meta = portfolios.find(p => p.id === id);
@@ -177,13 +184,14 @@ export async function fetchHomepageData(): Promise<HomepageData> {
   // Graphique base-100 — calcul côté serveur, initial_capital_usd non exposé
   const chartMap = new Map<string, ChartPoint>();
 
+  const emptyPoint = (): ChartPoint => ({
+    date: '', defensif: null, dynamique: null, agressif: null,
+    benchmark: null, personnel: null, nasdaq100: null,
+  });
+
   for (const s of allSnapshots) {
     if (!chartMap.has(s.date)) {
-      chartMap.set(s.date, {
-        date: s.date,
-        defensif: null, dynamique: null, agressif: null,
-        benchmark: null, personnel: null,
-      });
+      chartMap.set(s.date, { ...emptyPoint(), date: s.date });
     }
     const point = chartMap.get(s.date)!;
     const meta = portfolios.find(p => p.id === s.portfolio_id);
@@ -195,13 +203,19 @@ export async function fetchHomepageData(): Promise<HomepageData> {
     const bFirst = benchmarkPrices[0].adj_close;
     for (const q of benchmarkPrices) {
       if (!chartMap.has(q.date)) {
-        chartMap.set(q.date, {
-          date: q.date,
-          defensif: null, dynamique: null, agressif: null,
-          benchmark: null, personnel: null,
-        });
+        chartMap.set(q.date, { ...emptyPoint(), date: q.date });
       }
       chartMap.get(q.date)!.benchmark = (q.adj_close / bFirst) * 100;
+    }
+  }
+
+  if (nasdaqPrices.length > 0) {
+    const nFirst = nasdaqPrices[0].adj_close;
+    for (const q of nasdaqPrices) {
+      if (!chartMap.has(q.date)) {
+        chartMap.set(q.date, { ...emptyPoint(), date: q.date });
+      }
+      chartMap.get(q.date)!.nasdaq100 = (q.adj_close / nFirst) * 100;
     }
   }
 
