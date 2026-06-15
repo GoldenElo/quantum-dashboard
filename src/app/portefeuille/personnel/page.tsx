@@ -217,6 +217,7 @@ export default async function PersonnelPage() {
             publicHoldings={publicData.holdings}
             privateHoldings={privateData?.holdings ?? null}
             isAuthenticated={isAuthenticated}
+            inceptionDate={publicData.inception_date}
           />
         </div>
       </section>
@@ -243,6 +244,7 @@ type PublicHolding = {
   account: string;
   current_weight: number;
   target_weight: number;
+  perf_since_inception: number | null;
 };
 
 type PrivateHolding = {
@@ -260,10 +262,12 @@ function PersonnelHoldingsTable({
   publicHoldings,
   privateHoldings,
   isAuthenticated,
+  inceptionDate,
 }: {
   publicHoldings: PublicHolding[];
   privateHoldings: PrivateHolding[] | null;
   isAuthenticated: boolean;
+  inceptionDate: string;
 }) {
   if (publicHoldings.length === 0) {
     return <p className="empty-state">Aucune position disponible.</p>;
@@ -285,20 +289,21 @@ function PersonnelHoldingsTable({
             <th>Ticker</th>
             <th>Société</th>
             <th>Enveloppe</th>
-            <th className="right">Poids actuel</th>
-            <th className="right hide-mobile">Poids initial</th>
+            {/* Perf depuis inception — basée sur les prix de marché, jamais sur le PRU */}
+            <th className="right">Perf. depuis le {formatDate(inceptionDate)}</th>
             {/* Colonnes privées — absentes du HTML si non authentifiée */}
-            {isAuthenticated && <th className="right">PRU</th>}
-            {isAuthenticated && <th className="right">Prix actuel</th>}
+            {isAuthenticated && <th className="right hide-mobile">PRU</th>}
+            {isAuthenticated && <th className="right hide-mobile">Prix actuel</th>}
             {isAuthenticated && <th className="right">Perf. depuis achat</th>}
-            {isAuthenticated && <th className="right">Plus-value ($)</th>}
+            {isAuthenticated && <th className="right hide-mobile">Plus-value ($)</th>}
           </tr>
         </thead>
         <tbody>
           {publicHoldings.map(h => {
             const priv = isAuthenticated ? privateMap.get(`${h.ticker}:${h.account}`) : undefined;
-            const perfSign = priv?.perf_since_purchase == null ? '' : priv.perf_since_purchase >= 0 ? 'positive' : 'negative';
-            const pvSign   = priv?.latent_gain == null ? '' : priv.latent_gain >= 0 ? 'positive' : 'negative';
+            const inceptionPerfSign = h.perf_since_inception == null ? '' : h.perf_since_inception >= 0 ? 'positive' : 'negative';
+            const purchasePerfSign  = priv?.perf_since_purchase == null ? '' : priv.perf_since_purchase >= 0 ? 'positive' : 'negative';
+            const pvSign            = priv?.latent_gain == null ? '' : priv.latent_gain >= 0 ? 'positive' : 'negative';
             return (
               <tr key={`${h.ticker}-${h.account}`}>
                 <td className="ticker mono">{h.ticker}</td>
@@ -306,21 +311,22 @@ function PersonnelHoldingsTable({
                 <td>
                   <span className="account-badge">{ACCOUNT_LABELS[h.account] ?? h.account}</span>
                 </td>
-                <td className="right mono">{formatPct(h.current_weight)}</td>
-                <td className="right mono hide-mobile">{formatPct(h.target_weight)}</td>
+                <td className={`right mono ${inceptionPerfSign}`}>
+                  {h.perf_since_inception != null ? formatPct(h.perf_since_inception) : '—'}
+                </td>
                 {isAuthenticated && (
-                  <td className="right mono">{priv?.avg_cost_usd != null ? formatUSD(priv.avg_cost_usd) : '—'}</td>
+                  <td className="right mono hide-mobile">{priv?.avg_cost_usd != null ? formatUSD(priv.avg_cost_usd) : '—'}</td>
                 )}
                 {isAuthenticated && (
-                  <td className="right mono">{priv ? formatUSD(priv.adj_close) : '—'}</td>
+                  <td className="right mono hide-mobile">{priv ? formatUSD(priv.adj_close) : '—'}</td>
                 )}
                 {isAuthenticated && (
-                  <td className={`right mono ${perfSign}`}>
+                  <td className={`right mono ${purchasePerfSign}`}>
                     {priv?.perf_since_purchase != null ? formatPct(priv.perf_since_purchase) : '—'}
                   </td>
                 )}
                 {isAuthenticated && (
-                  <td className={`right mono ${pvSign}`}>
+                  <td className={`right mono ${pvSign} hide-mobile`}>
                     {priv?.latent_gain != null ? formatUSD(priv.latent_gain) : '—'}
                   </td>
                 )}

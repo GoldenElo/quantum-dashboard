@@ -73,9 +73,10 @@ export type PortfolioDetail = {
 export type PersonnelPublicHolding = {
   ticker: string;
   name: string;
-  account: string;      // 'CTO' | 'PER'
-  current_weight: number;
-  target_weight: number;
+  account: string;                      // 'CTO' | 'PER'
+  current_weight: number;               // pour le pie chart uniquement — ne pas afficher dans le tableau
+  target_weight: number;                // pour le pie chart uniquement — ne pas afficher dans le tableau
+  perf_since_inception: number | null;  // (prix actuel − prix au 1er juin) / prix au 1er juin — basé sur les prix, jamais sur le PRU
 };
 
 export type PersonnelPublicData = {
@@ -394,28 +395,39 @@ export async function fetchPersonnelPublicData(): Promise<PersonnelPublicData | 
   const latestSnapshot = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
   const firstDate = snapshots.length > 0 ? snapshots[0].date : portfolio.inception_date;
 
-  // Poids courants : calculés depuis la dernière snapshot value_usd
   const tickers = [...new Set(rawPositions.map(p => p.ticker))];
-  const latestPricesResult = latestSnapshot && tickers.length > 0
-    ? await supabase.from('price_daily').select('ticker, adj_close').eq('date', latestSnapshot.date).in('ticker', tickers)
-    : { data: [] as { ticker: string; adj_close: number }[] };
+  const [latestPricesResult, inceptionPricesResult] = await Promise.all([
+    latestSnapshot && tickers.length > 0
+      ? supabase.from('price_daily').select('ticker, adj_close').eq('date', latestSnapshot.date).in('ticker', tickers)
+      : Promise.resolve({ data: [] as { ticker: string; adj_close: number }[] }),
+    tickers.length > 0
+      ? supabase.from('price_daily').select('ticker, adj_close').eq('date', portfolio.inception_date).in('ticker', tickers)
+      : Promise.resolve({ data: [] as { ticker: string; adj_close: number }[] }),
+  ]);
 
   const latestPrices = new Map(((latestPricesResult as { data: { ticker: string; adj_close: number }[] | null }).data ?? []).map(p => [p.ticker, p.adj_close]));
+  const inceptionPrices = new Map(((inceptionPricesResult as { data: { ticker: string; adj_close: number }[] | null }).data ?? []).map(p => [p.ticker, p.adj_close]));
+
   const totalValue = latestSnapshot?.value_usd ?? 0;
 
   const holdings: PersonnelPublicHolding[] = rawPositions
     .map(pos => {
       const price = latestPrices.get(pos.ticker) ?? 0;
       const value = pos.quantity * price;
+      const inceptionPrice = inceptionPrices.get(pos.ticker) ?? null;
       return {
         ticker: pos.ticker,
         name: resolvePersonnelAsset(pos)?.name ?? pos.ticker,
         account: pos.account,
         current_weight: totalValue > 0 ? value / totalValue : 0,
         target_weight: pos.target_weight,
+        perf_since_inception:
+          inceptionPrice != null && inceptionPrice > 0
+            ? (price - inceptionPrice) / inceptionPrice
+            : null,
       };
     })
-    .sort((a, b) => b.current_weight - a.current_weight);
+    .sort((a, b) => (b.perf_since_inception ?? -Infinity) - (a.perf_since_inception ?? -Infinity));
 
   // Benchmark depuis la même date de début que les snapshots
   const benchmarkResult = await supabase
