@@ -540,6 +540,34 @@ lors du recensement. Afficher une source non testée est interdit.
   ```
 - **Statut :** ⬜ non testé — à valider avant développement.
 
+#### DARPA Quantum Benchmarking Initiative (QBI) — classement des entreprises par stage
+- **Type :** programme gouvernemental US — liste d'entreprises participantes et leur stade
+  d'avancement publiée par DARPA via communiqués officiels et mises à jour de programme.
+  Pas d'API connue ; format probable : page web DARPA + PDF + communiqués de presse.
+- **URL de référence :** `https://www.darpa.mil/program/quantum-benchmarking-initiative`
+  (à valider — DARPA restructure régulièrement ses URL de programme).
+- **Pertinence investisseur : ÉLEVÉE — candidat éditorial fort.**
+  Le QBI est une évaluation gouvernementale US indépendante de la crédibilité technique
+  des acteurs du quantique : quelles entreprises sont jugées capables d'atteindre un
+  calculateur utile, et à quel stade elles se situent (ex. Technical Performance Evaluation,
+  Phase 1/2/3). Contrepoint factuel direct au quantum washing :
+  - IonQ, D-Wave, IBM, et d'autres cotés directs du dashboard sont dans le périmètre QBI.
+  - Un changement de stade = signal fort pour l'analyse sectorielle.
+  - Différenciation éditoriale maximale : donnée absente de Bloomberg, Morningstar et
+    des agrégateurs grand public.
+- **Accès :** pas d'API — curation manuelle à partir des annonces DARPA officielles.
+  Fréquence de mise à jour : basse (quelques fois par an, calée sur les jalons du programme).
+- **Effort d'intégration :** faible en curation manuelle ; stockage dans `asset_meta`
+  (champ `darpa_qbi_stage text`, `darpa_qbi_updated date`) ou dans une table dédiée si
+  l'historique des stades est suivi.
+- **Questions à résoudre lors du recensement :**
+  - Vérifier que la liste complète des participants et leurs stades est publique (certaines
+    phases QBI ont été confidentielles).
+  - Identifier si DARPA publie un document structuré (PDF/tableau) ou seulement des
+    communiqués textuels.
+  - Confirmer quels tickers du dashboard sont présents dans le programme.
+- **Statut :** ⬜ non testé — curation manuelle probable, pas d'automatisation à court terme.
+
 #### Programmes nationaux non-US
 Sources à évaluer après les sources US (fiabilité et accès plus variables) :
 
@@ -559,6 +587,8 @@ sont classés "curation manuelle" et traités comme S5 (éditorial).
 
 1. **USAspending.gov** — remonter en S5 si le test valide la granularité par société.
    Effort faible, fiabilité maximale (source primaire fédérale), différenciation élevée.
-2. **NSF Awards** — S8a, après USAspending. Complète l'angle "contrats & subventions".
-3. **arXiv** — S8b, intégré dans S7 (news/articles) comme flux de preprints filtrés.
-4. **NIST PQC + programmes nationaux** — curation manuelle dans `asset_meta`, pas d'API.
+2. **DARPA QBI** — curation manuelle dans `asset_meta`, dès que la liste des stades est
+   vérifiée publique. Priorité éditoriale maximale même sans automatisation.
+3. **NSF Awards** — S8a, après USAspending. Complète l'angle "contrats & subventions".
+4. **arXiv** — S8b, intégré dans S7 (news/articles) comme flux de preprints filtrés.
+5. **NIST PQC + programmes nationaux** — curation manuelle dans `asset_meta`, pas d'API.
