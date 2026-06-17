@@ -1,7 +1,8 @@
-import { fetchHomepageData } from '@/lib/api';
+import { fetchHomepageData, fetchMarketCapsData } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import PortfolioCard from '@/components/PortfolioCard';
 import ComparativeChart from '@/components/ComparativeChart';
+import MarketCapTable from '@/components/MarketCapTable';
 import type { SeriesConfig } from '@/components/ComparativeChart';
 
 export const revalidate = 86400;
@@ -16,7 +17,10 @@ const COMPARATIVE_SERIES: SeriesConfig[] = [
 ];
 
 export default async function HomePage() {
-  const { summaries, chartData } = await fetchHomepageData();
+  const [{ summaries, chartData }, marketCapData] = await Promise.all([
+    fetchHomepageData(),
+    fetchMarketCapsData(),
+  ]);
   const inceptionDate = summaries[0]?.inception_date ?? '';
 
   return (
@@ -45,6 +49,8 @@ export default async function HomePage() {
           Base 100 depuis le {formatDate(inceptionDate)} · Benchmarks en tirets : VanEck Quantum Computing UCITS ETF (QNTM.L) · Nasdaq-100 (QQQ)
         </p>
       </section>
+
+      {marketCapData && <MarketCapTable data={marketCapData} />}
     </main>
   );
 }

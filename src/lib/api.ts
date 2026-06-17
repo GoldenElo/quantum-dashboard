@@ -113,10 +113,30 @@ export type PersonnelPrivateData = {
   holdings: PersonnelPrivateHolding[];
 };
 
+// ─── Types market cap ─────────────────────────────────────────────────────────
+
+export type MarketCapRow = {
+  ticker: string;
+  name: string;
+  category: string;
+  adj_close: number;
+  price_date: string;
+  shares: number;
+  shares_date: string;
+  shares_source: string;
+  market_cap_usd: number;
+};
+
+export type MarketCapData = {
+  rows: MarketCapRow[];
+  pure_player_total_usd: number;
+};
+
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const FICTIF_IDS = ['defensif', 'dynamique', 'agressif'] as const;
 const BENCHMARK_TICKER = 'QNTM.L';
+const SECTORAL_TICKERS = ['GOOGL', 'IBM', 'IONQ', 'QBTS', 'LAES', 'INFQ', 'RGTI', 'QUBT', 'QNT'] as const;
 
 // ─── Homepage ─────────────────────────────────────────────────────────────────
 
@@ -476,6 +496,74 @@ export async function fetchPersonnelPublicData(): Promise<PersonnelPublicData | 
     bestDay,
     worstDay,
   };
+}
+
+// ─── Market caps sectorielles ─────────────────────────────────────────────────
+
+export async function fetchMarketCapsData(): Promise<MarketCapData | null> {
+  const [assetsRes, sharesRes, pricesRes] = await Promise.all([
+    supabase
+      .from('asset')
+      .select('ticker, name, category')
+      .in('ticker', [...SECTORAL_TICKERS]),
+    supabase
+      .from('shares_outstanding')
+      .select('ticker, shares, as_of_date, source')
+      .in('ticker', [...SECTORAL_TICKERS])
+      .order('as_of_date', { ascending: false }),
+    supabase
+      .from('price_daily')
+      .select('ticker, adj_close, date')
+      .in('ticker', [...SECTORAL_TICKERS])
+      .order('date', { ascending: false }),
+  ]);
+
+  if (assetsRes.error || sharesRes.error || pricesRes.error) return null;
+
+  // Dernière ligne par ticker (ORDER BY DESC → premier occurrence = la plus récente)
+  const latestShares = new Map<string, { shares: number; date: string; source: string }>();
+  for (const row of sharesRes.data ?? []) {
+    if (!latestShares.has(row.ticker)) {
+      latestShares.set(row.ticker, {
+        shares: Number(row.shares),
+        date: row.as_of_date,
+        source: row.source,
+      });
+    }
+  }
+
+  const latestPrices = new Map<string, { price: number; date: string }>();
+  for (const row of pricesRes.data ?? []) {
+    if (!latestPrices.has(row.ticker)) {
+      latestPrices.set(row.ticker, { price: Number(row.adj_close), date: row.date });
+    }
+  }
+
+  const rows: MarketCapRow[] = [];
+  for (const asset of assetsRes.data ?? []) {
+    const shares = latestShares.get(asset.ticker);
+    const price = latestPrices.get(asset.ticker);
+    if (!shares || !price) continue;
+    rows.push({
+      ticker: asset.ticker,
+      name: asset.name,
+      category: asset.category,
+      adj_close: price.price,
+      price_date: price.date,
+      shares: shares.shares,
+      shares_date: shares.date,
+      shares_source: shares.source,
+      market_cap_usd: shares.shares * price.price,
+    });
+  }
+
+  rows.sort((a, b) => b.market_cap_usd - a.market_cap_usd);
+
+  const pure_player_total_usd = rows
+    .filter(r => r.category === 'pure_player')
+    .reduce((sum, r) => sum + r.market_cap_usd, 0);
+
+  return { rows, pure_player_total_usd };
 }
 
 // ─── Portefeuille personnel — données privées (nécessite auth) ────────────────

@@ -252,6 +252,9 @@ Le script `fetch_shares.py` affiche une alerte explicite et le SQL de surcharge 
    fetch_shares.py, fetch_shares.yml (dispatch), log market caps dans ingest.py.
 8. ✅ S1 + univers sectoriel : migration 005 (QNT, RGTI, QUBT dans asset),
    backfill étendu, TICKER_FIRST_TRADE pour QNT (IPO 04/06/2026), alerte double-classe.
+9. ✅ S1 Étape C : tableau "Capitalisations du secteur" sur l'accueil — 9 sociétés triées
+   par market cap, encart total pure-players, note QNT Up-C en footnote, détection
+   données anciennes (LAES), disclaimer, i18n (src/i18n/fr.ts + t.ts).
 
 **État actuel (2026-06-17) : V1.5 implémentée + S1 Étape A (market cap) + univers sectoriel étendu à 9 sociétés (QNT/RGTI/QUBT). Date d'inception définitive : `2026-06-01`.**
 
