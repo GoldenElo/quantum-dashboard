@@ -167,6 +167,69 @@ def compute_snapshots(
     return rows
 
 
+# ─── Market caps (log uniquement, rien stocké) ───────────────────────────────
+
+def _log_market_caps(db: Client, close_date: date) -> None:
+    """
+    Calcule et affiche les market caps dans les logs. Rien n'est écrit en base.
+    market_cap_usd = shares_outstanding (le plus récent) × adj_close du jour.
+    Agrégat pure-players calculé sur category = 'pure_player' uniquement.
+    Si shares_outstanding est vide ou absent, log un avertissement et continue.
+    """
+    try:
+        shares_res = db.table("shares_outstanding") \
+            .select("ticker, shares, as_of_date") \
+            .execute()
+        if not shares_res.data:
+            logger.info("shares_outstanding vide — market caps non calculées.")
+            return
+
+        # Dernière ligne par ticker (ORDER BY as_of_date DESC en Python)
+        latest_shares: dict[str, dict] = {}
+        for row in shares_res.data:
+            t = row["ticker"]
+            if t not in latest_shares or row["as_of_date"] > latest_shares[t]["as_of_date"]:
+                latest_shares[t] = row
+
+        # Prix du jour
+        prices_res = db.table("price_daily") \
+            .select("ticker, adj_close") \
+            .eq("date", str(close_date)) \
+            .execute()
+        prices = {r["ticker"]: float(r["adj_close"]) for r in (prices_res.data or [])}
+
+        # Catégories
+        assets_res = db.table("asset") \
+            .select("ticker, category") \
+            .in_("ticker", list(latest_shares.keys())) \
+            .execute()
+        categories = {r["ticker"]: r["category"] for r in (assets_res.data or [])}
+
+        logger.info("─── Market caps au %s ───", close_date)
+        pure_player_total = 0.0
+        for ticker in sorted(latest_shares):
+            price = prices.get(ticker)
+            if price is None:
+                logger.info("  %-6s  cours manquant pour le %s", ticker, close_date)
+                continue
+            mcap = latest_shares[ticker]["shares"] * price
+            cat = categories.get(ticker, "?")
+            logger.info(
+                "  %-6s  %8.2f G$  [%-14s]  %s M actions  (source: %s)",
+                ticker, mcap / 1e9, cat,
+                f"{latest_shares[ticker]['shares'] // 1_000_000:,}",
+                latest_shares[ticker]["as_of_date"],
+            )
+            if cat == "pure_player":
+                pure_player_total += mcap
+
+        if pure_player_total > 0:
+            logger.info("  TOTAL pure-players : %.2f G$", pure_player_total / 1e9)
+
+    except Exception as exc:
+        logger.warning("Market caps non calculées (shares_outstanding absent ?) : %s", exc)
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -212,6 +275,10 @@ def main() -> None:
     # 4. Upsert atomique (tout ou rien par requête)
     logger.info("Upsert de %d lignes dans snapshot_daily…", len(snapshot_rows))
     _upsert_batched(db, "snapshot_daily", snapshot_rows)
+
+    # 5. Market caps (log uniquement — shares × adj_close, rien stocké)
+    _log_market_caps(db, close_date)
+
     logger.info("=== Ingestion terminée. ===")
 
 

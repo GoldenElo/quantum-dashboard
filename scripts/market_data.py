@@ -160,3 +160,23 @@ def check_ticker_coverage(ticker: str, since: date) -> bool:
         return not df.empty and not df[ticker].isna().all()
     except Exception:
         return False
+
+
+@_retry
+def fetch_shares_outstanding(ticker: str) -> dict:
+    """
+    Retourne {'shares': int, 'as_of_date': date, 'source': str} pour un ticker.
+
+    Utilise yf.Ticker.info['sharesOutstanding']. Si 'mostRecentQuarter' est
+    disponible (timestamp Unix), l'utilise comme as_of_date ; sinon date.today().
+
+    Source exclusive en V1 : 'yfinance'. La surcharge manuelle (SEC 10-Q, etc.)
+    se fait directement en base via INSERT … ON CONFLICT DO UPDATE.
+    """
+    info = yf.Ticker(ticker).info
+    shares = info.get("sharesOutstanding")
+    if not shares:
+        raise ValueError(f"sharesOutstanding non disponible pour {ticker}")
+    mrq = info.get("mostRecentQuarter")
+    as_of = date.fromtimestamp(mrq) if mrq else date.today()
+    return {"shares": int(shares), "as_of_date": as_of, "source": "yfinance"}
