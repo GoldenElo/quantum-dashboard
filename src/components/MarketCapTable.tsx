@@ -1,6 +1,6 @@
 import type { MarketCapData } from '@/lib/api';
 import { formatMarketCap, formatDateCompact } from '@/lib/format';
-import { t } from '@/i18n/t';
+import { t, TICKER_NOTES, TICKER_MODALITIES } from '@/i18n/t';
 
 // Seuil de détection "données anciennes" : 150 jours ≈ 5 mois (ex. LAES au 31/12/2025)
 const STALE_MS = 1000 * 60 * 60 * 24 * 150;
@@ -12,6 +12,9 @@ function isStale(dateStr: string): boolean {
 
 export default function MarketCapTable({ data }: { data: MarketCapData }) {
   const { rows, pure_player_total_usd } = data;
+
+  // Footnotes dans l'ordre d'apparition des lignes (tri market cap DESC)
+  const footnoteTickers = rows.filter(r => TICKER_NOTES[r.ticker]).map(r => r.ticker);
 
   return (
     <section className="section" aria-label={t.secteur.titre}>
@@ -26,7 +29,7 @@ export default function MarketCapTable({ data }: { data: MarketCapData }) {
           <span className="mcap-summary-note">{t.secteur.totalPurePlayers.note}</span>
         </div>
 
-        {/* Tableau des 9 sociétés */}
+        {/* Tableau des 12 sociétés */}
         <div className="table-wrapper">
           <table className="holdings-table">
             <thead>
@@ -41,19 +44,21 @@ export default function MarketCapTable({ data }: { data: MarketCapData }) {
             <tbody>
               {rows.map(row => {
                 const stale = isStale(row.shares_date);
-                const isQnt = row.ticker === 'QNT';
+                const note = TICKER_NOTES[row.ticker];
+                const modality = TICKER_MODALITIES[row.ticker];
                 return (
                   <tr key={row.ticker}>
                     <td className="name">
                       {row.name}
-                      {isQnt && <sup className="mcap-fn-marker">*</sup>}
+                      {modality && <span className="tech-tag">{modality}</span>}
+                      {note && <sup className="mcap-fn-marker">{note.marker}</sup>}
                     </td>
                     <td className="ticker">{row.ticker}</td>
                     <td className="right mono">${row.adj_close.toFixed(2)}</td>
                     <td className="right mono">{formatMarketCap(row.market_cap_usd)}</td>
                     <td className={`right mcap-date${stale ? ' mcap-date-stale' : ''}`}>
                       {stale && (
-                        <span className="mcap-stale-icon" title={t.secteur.colonnes.actionsAu}>⚠ </span>
+                        <span className="mcap-stale-icon" title="Données datant de plus de 5 mois">⚠ </span>
                       )}
                       {formatDateCompact(row.shares_date)}
                     </td>
@@ -64,10 +69,16 @@ export default function MarketCapTable({ data }: { data: MarketCapData }) {
           </table>
         </div>
 
-        {/* Note QNT */}
-        <p className="mcap-footnote">
-          <sup>*</sup> QNT — {t.secteur.qntNote}
-        </p>
+        {/* Notes de bas de tableau dynamiques */}
+        {footnoteTickers.length > 0 && (
+          <div className="mcap-footnotes">
+            {footnoteTickers.map(ticker => (
+              <p key={ticker} className="mcap-footnote">
+                <sup>{TICKER_NOTES[ticker].marker}</sup> {ticker} — {TICKER_NOTES[ticker].text}
+              </p>
+            ))}
+          </div>
+        )}
 
         {/* Disclaimer */}
         <p className="mcap-disclaimer">{t.secteur.disclaimer}</p>

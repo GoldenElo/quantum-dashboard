@@ -136,7 +136,7 @@ export type MarketCapData = {
 
 const FICTIF_IDS = ['defensif', 'dynamique', 'agressif'] as const;
 const BENCHMARK_TICKER = 'QNTM.L';
-const SECTORAL_TICKERS = ['GOOGL', 'IBM', 'IONQ', 'QBTS', 'LAES', 'INFQ', 'RGTI', 'QUBT', 'QNT'] as const;
+const SECTORAL_TICKERS = ['GOOGL', 'IBM', 'IONQ', 'QBTS', 'LAES', 'INFQ', 'RGTI', 'QUBT', 'QNT', 'XNDU', 'ARQQ', 'HQ'] as const;
 
 // ─── Homepage ─────────────────────────────────────────────────────────────────
 

@@ -13,6 +13,24 @@ export const fr = {
       note: 'Hors Alphabet · IBM (géants diversifiés)',
     },
     disclaimer: "Capitalisations indicatives, calculées sur le dernier nombre d'actions connu. À titre informatif.",
-    qntNote: 'pleinement diluée — structure Up-C, flottant Class A ≈ 10 %',
   },
 } as const
+
+// Notes de bas de tableau par ticker — marqueur exposant + texte de note.
+// Ajouter ici tout ticker nécessitant une nuance éditoriale importante.
+export const TICKER_NOTES: Record<string, { marker: string; text: string }> = {
+  QNT:  {
+    marker: '*',
+    text: 'pleinement diluée — structure Up-C, flottant Class A ≈ 10 %',
+  },
+  ARQQ: {
+    marker: '†',
+    text: 'profil à risque élevé — reverse split 25:1 (sept. 2024) pour conformité Nasdaq, voir analyse quantum washing',
+  },
+}
+
+// Modalités technologiques par ticker — badge affiché après le nom de société.
+// N'ajouter que lorsque la modalité est distincte du reste du panel (valeur éditoriale).
+export const TICKER_MODALITIES: Record<string, string> = {
+  XNDU: 'photonique',
+}
