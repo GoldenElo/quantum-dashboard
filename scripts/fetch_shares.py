@@ -37,19 +37,25 @@ _REF_SHARES: dict[str, tuple[int, str]] = {
 }
 _ALERT_THRESHOLD = 0.10  # ±10 % → AVERTISSEMENT
 
-# Tickers avec une structure d'actions nécessitant une vérification manuelle.
-# yfinance peut sous-estimer massivement la market cap si seul le flottant est retourné.
-_DUAL_CLASS_ALERTS: dict[str, str] = {
-    "QNT": (
-        "⚠  QNT (Quantinuum) — STRUCTURE DOUBLE CLASSE :\n"
-        "   yfinance renvoie probablement seulement le flottant Class A (~28 M actions).\n"
-        "   La market cap RÉELLE inclut les Class B détenues par Honeywell (contrôle majoritaire).\n"
-        "   → Vérifier le total des actions dans le prospectus S-1/SEC et surcharger :\n"
-        "   INSERT INTO shares_outstanding VALUES\n"
-        "     ('QNT', '<as_of_date>', <total_shares_A_plus_B>, 'SEC S-1 2026-06')\n"
-        "   ON CONFLICT (ticker, as_of_date)\n"
-        "   DO UPDATE SET shares = EXCLUDED.shares, source = EXCLUDED.source;"
-    ),
+# Surcharges manuelles — priment sur yfinance (as_of_date plus récente → ORDER BY as_of_date DESC).
+# Upsertées automatiquement à chaque exécution (idempotent).
+_MANUAL_OVERRIDES: list[dict] = [
+    {
+        "ticker":     "QNT",
+        "as_of_date": "2026-06-05",
+        "shares":     322_000_000,
+        # Source : prospectus 424B4 SEC, 04/06/2026.
+        # Structure Up-C : Class A cotée ~32,86 M ≈ 10,2 % de l'intérêt économique total.
+        # Valeur pleinement diluée = 32,86 M / 10,2 % ≈ 322 M actions (Class A + Common Units B).
+        "source":     "SEC 424B4 2026-06-04 (fully-diluted, Up-C structure)",
+    },
+]
+_OVERRIDE_MAP: dict[str, dict] = {o["ticker"]: o for o in _MANUAL_OVERRIDES}
+
+# Notes d'affichage par ticker — décrivent pourquoi la valeur diffère de yfinance.
+# À réutiliser lors de l'implémentation du tableau frontend (S1 Étape C).
+_DISPLAY_NOTES: dict[str, str] = {
+    "QNT": "market cap pleinement diluée — structure Up-C, flottant Class A ≈ 10 %",
 }
 
 
@@ -117,30 +123,37 @@ def main() -> None:
 
     alerts: list[str] = []
     for r in fetched:
-        ticker   = r["ticker"]
-        shares_m = r["shares"] / 1_000_000
+        ticker = r["ticker"]
+
+        # Surcharge manuelle si as_of_date plus récente que la valeur yfinance
+        override = _OVERRIDE_MAP.get(ticker)
+        d = r if (not override or override["as_of_date"] <= r["as_of_date"]) else {**r, **override}
+
+        shares_m   = d["shares"] / 1_000_000
         price_info = latest_prices.get(ticker)
 
         if price_info:
             price, price_date = price_info
-            mcap_str  = _fmt_mcap(r["shares"] * price)
+            mcap_str  = _fmt_mcap(d["shares"] * price)
             price_str = f"${price:,.2f}"
         else:
             mcap_str  = "N/A"
             price_str = "N/A"
 
         print(
-            f"{ticker:<7} {shares_m:<14,.1f} {r['as_of_date']:<14} "
-            f"{price_str:<10} {mcap_str:<14} {r['source']}"
+            f"{ticker:<7} {shares_m:<14,.1f} {d['as_of_date']:<14} "
+            f"{price_str:<10} {mcap_str:<14} {d['source']}"
         )
+        if ticker in _DISPLAY_NOTES:
+            print(f"        ↳ {_DISPLAY_NOTES[ticker]}")
 
-        # Alerte si écart > seuil vs valeur de référence primaire
+        # Alerte si écart > seuil vs valeur de référence primaire (sur valeur yfinance brute)
         if ticker in _REF_SHARES:
             ref, ref_label = _REF_SHARES[ticker]
             ratio = abs(r["shares"] - ref) / ref
             if ratio > _ALERT_THRESHOLD:
                 alerts.append(
-                    f"⚠  {ticker} : yfinance={shares_m:.1f} M vs référence={ref / 1_000_000:.1f} M "
+                    f"⚠  {ticker} : yfinance={r['shares'] / 1_000_000:.1f} M vs référence={ref / 1_000_000:.1f} M "
                     f"({ref_label}) — écart {ratio * 100:.1f} %. "
                     f"Vérifier sur SEC.gov et surcharger manuellement si nécessaire."
                 )
@@ -154,18 +167,13 @@ def main() -> None:
             print(a, file=sys.stderr)
         print()
 
-    # ── 4b. Alertes structure double classe ────────────────────────────────────
-    dual_class_hits = [t for t in fetched if t["ticker"] in _DUAL_CLASS_ALERTS]
-    if dual_class_hits:
-        print("\nALERTES STRUCTURE D'ACTIONS :", file=sys.stderr)
-        for r in dual_class_hits:
-            print(_DUAL_CLASS_ALERTS[r["ticker"]], file=sys.stderr)
-        print()
-
     # ── 5. Upsert ─────────────────────────────────────────────────────────────
     if fetched:
         db.table("shares_outstanding").upsert(fetched).execute()
-        print(f"✓ {len(fetched)} ligne(s) upsertée(s) dans shares_outstanding.")
+        print(f"✓ {len(fetched)} ligne(s) yfinance upsertée(s) dans shares_outstanding.")
+    if _MANUAL_OVERRIDES:
+        db.table("shares_outstanding").upsert(_MANUAL_OVERRIDES).execute()
+        print(f"✓ {len(_MANUAL_OVERRIDES)} surcharge(s) manuelle(s) upsertée(s) (prime sur yfinance via as_of_date).")
 
     # ── 6. Résumé final ────────────────────────────────────────────────────────
     if errors:
@@ -176,16 +184,10 @@ def main() -> None:
         )
         sys.exit(1)
 
-    print("\nPour surcharger une valeur :")
-    print("  ex. IONQ depuis SEC 10-Q :")
+    print("\nPour ajouter une surcharge manuelle : éditer _MANUAL_OVERRIDES dans fetch_shares.py.")
+    print("  ex. IONQ depuis SEC 10-Q — SQL direct :")
     print("    INSERT INTO shares_outstanding VALUES")
     print("      ('IONQ', '2026-03-31', 373000000, 'SEC 10-Q 2026-03-31')")
-    print("    ON CONFLICT (ticker, as_of_date)")
-    print("    DO UPDATE SET shares = EXCLUDED.shares, source = EXCLUDED.source;")
-    print()
-    print("  ex. QNT total Class A + Class B (à vérifier dans le prospectus S-1) :")
-    print("    INSERT INTO shares_outstanding VALUES")
-    print("      ('QNT', '<as_of_date>', <total>, 'SEC S-1 2026-06')")
     print("    ON CONFLICT (ticker, as_of_date)")
     print("    DO UPDATE SET shares = EXCLUDED.shares, source = EXCLUDED.source;")
 
