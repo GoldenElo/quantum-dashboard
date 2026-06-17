@@ -27,15 +27,27 @@ from market_data import check_ticker_coverage, fetch_shares_outstanding
 load_dotenv(dotenv_path="../.env.local")
 load_dotenv()
 
-# 9 sociétés sectorielles — QNTM.L, QQQ (ETF) et NVDA (infrastructure hors univers sectoriel)
-# sont exclus de ce tableau de market cap.
-TICKERS = ["GOOGL", "IBM", "IONQ", "QBTS", "LAES", "INFQ", "RGTI", "QUBT", "QNT"]
+# 12 sociétés sectorielles — QNTM.L, QQQ (ETF) et NVDA (infrastructure) exclus.
+# Migration 005 : RGTI, QUBT, QNT | Migration 006 : XNDU, ARQQ, HQ
+TICKERS = ["GOOGL", "IBM", "IONQ", "QBTS", "LAES", "INFQ", "RGTI", "QUBT", "QNT",
+           "XNDU", "ARQQ", "HQ"]
 
 # Valeurs de référence pour les alertes (sources primaires vérifiées)
 _REF_SHARES: dict[str, tuple[int, str]] = {
     "IONQ": (373_000_000, "10-Q Q1 2026 (31/03/2026)"),
 }
 _ALERT_THRESHOLD = 0.10  # ±10 % → AVERTISSEMENT
+
+# Notes de vigilance — affichées dans le tableau de contrôle (stderr), pas en base.
+# Distinct de _MANUAL_OVERRIDES : ce sont des alertes éditoriales, pas des corrections de données.
+_CAUTION_NOTES: dict[str, str] = {
+    "ARQQ": (
+        "⚠  ARQQ (Arqit Quantum) — PROFIL À RISQUE ÉLEVÉ :\n"
+        "   Arqit est un cas documenté de quantum washing (analyse dédiée sur la chaîne).\n"
+        "   Le chiffre d'actions (17,4 M) est très bas et peut évoluer après dilutions/opérations.\n"
+        "   Vérifier sur SEC.gov avant usage. À NE PAS afficher sans la note d'avertissement."
+    ),
+}
 
 # Surcharges manuelles — priment sur yfinance (as_of_date plus récente → ORDER BY as_of_date DESC).
 # Upsertées automatiquement à chaque exécution (idempotent).
@@ -165,6 +177,14 @@ def main() -> None:
         print("AVERTISSEMENTS :", file=sys.stderr)
         for a in alerts:
             print(a, file=sys.stderr)
+        print()
+
+    # ── 4c. Notes de vigilance (éditoriales) ──────────────────────────────────
+    caution_hits = [r for r in fetched if r["ticker"] in _CAUTION_NOTES]
+    if caution_hits:
+        print("\nNOTES DE VIGILANCE :", file=sys.stderr)
+        for r in caution_hits:
+            print(_CAUTION_NOTES[r["ticker"]], file=sys.stderr)
         print()
 
     # ── 5. Upsert ─────────────────────────────────────────────────────────────

@@ -183,7 +183,7 @@ Chaque colonne doit sommer à 100 % — vérifier par un test.
 **Ne jamais inclure QQQ dans les portefeuilles, les snapshots, ni les agrégats sectoriels futurs.**
 C'est une référence de marché d'affichage uniquement — en base : `asset.category = 'etf'`.
 
-## Univers sectoriel (suivi market cap — 9 sociétés)
+## Univers sectoriel (suivi market cap — 12 sociétés)
 
 Tickers suivis dans `price_daily` et `shares_outstanding` pour le tableau de market cap (S1/S4).
 Distinct des portefeuilles : aucune de ces sociétés ne peut être ajoutée à un portefeuille après l'inception.
@@ -199,6 +199,9 @@ Distinct des portefeuilles : aucune de ces sociétés ne peut être ajoutée à 
 | RGTI | Rigetti Computing | pure_player | suivi sectoriel uniquement |
 | QUBT | Quantum Computing Inc | pure_player | suivi sectoriel uniquement |
 | QNT | Quantinuum | pure_player | **IPO 04/06/2026** — voir note ci-dessous |
+| XNDU | Xanadu Quantum Technologies | pure_player | modalité PHOTONIQUE — IPO 27/03/2026 |
+| ARQQ | Arqit Quantum | pure_player | ⚠ **quantum washing documenté** — voir note ci-dessous |
+| HQ | Horizon Quantum Holdings | pure_player | fusion SPAC dMY Squared, cotation ~20/03/2026 |
 
 **NVDA (infrastructure)** : dans les portefeuilles, pas dans l'univers sectoriel pure-player.
 
@@ -209,7 +212,18 @@ flottant Class A → market cap massivement sous-estimée. Après vérification 
 surcharger manuellement dans `shares_outstanding` avec `source = 'SEC S-1 2026-06'` et le total Class A+B.
 Le script `fetch_shares.py` affiche une alerte explicite et le SQL de surcharge à chaque exécution.
 
+**Note ARQQ — quantum washing :**
+Arqit Quantum (ARQQ, Nasdaq NCM) est un cas documenté de quantum washing — la chaîne lui consacre
+un épisode d'analyse. À NE PAS afficher comme équivalent aux autres pure-players sans la note
+d'avertissement dédiée. Sur l'affichage frontend, ARQQ doit porter un marqueur visible
+"profil à risque élevé — voir analyse" (note de bas de tableau, formulation neutre).
+Le script `fetch_shares.py` affiche un avertissement `_CAUTION_NOTES` à chaque exécution.
+Le chiffre d'actions (17,4 M, très bas) est à surveiller — vérifier dilutions sur SEC.gov.
+
 **Migration 005** (`supabase/migrations/005_add_sectoral_tickers.sql`) : ajoute QNT, RGTI, QUBT dans
+`asset` (idempotent — ON CONFLICT DO NOTHING). À appliquer avant tout backfill de ces tickers.
+
+**Migration 006** (`supabase/migrations/006_add_xndu_arqq_hq.sql`) : ajoute XNDU, ARQQ, HQ dans
 `asset` (idempotent — ON CONFLICT DO NOTHING). À appliquer avant tout backfill de ces tickers.
 
 ## Calculs (dans le cron, jamais dans le front)
@@ -255,6 +269,9 @@ Le script `fetch_shares.py` affiche une alerte explicite et le SQL de surcharge 
 9. ✅ S1 Étape C : tableau "Capitalisations du secteur" sur l'accueil — 9 sociétés triées
    par market cap, encart total pure-players, note QNT Up-C en footnote, détection
    données anciennes (LAES), disclaimer, i18n (src/i18n/fr.ts + t.ts).
+10. ✅ Univers sectoriel élargi à 12 sociétés : migration 006 (XNDU, ARQQ, HQ dans asset),
+    backfill étendu, _CAUTION_NOTES ARQQ dans fetch_shares.py.
+    ⏳ Affichage frontend XNDU/ARQQ/HQ en attente de validation des chiffres par l'éditrice.
 
 **État actuel (2026-06-17) : V1.5 implémentée + S1 Étape A (market cap) + univers sectoriel étendu à 9 sociétés (QNT/RGTI/QUBT). Date d'inception définitive : `2026-06-01`.**
 

@@ -24,8 +24,9 @@ logger = logging.getLogger(__name__)
 INCEPTION_DATE = date(2026, 6, 1)
 TICKERS = [
     "GOOGL", "IBM", "NVDA", "IONQ", "QBTS", "LAES", "INFQ",
-    "RGTI", "QUBT", "QNT",   # suivi sectoriel pur — hors portefeuilles
-    "QNTM.L", "QQQ",          # benchmarks
+    "RGTI", "QUBT", "QNT",            # suivi sectoriel pur — hors portefeuilles (migration 005)
+    "XNDU", "ARQQ", "HQ",             # suivi sectoriel pur — hors portefeuilles (migration 006)
+    "QNTM.L", "QQQ",                   # benchmarks
 ]
 
 # Tickers dont l'IPO est postérieure à INCEPTION_DATE.

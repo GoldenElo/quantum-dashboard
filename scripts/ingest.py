@@ -25,8 +25,9 @@ logger = logging.getLogger(__name__)
 
 TICKERS = [
     "GOOGL", "IBM", "NVDA", "IONQ", "QBTS", "LAES", "INFQ",
-    "RGTI", "QUBT", "QNT",   # suivi sectoriel pur — hors portefeuilles
-    "QNTM.L", "QQQ",          # benchmarks graphique comparatif
+    "RGTI", "QUBT", "QNT",            # suivi sectoriel pur — hors portefeuilles (migration 005)
+    "XNDU", "ARQQ", "HQ",             # suivi sectoriel pur — hors portefeuilles (migration 006)
+    "QNTM.L", "QQQ",                   # benchmarks graphique comparatif
 ]
 
 # Tickers dont l'IPO est postérieure à l'inception (01/06/2026).
