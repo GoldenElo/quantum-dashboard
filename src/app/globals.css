@@ -1,14 +1,16 @@
 /* ── Design tokens ── */
 :root {
-  --bg-page:     #060B1E;
-  --bg-panel:    #0D1530;
-  --border:      #1E2B4D;
-  --accent-blue: #2E7FE8;
-  --cyan:        #38BDF8;
-  --text:        #FFFFFF;
-  --text-muted:  #A9B8D4;
-  --positive:    #73BF69;
-  --negative:    #F2495C;
+  --bg-page:     #ffffff;
+  --bg-panel:    #f5f7fa;
+  --border:      #e6e9ee;
+  --accent-blue: #0d9488;
+  --cyan:        #34d1c4;
+  --or:          #b8943a;
+  --personal:    #c2410c;
+  --text:        #0c1d38;
+  --text-muted:  #5a6b82;
+  --positive:    #15803d;
+  --negative:    #dc2626;
 
   --font-heading: 'IBM Plex Sans', Arial, sans-serif;
   --font-body:    'Inter', Arial, sans-serif;
@@ -110,8 +112,8 @@ button { cursor: pointer; }
 }
 
 .site-header-yt:hover {
-  border-color: var(--cyan);
-  color: var(--cyan);
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
 }
 
 /* Footer YouTube link */
@@ -122,7 +124,7 @@ button { cursor: pointer; }
 }
 
 .footer-yt-link:hover {
-  color: var(--cyan);
+  color: var(--accent-blue);
 }
 
 @media (max-width: 420px) {
@@ -146,7 +148,7 @@ button { cursor: pointer; }
 
 .section { margin-top: 3rem; }
 
-/* Panel header — Grafana style: small caps, secondary color */
+/* Panel header */
 .section-title {
   font-family: var(--font-body), Arial, sans-serif;
   font-size: 0.72rem;
@@ -225,10 +227,10 @@ button { cursor: pointer; }
   text-transform: uppercase;
 }
 
-.badge-defensif  { background: rgba(87,148,242,0.15);  color: #5794F2; }
-.badge-dynamique { background: rgba(56,189,248,0.15);  color: #38BDF8; }
-.badge-agressif  { background: rgba(184,119,217,0.15); color: #B877D9; }
-.badge-personnel { background: rgba(255,152,48,0.15);  color: #FF9830; }
+.badge-defensif  { background: rgba(37,99,235,0.1);  color: #2563EB; }
+.badge-dynamique { background: rgba(13,148,136,0.1); color: #0d9488; }
+.badge-agressif  { background: rgba(124,58,237,0.1); color: #7C3AED; }
+.badge-personnel { background: rgba(194,65,12,0.1);  color: #c2410c; }
 
 .card-date {
   font-size: 0.72rem;
@@ -304,8 +306,8 @@ button { cursor: pointer; }
 
 /* ── Detail page ── */
 .disclaimer-banner {
-  background: rgba(46,127,232,0.07);
-  border: 1px solid rgba(46,127,232,0.25);
+  background: rgba(13,148,136,0.06);
+  border: 1px solid rgba(13,148,136,0.2);
   border-radius: 6px;
   padding: 0.9rem 1.25rem;
   font-size: 0.8rem;
@@ -326,7 +328,7 @@ button { cursor: pointer; }
   transition: color 0.15s;
 }
 
-.detail-back:hover { color: var(--cyan); }
+.detail-back:hover { color: var(--accent-blue); }
 
 .detail-header { margin-bottom: 2rem; }
 
@@ -415,18 +417,18 @@ button { cursor: pointer; }
 
 .holdings-table td {
   padding: 0.65rem 0.8rem;
-  border-bottom: 1px solid rgba(30,43,77,0.8);
+  border-bottom: 1px solid var(--border);
   vertical-align: middle;
 }
 
 .holdings-table tr:last-child td { border-bottom: none; }
 
-.holdings-table tr:hover td { background: rgba(13,21,48,0.6); }
+.holdings-table tr:hover td { background: rgba(13,148,136,0.04); }
 
 .holdings-table .right { text-align: right; }
 
 .holdings-table .ticker {
-  color: var(--cyan);
+  color: var(--accent-blue);
   font-weight: 600;
   font-size: 0.8rem;
 }
@@ -466,8 +468,8 @@ button { cursor: pointer; }
 
 /* ── Private data banner (PV latente) ── */
 .private-banner {
-  background: rgba(255,152,48,0.06);
-  border: 1px solid rgba(255,152,48,0.2);
+  background: rgba(194,65,12,0.06);
+  border: 1px solid rgba(194,65,12,0.2);
   border-radius: 6px;
   padding: 1rem 1.25rem;
   display: flex;
@@ -499,7 +501,7 @@ button { cursor: pointer; }
   font-size: 0.72rem;
   color: var(--text-muted);
   font-family: var(--font-mono), monospace;
-  border-top: 1px solid rgba(255,152,48,0.15);
+  border-top: 1px solid rgba(194,65,12,0.15);
   padding-top: 0.6rem;
   margin-top: 0.2rem;
 }
@@ -525,8 +527,8 @@ button { cursor: pointer; }
 }
 
 .connexion-error {
-  background: rgba(242,73,92,0.1);
-  border: 1px solid rgba(242,73,92,0.3);
+  background: rgba(220,38,38,0.08);
+  border: 1px solid rgba(220,38,38,0.25);
   border-radius: 6px;
   padding: 0.75rem 1rem;
   font-size: 0.82rem;
@@ -587,7 +589,7 @@ button { cursor: pointer; }
 }
 
 .connexion-back a { color: var(--text-muted); transition: color 0.15s; }
-.connexion-back a:hover { color: var(--cyan); }
+.connexion-back a:hover { color: var(--accent-blue); }
 
 /* ── Déconnexion (page personnel) ── */
 .connexion-signout-wrap {
@@ -620,7 +622,7 @@ button { cursor: pointer; }
   transition: color 0.15s;
 }
 
-.footer-auth-link:hover { color: var(--cyan); }
+.footer-auth-link:hover { color: var(--accent-blue); }
 
 /* ── Footer ── */
 .site-footer {

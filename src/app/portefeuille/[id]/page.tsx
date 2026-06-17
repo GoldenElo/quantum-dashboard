@@ -10,9 +10,9 @@ import AllocationPie from '@/components/AllocationPie';
 export const revalidate = 86400;
 
 const PORTFOLIO_COLORS: Record<string, string> = {
-  defensif:  '#5794F2',
-  dynamique: '#38BDF8',
-  agressif:  '#B877D9',
+  defensif:  '#2563EB',
+  dynamique: '#0d9488',
+  agressif:  '#7C3AED',
 };
 
 const PORTFOLIO_LABELS: Record<string, string> = {
@@ -45,7 +45,7 @@ export default async function PortfolioDetailPage({ params }: Props) {
   if (!detail) notFound();
 
   const snap = detail.latestSnapshot;
-  const color = PORTFOLIO_COLORS[id] ?? '#c9a84c';
+  const color = PORTFOLIO_COLORS[id] ?? '#5a6b82';
   const label = PORTFOLIO_LABELS[id] ?? id;
 
   const currentPie = detail.holdings.map(h => ({

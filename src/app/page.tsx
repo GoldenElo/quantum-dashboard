@@ -7,12 +7,12 @@ import type { SeriesConfig } from '@/components/ComparativeChart';
 export const revalidate = 86400;
 
 const COMPARATIVE_SERIES: SeriesConfig[] = [
-  { key: 'defensif',  label: 'Défensif',         color: '#5794F2' },
-  { key: 'dynamique', label: 'Dynamique',         color: '#38BDF8' },
-  { key: 'agressif',  label: 'Agressif',          color: '#B877D9' },
-  { key: 'personnel', label: 'Mon portefeuille',  color: '#FF9830' },
-  { key: 'benchmark', label: 'VanEck UCITS',      color: '#94A3B8', dashed: true },
-  { key: 'nasdaq100', label: 'Nasdaq-100',        color: '#CBD5E1', dashed: true, strokeWidth: 1.5 },
+  { key: 'defensif',  label: 'Défensif',        color: '#2563EB' },
+  { key: 'dynamique', label: 'Dynamique',        color: '#0d9488' },
+  { key: 'agressif',  label: 'Agressif',         color: '#7C3AED' },
+  { key: 'personnel', label: 'Mon portefeuille', color: '#c2410c' },
+  { key: 'benchmark', label: 'VanEck UCITS',     color: '#5a6b82', dashed: true },
+  { key: 'nasdaq100', label: 'Nasdaq-100',       color: '#8099B3', dashed: true, strokeWidth: 1.5 },
 ];
 
 export default async function HomePage() {

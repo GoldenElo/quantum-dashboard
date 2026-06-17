@@ -3,8 +3,8 @@
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const TICKER_COLORS: Record<string, string> = {
-  GOOGL: '#4f9eff', IBM: '#818cf8', NVDA: '#34d399',
-  IONQ: '#c9a84c', QBTS: '#f472b6', LAES: '#fb923c', INFQ: '#a78bfa',
+  GOOGL: '#1d4ed8', IBM: '#4338ca', NVDA: '#059669',
+  IONQ: '#0891b2', QBTS: '#be185d', LAES: '#d97706', INFQ: '#7c3aed',
 };
 
 type Slice = { ticker: string; name: string; weight: number };
@@ -32,8 +32,8 @@ function SinglePie({ data, title }: { data: Slice[]; title: string }) {
               ))}
             </Pie>
             <Tooltip
-              contentStyle={{ background: '#0D1530', border: '1px solid #1E2B4D', borderRadius: 6, fontSize: 12 }}
-              labelStyle={{ color: '#FFFFFF' }}
+              contentStyle={{ background: '#ffffff', border: '1px solid #e6e9ee', borderRadius: 6, fontSize: 12 }}
+              labelStyle={{ color: '#0c1d38' }}
               formatter={(value, name) => {
                 const v = typeof value === 'number' ? value : 0;
                 const slice = data.find(d => d.ticker === String(name));
@@ -44,7 +44,7 @@ function SinglePie({ data, title }: { data: Slice[]; title: string }) {
               wrapperStyle={{ paddingTop: '12px' }}
               formatter={(value: string) => {
                 const s = data.find(d => d.ticker === value);
-                return <span style={{ color: '#A9B8D4', fontSize: 11 }}>{s?.name ?? value}</span>;
+                return <span style={{ color: '#5a6b82', fontSize: 11 }}>{s?.name ?? value}</span>;
               }}
             />
           </PieChart>

@@ -236,39 +236,41 @@ calcul de volatilité vérifié contre un cas connu.
 
 ## Charte graphique (tokens CSS)
 
-Style Grafana sombre — identité visuelle YouTube de la chaîne.
+Style fond clair / presse financière — migré depuis l'ancienne charte bleu électrique (Grafana sombre) suite à l'évolution de l'identité de la chaîne.
 
 | Token CSS | Valeur | Usage |
 |---|---|---|
-| `--bg-page` | `#060B1E` | Fond de page |
-| `--bg-panel` | `#0D1530` | Cartes, graphiques, tableaux |
-| `--border` | `#1E2B4D` | Bordures 1px partout |
-| `--accent-blue` | `#2E7FE8` | Liens, actions, accents |
-| `--cyan` | `#38BDF8` | Hover, surbrillances, ticker dans le tableau |
-| `--text` | `#FFFFFF` | Texte principal |
-| `--text-muted` | `#A9B8D4` | Texte secondaire — JAMAIS plus sombre |
-| `--positive` | `#73BF69` | Hausse — toujours coloré, jamais gris |
-| `--negative` | `#F2495C` | Baisse — toujours coloré, jamais gris |
+| `--bg-page` | `#ffffff` | Fond de page (blanc) |
+| `--bg-panel` | `#f5f7fa` | Cartes, graphiques, tableaux (gris bleuté très clair) |
+| `--border` | `#e6e9ee` | Bordures 1px, grille Recharts |
+| `--accent-blue` | `#0d9488` | Teal foncé — accent principal, liens, actions |
+| `--cyan` | `#34d1c4` | Teal vif — **aplats/badges uniquement**, jamais texte sur blanc |
+| `--or` | `#b8943a` | Or foncé — chiffres-vedettes, signature, max 1 occurrence/vue |
+| `--personal` | `#c2410c` | Orange brûlé — **RÉSERVÉ** portefeuille personnel, jamais ailleurs |
+| `--text` | `#0c1d38` | Navy — texte principal |
+| `--text-muted` | `#5a6b82` | Gris bleuté — texte secondaire, axes, légendes |
+| `--positive` | `#15803d` | Vert foncé — hausse (WCAG AA 5.1:1 sur blanc) |
+| `--negative` | `#dc2626` | Rouge — baisse (WCAG AA 4.8:1 sur blanc) |
 
 **Règles dures :**
-- Aucun texte plus sombre que `#A9B8D4` sur fond sombre.
+- Fond blanc — jamais de fond sombre ni de dégradé sur les pages et panneaux.
+- Tout texte coloré utilise les versions **foncées** : teal `#0d9488`, or `#b8943a`. Ne jamais mettre de texte en teal vif `#34d1c4` (contraste insuffisant sur blanc).
 - Les chiffres de perf sont toujours colorés (`--positive` / `--negative`), jamais gris.
-- `#C9A84C` (or) est **supprimé** du projet — aucune occurrence autorisée.
-- `#FF9830` (orange) est **strictement réservé** à la future série "portefeuille personnel" (V1.5).
-  Ne jamais utiliser cette couleur ailleurs dans l'UI.
+- `--personal` (`#c2410c`) est **strictement réservé** au portefeuille personnel — jamais utilisé ailleurs.
+- `--cyan` (`#34d1c4`) est **interdit pour tout texte** — réservé aux aplats pleins (badges, puces) où la surface suffit à la perception.
 - Coins arrondis : 6px max. Pas d'ombres portées. Pas de dégradés décoratifs.
 - En-têtes de panneau (`.section-title`, `.pie-title`) : petites capitales uppercase, 11-12px, `--text-muted`.
 
 **Séries des graphiques :**
 
-| Série | Couleur | Style |
-|---|---|---|
-| Défensif | `#5794F2` | Plein |
-| Dynamique | `#38BDF8` | Plein |
-| Agressif | `#B877D9` | Plein |
-| VanEck UCITS (QNTM.L) | `#94A3B8` | Pointillé |
-| Nasdaq-100 (QQQ) | `#CBD5E1` | Pointillé fin (strokeWidth 1.5) — étalon marché accueil uniquement |
-| Portefeuille personnel (V1.5) | `#FF9830` | Plein — couleur unique, réservée |
+| Série | Couleur | Contraste/blanc | Style |
+|---|---|---|---|
+| Défensif | `#2563EB` | 4.5:1 ✓ AA | Plein, 2px |
+| Dynamique | `#0d9488` | 3.7:1 ✓ (non-texte) | Plein, 2px |
+| Agressif | `#7C3AED` | 5.6:1 ✓ AA | Plein, 2px |
+| VanEck UCITS (QNTM.L) | `#5a6b82` | 5.5:1 ✓ AA | Pointillé, 1.5px |
+| Nasdaq-100 (QQQ) | `#8099B3` | 3.5:1 ✓ (non-texte, secondaire) | Pointillé fin, 1.5px — étalon marché accueil uniquement |
+| Portefeuille personnel | `#c2410c` | 5.1:1 ✓ AA | Plein, 2.5px — couleur réservée (`--personal`) |
 
 ## Données V1.5 — Portefeuille personnel (ne pas implémenter avant la V1.5)
 
