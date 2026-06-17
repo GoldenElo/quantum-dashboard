@@ -22,19 +22,35 @@ from datetime import date  # noqa: F401 — utilisé par market_data via import 
 from dotenv import load_dotenv
 from supabase import create_client
 
-from market_data import fetch_shares_outstanding
+from market_data import check_ticker_coverage, fetch_shares_outstanding
 
 load_dotenv(dotenv_path="../.env.local")
 load_dotenv()
 
-# Tickers non-ETF : QNTM.L et QQQ (category='etf') exclus de la market cap
-TICKERS = ["GOOGL", "IBM", "NVDA", "IONQ", "QBTS", "LAES", "INFQ"]
+# 9 sociétés sectorielles — QNTM.L, QQQ (ETF) et NVDA (infrastructure hors univers sectoriel)
+# sont exclus de ce tableau de market cap.
+TICKERS = ["GOOGL", "IBM", "IONQ", "QBTS", "LAES", "INFQ", "RGTI", "QUBT", "QNT"]
 
 # Valeurs de référence pour les alertes (sources primaires vérifiées)
 _REF_SHARES: dict[str, tuple[int, str]] = {
     "IONQ": (373_000_000, "10-Q Q1 2026 (31/03/2026)"),
 }
 _ALERT_THRESHOLD = 0.10  # ±10 % → AVERTISSEMENT
+
+# Tickers avec une structure d'actions nécessitant une vérification manuelle.
+# yfinance peut sous-estimer massivement la market cap si seul le flottant est retourné.
+_DUAL_CLASS_ALERTS: dict[str, str] = {
+    "QNT": (
+        "⚠  QNT (Quantinuum) — STRUCTURE DOUBLE CLASSE :\n"
+        "   yfinance renvoie probablement seulement le flottant Class A (~28 M actions).\n"
+        "   La market cap RÉELLE inclut les Class B détenues par Honeywell (contrôle majoritaire).\n"
+        "   → Vérifier le total des actions dans le prospectus S-1/SEC et surcharger :\n"
+        "   INSERT INTO shares_outstanding VALUES\n"
+        "     ('QNT', '<as_of_date>', <total_shares_A_plus_B>, 'SEC S-1 2026-06')\n"
+        "   ON CONFLICT (ticker, as_of_date)\n"
+        "   DO UPDATE SET shares = EXCLUDED.shares, source = EXCLUDED.source;"
+    ),
+}
 
 
 def _fmt_mcap(usd: float) -> str:
@@ -47,6 +63,14 @@ def _fmt_mcap(usd: float) -> str:
 
 def main() -> None:
     db = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"])
+
+    # ── 0. Preuve de couverture yfinance pour QNT (IPO 04/06/2026) ────────────
+    print("\nVérification couverture yfinance pour QNT (IPO 04/06/2026)…")
+    qnt_covered = check_ticker_coverage("QNT", date(2026, 6, 4))
+    if qnt_covered:
+        print("  ✓ QNT (Quantinuum) — couvert par yfinance depuis le 04/06/2026")
+    else:
+        print("  ✗ QNT — NON COUVERT par yfinance. Vérifier le ticker NASDAQ et relancer.", file=sys.stderr)
 
     # ── 1. Fetch yfinance (ticker par ticker) ──────────────────────────────────
     print(f"\nRécupération shares outstanding via yfinance ({len(TICKERS)} tickers)…")
@@ -123,11 +147,19 @@ def main() -> None:
 
     print()
 
-    # ── 4. Affichage des alertes ───────────────────────────────────────────────
+    # ── 4. Alertes écart de référence ─────────────────────────────────────────
     if alerts:
         print("AVERTISSEMENTS :", file=sys.stderr)
         for a in alerts:
             print(a, file=sys.stderr)
+        print()
+
+    # ── 4b. Alertes structure double classe ────────────────────────────────────
+    dual_class_hits = [t for t in fetched if t["ticker"] in _DUAL_CLASS_ALERTS]
+    if dual_class_hits:
+        print("\nALERTES STRUCTURE D'ACTIONS :", file=sys.stderr)
+        for r in dual_class_hits:
+            print(_DUAL_CLASS_ALERTS[r["ticker"]], file=sys.stderr)
         print()
 
     # ── 5. Upsert ─────────────────────────────────────────────────────────────
@@ -144,11 +176,18 @@ def main() -> None:
         )
         sys.exit(1)
 
-    print("\nPour surcharger une valeur (ex. IONQ depuis SEC) :")
-    print("  INSERT INTO shares_outstanding VALUES")
-    print("    ('IONQ', '2026-03-31', 373000000, 'SEC 10-Q 2026-03-31')")
-    print("  ON CONFLICT (ticker, as_of_date)")
-    print("  DO UPDATE SET shares = EXCLUDED.shares, source = EXCLUDED.source;")
+    print("\nPour surcharger une valeur :")
+    print("  ex. IONQ depuis SEC 10-Q :")
+    print("    INSERT INTO shares_outstanding VALUES")
+    print("      ('IONQ', '2026-03-31', 373000000, 'SEC 10-Q 2026-03-31')")
+    print("    ON CONFLICT (ticker, as_of_date)")
+    print("    DO UPDATE SET shares = EXCLUDED.shares, source = EXCLUDED.source;")
+    print()
+    print("  ex. QNT total Class A + Class B (à vérifier dans le prospectus S-1) :")
+    print("    INSERT INTO shares_outstanding VALUES")
+    print("      ('QNT', '<as_of_date>', <total>, 'SEC S-1 2026-06')")
+    print("    ON CONFLICT (ticker, as_of_date)")
+    print("    DO UPDATE SET shares = EXCLUDED.shares, source = EXCLUDED.source;")
 
 
 if __name__ == "__main__":

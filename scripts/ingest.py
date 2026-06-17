@@ -23,9 +23,25 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-TICKERS = ["GOOGL", "IBM", "NVDA", "IONQ", "QBTS", "LAES", "INFQ", "QNTM.L", "QQQ"]
+TICKERS = [
+    "GOOGL", "IBM", "NVDA", "IONQ", "QBTS", "LAES", "INFQ",
+    "RGTI", "QUBT", "QNT",   # suivi sectoriel pur — hors portefeuilles
+    "QNTM.L", "QQQ",          # benchmarks graphique comparatif
+]
+
+# Tickers dont l'IPO est postérieure à l'inception (01/06/2026).
+# Exclus du fetch avant leur première cotation — pas d'erreur, pas de ligne fantôme.
+TICKER_FIRST_TRADE: dict[str, date] = {
+    "QNT": date(2026, 6, 4),  # IPO Nasdaq — premier cours le 04/06/2026
+}
+
 INITIAL_CAPITAL_USD = 10_000.0
 BATCH_SIZE = 500
+
+
+def _active_tickers(close_date: date) -> list[str]:
+    """Filtre les tickers pré-IPO pour close_date (retourne TICKERS si hors contrainte)."""
+    return [t for t in TICKERS if close_date >= TICKER_FIRST_TRADE.get(t, date.min)]
 
 
 # ─── Supabase ────────────────────────────────────────────────────────────────
@@ -50,7 +66,7 @@ def ingest_prices(db: Client, close_date: date) -> bool:
     """
     logger.info("Téléchargement des prix pour le %s…", close_date)
     try:
-        ohlcv = fetch_ohlcv(TICKERS, start=close_date, end=close_date)
+        ohlcv = fetch_ohlcv(_active_tickers(close_date), start=close_date, end=close_date)
     except ValueError as exc:
         logger.warning("Aucune cotation le %s — jour férié US ? (%s)", close_date, exc)
         return False

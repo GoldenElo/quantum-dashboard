@@ -22,7 +22,19 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 INCEPTION_DATE = date(2026, 6, 1)
-TICKERS = ["GOOGL", "IBM", "NVDA", "IONQ", "QBTS", "LAES", "INFQ", "QNTM.L", "QQQ"]
+TICKERS = [
+    "GOOGL", "IBM", "NVDA", "IONQ", "QBTS", "LAES", "INFQ",
+    "RGTI", "QUBT", "QNT",   # suivi sectoriel pur — hors portefeuilles
+    "QNTM.L", "QQQ",          # benchmarks
+]
+
+# Tickers dont l'IPO est postérieure à INCEPTION_DATE.
+# yfinance retourne naturellement les dates depuis la première cotation — pas de ligne fantôme.
+# Utilisé dans print_control_table pour ne pas signaler le manque de jours pre-IPO comme erreur.
+TICKER_FIRST_TRADE: dict[str, date] = {
+    "QNT": date(2026, 6, 4),  # IPO Nasdaq — premier cours le 04/06/2026
+}
+
 BATCH_SIZE = 500
 
 
@@ -88,7 +100,12 @@ def print_control_table(price_stats: dict[str, dict]) -> None:
             continue
         v = price_stats[ticker]
         gap = ref - v["count"]
-        status = f"⚠  {gap} lignes de moins" if gap > 0 else "OK"
+        if gap == 0:
+            status = "OK"
+        elif ticker in TICKER_FIRST_TRADE:
+            status = f"OK (IPO {TICKER_FIRST_TRADE[ticker]}, {gap}j attendus)"
+        else:
+            status = f"⚠  {gap} lignes de moins"
         print(
             f"  {ticker:<12} {v['count']:>7}  {str(v['first']):<13} {str(v['last']):<13} {status}"
         )
@@ -96,14 +113,18 @@ def print_control_table(price_stats: dict[str, dict]) -> None:
     print("─" * W)
     print()
 
-    gaps = {t: ref - v["count"] for t, v in price_stats.items() if ref - v["count"] > 0}
-    if gaps:
+    real_gaps = {
+        t: ref - v["count"]
+        for t, v in price_stats.items()
+        if ref - v["count"] > 0 and t not in TICKER_FIRST_TRADE
+    }
+    if real_gaps:
         logger.warning(
             "Incohérence détectée : %s",
-            ", ".join(f"{t} ({g} lignes de moins)" for t, g in gaps.items()),
+            ", ".join(f"{t} ({g} lignes de moins)" for t, g in real_gaps.items()),
         )
     else:
-        logger.info("Contrôle : tous les tickers ont le même nombre de lignes (%d).", ref)
+        logger.info("Contrôle : cohérence vérifiée (%d lignes de référence).", ref)
 
 
 def main() -> None:

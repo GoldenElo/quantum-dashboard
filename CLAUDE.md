@@ -183,6 +183,35 @@ Chaque colonne doit sommer à 100 % — vérifier par un test.
 **Ne jamais inclure QQQ dans les portefeuilles, les snapshots, ni les agrégats sectoriels futurs.**
 C'est une référence de marché d'affichage uniquement — en base : `asset.category = 'etf'`.
 
+## Univers sectoriel (suivi market cap — 9 sociétés)
+
+Tickers suivis dans `price_daily` et `shares_outstanding` pour le tableau de market cap (S1/S4).
+Distinct des portefeuilles : aucune de ces sociétés ne peut être ajoutée à un portefeuille après l'inception.
+
+| Ticker | Société | Catégorie | Note |
+|---|---|---|---|
+| GOOGL | Alphabet | géant | aussi dans les 3 portefeuilles |
+| IBM | IBM | géant | aussi dans les 3 portefeuilles |
+| IONQ | IonQ | pure_player | aussi dans les 3 portefeuilles |
+| QBTS | D-Wave | pure_player | aussi dans les 3 portefeuilles |
+| LAES | SEALSQ | pure_player | aussi dans les 3 portefeuilles |
+| INFQ | Infleqtion | pure_player | aussi dans le portefeuille agressif |
+| RGTI | Rigetti Computing | pure_player | suivi sectoriel uniquement |
+| QUBT | Quantum Computing Inc | pure_player | suivi sectoriel uniquement |
+| QNT | Quantinuum | pure_player | **IPO 04/06/2026** — voir note ci-dessous |
+
+**NVDA (infrastructure)** : dans les portefeuilles, pas dans l'univers sectoriel pure-player.
+
+**Note QNT — structure double classe :**
+Quantinuum est cotée en Nasdaq depuis le 04/06/2026. Structure : Class A (flottant public ~28 M actions)
++ Class B détenue par Honeywell (contrôle majoritaire). yfinance retourne probablement seulement le
+flottant Class A → market cap massivement sous-estimée. Après vérification dans le prospectus S-1/SEC,
+surcharger manuellement dans `shares_outstanding` avec `source = 'SEC S-1 2026-06'` et le total Class A+B.
+Le script `fetch_shares.py` affiche une alerte explicite et le SQL de surcharge à chaque exécution.
+
+**Migration 005** (`supabase/migrations/005_add_sectoral_tickers.sql`) : ajoute QNT, RGTI, QUBT dans
+`asset` (idempotent — ON CONFLICT DO NOTHING). À appliquer avant tout backfill de ces tickers.
+
 ## Calculs (dans le cron, jamais dans le front)
 
 - `value_usd` = Σ quantity × adj_close
@@ -219,8 +248,12 @@ C'est une référence de marché d'affichage uniquement — en base : `asset.cat
 5. ✅ Déploiement Netlify + variables d'env + test du cron de bout en bout.
 6. ✅ V1.5 : portefeuille personnel — migration 003, seed_personal.py, auth Supabase,
    page `/portefeuille/personnel` (force-dynamic), confidentialité stricte.
+7. ✅ S1 Étape A : capitalisations boursières — migration 004 (shares_outstanding),
+   fetch_shares.py, fetch_shares.yml (dispatch), log market caps dans ingest.py.
+8. ✅ S1 + univers sectoriel : migration 005 (QNT, RGTI, QUBT dans asset),
+   backfill étendu, TICKER_FIRST_TRADE pour QNT (IPO 04/06/2026), alerte double-classe.
 
-**État actuel (2026-06-12) : V1.5 implémentée. Date d'inception définitive : `2026-06-01`.**
+**État actuel (2026-06-17) : V1.5 implémentée + S1 Étape A (market cap) + univers sectoriel étendu à 9 sociétés (QNT/RGTI/QUBT). Date d'inception définitive : `2026-06-01`.**
 
 **Checklist de mise en service V1.5 (à faire manuellement) :**
 1. Appliquer la migration `supabase/migrations/003_v1_5_personal_portfolio.sql` dans le dashboard Supabase.
