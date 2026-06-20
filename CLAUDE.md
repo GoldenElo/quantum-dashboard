@@ -271,9 +271,32 @@ Le chiffre d'actions (17,4 M, très bas) est à surveiller — vérifier dilutio
    données anciennes (LAES), disclaimer, i18n (src/i18n/fr.ts + t.ts).
 10. ✅ Univers sectoriel élargi à 12 sociétés : migration 006 (XNDU, ARQQ, HQ dans asset),
     backfill étendu, _CAUTION_NOTES ARQQ dans fetch_shares.py.
-    ⏳ Affichage frontend XNDU/ARQQ/HQ en attente de validation des chiffres par l'éditrice.
+    ✅ Affichage frontend XNDU/ARQQ/HQ validé (chiffres confirmés sur source primaire) :
+    badge modalité (XNDU photonique), marqueur ARQQ † (reverse split / quantum washing).
+11. ✅ S2 : variations multi-horizons des capitalisations sectorielles.
+    - `scripts/backfill_sectoral.py` : backfill historique ~1 an (depuis **2025-06-01**) pour les
+      12 tickers sectoriels UNIQUEMENT — **distinct de l'inception des portefeuilles (2026-06-01)**.
+      Ne backfille NI NVDA NI les benchmarks (QNTM.L/QQQ) → courbes base 100 et étalon marché intacts.
+      Les IPO récentes (QNT, XNDU, HQ, INFQ) ne renvoient que depuis leur 1re cotation (pas de fantôme).
+    - **Garde-fou inception** dans `ingest.py` (`compute_snapshots`) : aucun snapshot avant
+      `portfolio.inception_date`. Protège le portefeuille personnel (tickers tous sectoriels) contre
+      des snapshots pré-inception générés depuis l'historique backfillé. Sans effet sur l'existant.
+    - **Variations calculées à la volée** (api.ts) — jamais stockées : **table `price_change`
+      abandonnée** (principe « ne jamais stocker le calculable » + cohérence market cap S1).
+      Horizons en jours de COTATION : Jour (offset 1), Semaine (5), Mois (21), Année (252, calculée
+      non affichée). `null` si historique insuffisant (IPO récente).
+    - **Lecture paginée / bornée** : PostgREST plafonne toute réponse à 1000 lignes. `_load_prices`
+      (ingest) pagine via `.range()` ; `api.ts` et `check_changes.py` lisent par ticker (fenêtre 260
+      séances < 1000). Aucune troncature silencieuse possible quelle que soit la croissance de l'historique.
+    - **Affichage** : 3 colonnes Jour/Semaine/Mois (vert/rouge foncé WCAG, « — » si null, mono),
+      date du nb d'actions déplacée en infobulle sur la Capitalisation (fraîcheur conservée).
+    - **Garde-fou d'alerte** : variation hebdo > ±150 % → marqueur ⚑ (côté contrôle `check_changes.py`
+      ET côté lecteur, infobulle anti-hype « Variation exceptionnelle — forte volatilité, cotation
+      récente (SPAC). À interpréter avec prudence. »). **Signale sans masquer** — l'humain tranche.
 
-**État actuel (2026-06-17) : V1.5 implémentée + S1 Étape A (market cap) + univers sectoriel étendu à 9 sociétés (QNT/RGTI/QUBT). Date d'inception définitive : `2026-06-01`.**
+**État actuel (2026-06-20) : V1.5 + S1 (market cap, 12 sociétés sectorielles affichées) + S2
+(variations multi-horizons). Date d'inception portefeuilles : `2026-06-01`. Historique sectoriel
+backfillé depuis `2025-06-01` (variations uniquement, distinct de l'inception).**
 
 **Checklist de mise en service V1.5 (à faire manuellement) :**
 1. Appliquer la migration `supabase/migrations/003_v1_5_personal_portfolio.sql` dans le dashboard Supabase.
@@ -388,28 +411,29 @@ create table shares_outstanding (
 
 ---
 
-### S2 — Variations multi-horizons (fondation de données #2)
+### S2 — Variations multi-horizons (fondation de données #2) — ✅ RÉALISÉE
 
-**Ce qui est construit :** enrichissement de l'ingestion quotidienne pour calculer et stocker
-`change_1d`, `change_1w`, `change_1m`, `change_ytd`, `change_1y` dans une table
-`price_change` (ticker, date, …). Tout est dérivé de `price_daily` déjà en base —
-aucun appel réseau supplémentaire. Idempotent (upsert).
+**⚠️ Décision d'architecture (écart assumé vs le plan initial ci-dessous) :** la table `price_change`
+**n'a PAS été créée**. Les variations sont **calculées à la volée** depuis `price_daily`, comme la
+market cap S1 — conformément au principe directeur « ne jamais stocker en base ce qui peut être
+calculé à la volée ». Aucune migration SQL pour S2.
 
-**Dépendances :** S1 non requise. Réutilise `price_daily` à 100 %.
+**Ce qui est construit (réel) :**
+- Backfill historique ~1 an `scripts/backfill_sectoral.py` (depuis **2025-06-01**, 12 tickers
+  sectoriels uniquement — pas NVDA, pas les benchmarks). Distinct de l'inception portefeuilles.
+- Variations à la volée dans `src/lib/api.ts` (`fetchMarketCapsData`) : horizons en **jours de
+  cotation** — Jour (offset 1), Semaine (5), Mois (21), Année (252, calculée non affichée).
+  `null` si historique insuffisant. Affichées : Jour / Semaine / Mois.
+- **Lecture bornée par ticker** (fenêtre 260 séances) côté api.ts et `check_changes.py` ;
+  `_load_prices` (ingest) paginé via `.range()` → contournement du plafond PostgREST (1000 lignes).
+- Garde-fou inception dans `compute_snapshots` (ingest.py).
+- Garde-fou d'alerte : variation hebdo > ±150 % → ⚑ (signale sans masquer), infobulle anti-hype.
+- `scripts/check_changes.py` : tableau de contrôle des variations (lecture seule), réutilisable.
 
-**Schéma :**
-```sql
-create table price_change (
-  ticker      text references asset(ticker),
-  date        date not null,
-  change_1d   numeric,   -- variation 1 jour
-  change_1w   numeric,   -- variation 5 jours ouvrés
-  change_1m   numeric,   -- variation ~21 jours ouvrés
-  change_ytd  numeric,   -- depuis le 1er janvier
-  change_1y   numeric,   -- 252 jours ouvrés
-  primary key (ticker, date)
-);
-```
+**Dépendances :** S1 non requise pour le calcul. Réutilise `price_daily` à 100 %.
+
+**Plan initial (NON retenu — conservé pour mémoire) :** une table `price_change` stockée + calcul
+dans le cron. Abandonné au profit du calcul à la volée (voir décision ci-dessus).
 
 ---
 

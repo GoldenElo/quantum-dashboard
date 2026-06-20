@@ -95,12 +95,41 @@ def ingest_prices(db: Client, close_date: date) -> bool:
 
 # ─── Chargement depuis la base ────────────────────────────────────────────────
 
+_PAGE_SIZE = 1000  # PostgREST plafonne toute réponse à max-rows (1000 par défaut).
+
+
+def _load_all_price_rows(db: Client) -> list[dict]:
+    """
+    Lit l'intégralité de price_daily par pagination .range().
+    Indispensable depuis le backfill historique sectoriel (S2) : price_daily
+    dépasse 1000 lignes, et un simple .limit(N) serait silencieusement tronqué
+    à 1000 par PostgREST → snapshots faussés. On pagine jusqu'à épuisement.
+    """
+    rows: list[dict] = []
+    offset = 0
+    while True:
+        res = (
+            db.table("price_daily")
+            .select("ticker, date, adj_close")
+            .order("date", desc=False)
+            .order("ticker", desc=False)
+            .range(offset, offset + _PAGE_SIZE - 1)
+            .execute()
+        )
+        batch = res.data or []
+        rows.extend(batch)
+        if len(batch) < _PAGE_SIZE:
+            break
+        offset += _PAGE_SIZE
+    return rows
+
+
 def _load_prices(db: Client) -> pd.DataFrame:
     """DataFrame (index=date, colonnes=tickers, valeurs=adj_close)."""
-    res = db.table("price_daily").select("ticker, date, adj_close").limit(50_000).execute()
-    if not res.data:
+    data = _load_all_price_rows(db)
+    if not data:
         return pd.DataFrame()
-    df = pd.DataFrame(res.data)
+    df = pd.DataFrame(data)
     df["date"] = pd.to_datetime(df["date"]).dt.date
     df["adj_close"] = df["adj_close"].astype(float)
     return df.pivot(index="date", columns="ticker", values="adj_close")
@@ -124,24 +153,43 @@ def _load_initial_capitals(db: Client) -> dict[str, float]:
     return {row["id"]: float(row["initial_capital_usd"]) for row in res.data}
 
 
+def _load_inceptions(db: Client) -> dict[str, date]:
+    """{portfolio_id: inception_date} — lu depuis la table portfolio."""
+    res = db.table("portfolio").select("id, inception_date").execute()
+    return {
+        row["id"]: date.fromisoformat(row["inception_date"])
+        for row in res.data
+        if row.get("inception_date")
+    }
+
+
 # ─── Calcul des snapshots ─────────────────────────────────────────────────────
 
 def compute_snapshots(
     positions: dict[str, dict[str, float]],
     prices: pd.DataFrame,
     initial_capitals: dict[str, float],
+    inceptions: dict[str, date],
 ) -> list[dict]:
     """
     Calcule value_usd, perf_cumul, vol_30d/90j (annualisées), max_drawdown
     pour chaque (portfolio_id, date) où toutes les données sont disponibles.
     Utilise initial_capitals[portfolio_id] pour perf_cumul (capital propre à chaque portefeuille).
     Lève RuntimeError si un ticker requis est absent de price_daily.
+
+    GARDE-FOU INCEPTION (S2) : aucun snapshot n'est jamais produit avant
+    inceptions[portfolio_id]. Sur les données actuelles (≥ 1er juin 2026) ce filtre
+    est sans effet ; il protège contre le backfill historique sectoriel
+    (backfill_sectoral.py) qui ajoute des prix pré-inception pour des tickers aussi
+    détenus par le portefeuille personnel — sans ce garde-fou, des snapshots
+    pré-inception fausseraient sa base 100.
     """
     rows: list[dict] = []
 
     for pid, pos in positions.items():
         tickers = list(pos.keys())
         initial = initial_capitals.get(pid, INITIAL_CAPITAL_USD)
+        inception = inceptions.get(pid)
 
         missing_tickers = [t for t in tickers if t not in prices.columns]
         if missing_tickers:
@@ -152,6 +200,9 @@ def compute_snapshots(
         # Dates avec données complètes pour ce portefeuille
         mask = prices[tickers].notna().all(axis=1)
         valid_dates = prices.index[mask]
+        # Garde-fou inception : on n'évalue jamais avant la date d'inception
+        if inception is not None:
+            valid_dates = valid_dates[valid_dates >= inception]
         if len(valid_dates) == 0:
             logger.warning("Aucune date valide pour le portefeuille %s.", pid)
             continue
@@ -265,6 +316,7 @@ def main() -> None:
     prices           = _load_prices(db)
     positions        = _load_positions(db)
     initial_capitals = _load_initial_capitals(db)
+    inceptions       = _load_inceptions(db)
 
     if prices.empty:
         logger.error("price_daily vide — impossible de calculer les snapshots.")
@@ -280,7 +332,7 @@ def main() -> None:
         len(positions), len(prices.index),
     )
     try:
-        snapshot_rows = compute_snapshots(positions, prices, initial_capitals)
+        snapshot_rows = compute_snapshots(positions, prices, initial_capitals, inceptions)
     except RuntimeError as exc:
         logger.error("Erreur de calcul des snapshots : %s", exc)
         sys.exit(1)

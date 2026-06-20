@@ -125,6 +125,12 @@ export type MarketCapRow = {
   shares_date: string;
   shares_source: string;
   market_cap_usd: number;
+  // Variations multi-horizons (S2), en jours de cotation — null si historique insuffisant
+  change_1d: number | null;
+  change_1w: number | null;
+  change_1m: number | null;
+  change_1y: number | null;          // calculé, non affiché en V1 (réservé infobulle/usage futur)
+  change_1w_extreme: boolean;        // variation hebdo > ±150 % → marqueur de vérification (jamais masqué)
 };
 
 export type MarketCapData = {
@@ -137,6 +143,25 @@ export type MarketCapData = {
 const FICTIF_IDS = ['defensif', 'dynamique', 'agressif'] as const;
 const BENCHMARK_TICKER = 'QNTM.L';
 const SECTORAL_TICKERS = ['GOOGL', 'IBM', 'IONQ', 'QBTS', 'LAES', 'INFQ', 'RGTI', 'QUBT', 'QNT', 'XNDU', 'ARQQ', 'HQ'] as const;
+
+// Fenêtre de lecture par ticker pour les variations : 260 séances couvrent l'offset
+// annuel (252) et restent SOUS le plafond PostgREST (1000 lignes/réponse). Une lecture
+// par ticker, bornée, garantit qu'aucune donnée n'est tronquée silencieusement, quelle
+// que soit la croissance de l'historique — cf. backfill_sectoral.py / check_changes.py.
+const SECTORAL_WINDOW = 260;
+
+// Seuil d'alerte sur la variation hebdomadaire — miroir de check_changes.py.
+// Au-delà, on signale (⚑) sans masquer ; l'humain tranche vraie variation vs artefact.
+const WEEKLY_ALERT_THRESHOLD = 1.5; // ±150 %
+
+// Variation sur `offset` séances depuis une série triée par date croissante. null si court.
+function computeChange(closesAsc: number[], offset: number): number | null {
+  if (closesAsc.length <= offset) return null;
+  const last = closesAsc[closesAsc.length - 1];
+  const past = closesAsc[closesAsc.length - 1 - offset];
+  if (!past) return null;
+  return last / past - 1;
+}
 
 // ─── Homepage ─────────────────────────────────────────────────────────────────
 
@@ -501,7 +526,7 @@ export async function fetchPersonnelPublicData(): Promise<PersonnelPublicData | 
 // ─── Market caps sectorielles ─────────────────────────────────────────────────
 
 export async function fetchMarketCapsData(): Promise<MarketCapData | null> {
-  const [assetsRes, sharesRes, pricesRes] = await Promise.all([
+  const [assetsRes, sharesRes] = await Promise.all([
     supabase
       .from('asset')
       .select('ticker, name, category')
@@ -511,14 +536,33 @@ export async function fetchMarketCapsData(): Promise<MarketCapData | null> {
       .select('ticker, shares, as_of_date, source')
       .in('ticker', [...SECTORAL_TICKERS])
       .order('as_of_date', { ascending: false }),
-    supabase
-      .from('price_daily')
-      .select('ticker, adj_close, date')
-      .in('ticker', [...SECTORAL_TICKERS])
-      .order('date', { ascending: false }),
   ]);
 
-  if (assetsRes.error || sharesRes.error || pricesRes.error) return null;
+  if (assetsRes.error || sharesRes.error) return null;
+
+  // Prix : une requête bornée PAR ticker (≤ 260 lignes) — jamais tronqué par le
+  // plafond PostgREST de 1000 lignes/réponse (≠ un .in() global qui le dépasserait).
+  const priceResults = await Promise.all(
+    SECTORAL_TICKERS.map(ticker =>
+      supabase
+        .from('price_daily')
+        .select('adj_close, date')
+        .eq('ticker', ticker)
+        .order('date', { ascending: false })
+        .limit(SECTORAL_WINDOW)
+    )
+  );
+
+  // Séries triées par date CROISSANTE par ticker (pour le calcul des offsets)
+  const closesByTicker = new Map<string, { date: string; adj_close: number }[]>();
+  SECTORAL_TICKERS.forEach((ticker, i) => {
+    const res = priceResults[i];
+    if (res.error || !res.data) { closesByTicker.set(ticker, []); return; }
+    closesByTicker.set(
+      ticker,
+      [...res.data].reverse().map(r => ({ date: r.date, adj_close: Number(r.adj_close) })),
+    );
+  });
 
   // Dernière ligne par ticker (ORDER BY DESC → premier occurrence = la plus récente)
   const latestShares = new Map<string, { shares: number; date: string; source: string }>();
@@ -532,28 +576,31 @@ export async function fetchMarketCapsData(): Promise<MarketCapData | null> {
     }
   }
 
-  const latestPrices = new Map<string, { price: number; date: string }>();
-  for (const row of pricesRes.data ?? []) {
-    if (!latestPrices.has(row.ticker)) {
-      latestPrices.set(row.ticker, { price: Number(row.adj_close), date: row.date });
-    }
-  }
-
   const rows: MarketCapRow[] = [];
   for (const asset of assetsRes.data ?? []) {
     const shares = latestShares.get(asset.ticker);
-    const price = latestPrices.get(asset.ticker);
-    if (!shares || !price) continue;
+    const series = closesByTicker.get(asset.ticker) ?? [];
+    if (!shares || series.length === 0) continue;
+
+    const closesAsc = series.map(s => s.adj_close);
+    const latest = series[series.length - 1];
+    const change_1w = computeChange(closesAsc, 5);
+
     rows.push({
       ticker: asset.ticker,
       name: asset.name,
       category: asset.category,
-      adj_close: price.price,
-      price_date: price.date,
+      adj_close: latest.adj_close,
+      price_date: latest.date,
       shares: shares.shares,
       shares_date: shares.date,
       shares_source: shares.source,
-      market_cap_usd: shares.shares * price.price,
+      market_cap_usd: shares.shares * latest.adj_close,
+      change_1d: computeChange(closesAsc, 1),
+      change_1w,
+      change_1m: computeChange(closesAsc, 21),
+      change_1y: computeChange(closesAsc, 252),
+      change_1w_extreme: change_1w !== null && Math.abs(change_1w) > WEEKLY_ALERT_THRESHOLD,
     });
   }
 

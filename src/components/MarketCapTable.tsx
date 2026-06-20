@@ -1,5 +1,5 @@
 import type { MarketCapData } from '@/lib/api';
-import { formatMarketCap, formatDateCompact } from '@/lib/format';
+import { formatMarketCap, formatDateCompact, formatPct } from '@/lib/format';
 import { t, TICKER_NOTES, TICKER_MODALITIES } from '@/i18n/t';
 
 // Seuil de détection "données anciennes" : 150 jours ≈ 5 mois (ex. LAES au 31/12/2025)
@@ -8,6 +8,23 @@ const STALE_MS = 1000 * 60 * 60 * 24 * 150;
 function isStale(dateStr: string): boolean {
   const [y, m, d] = dateStr.split('-').map(Number);
   return Date.now() - new Date(y, m - 1, d).getTime() > STALE_MS;
+}
+
+// Cellule de variation : verte/rouge foncé, « — » si null. `alert` ajoute le ⚑
+// (variation exceptionnelle) avec infobulle anti-hype — visible mais discret.
+function ChangeCell({ value, alert = false }: { value: number | null; alert?: boolean }) {
+  if (value == null) {
+    return <td className="right mono mcap-change">—</td>;
+  }
+  const cls = value >= 0 ? 'mcap-change-pos' : 'mcap-change-neg';
+  return (
+    <td className={`right mono mcap-change ${cls}`}>
+      {formatPct(value)}
+      {alert && (
+        <span className="mcap-alert" title={t.secteur.variationExceptionnelle}>⚑</span>
+      )}
+    </td>
+  );
 }
 
 export default function MarketCapTable({ data }: { data: MarketCapData }) {
@@ -38,7 +55,9 @@ export default function MarketCapTable({ data }: { data: MarketCapData }) {
                 <th>{t.secteur.colonnes.ticker}</th>
                 <th className="right">{t.secteur.colonnes.cours}</th>
                 <th className="right">{t.secteur.colonnes.capitalisation}</th>
-                <th className="right">{t.secteur.colonnes.actionsAu}</th>
+                <th className="right">{t.secteur.colonnes.jour}</th>
+                <th className="right">{t.secteur.colonnes.semaine}</th>
+                <th className="right">{t.secteur.colonnes.mois}</th>
               </tr>
             </thead>
             <tbody>
@@ -46,6 +65,10 @@ export default function MarketCapTable({ data }: { data: MarketCapData }) {
                 const stale = isStale(row.shares_date);
                 const note = TICKER_NOTES[row.ticker];
                 const modality = TICKER_MODALITIES[row.ticker];
+                // Fraîcheur du nb d'actions : déplacée en infobulle sur la market cap
+                const mcapTitle =
+                  `${t.secteur.actionsTooltip} ${formatDateCompact(row.shares_date)}` +
+                  (stale ? ` ${t.secteur.actionsTooltipStale}` : '');
                 return (
                   <tr key={row.ticker}>
                     <td className="name">
@@ -55,13 +78,13 @@ export default function MarketCapTable({ data }: { data: MarketCapData }) {
                     </td>
                     <td className="ticker">{row.ticker}</td>
                     <td className="right mono">${row.adj_close.toFixed(2)}</td>
-                    <td className="right mono">{formatMarketCap(row.market_cap_usd)}</td>
-                    <td className={`right mcap-date${stale ? ' mcap-date-stale' : ''}`}>
-                      {stale && (
-                        <span className="mcap-stale-icon" title="Données datant de plus de 5 mois">⚠ </span>
-                      )}
-                      {formatDateCompact(row.shares_date)}
+                    <td className="right mono mcap-mcap-cell" title={mcapTitle}>
+                      {stale && <span className="mcap-stale-icon" aria-hidden="true">⚠ </span>}
+                      {formatMarketCap(row.market_cap_usd)}
                     </td>
+                    <ChangeCell value={row.change_1d} />
+                    <ChangeCell value={row.change_1w} alert={row.change_1w_extreme} />
+                    <ChangeCell value={row.change_1m} />
                   </tr>
                 );
               })}

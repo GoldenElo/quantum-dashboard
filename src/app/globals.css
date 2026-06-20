@@ -743,6 +743,26 @@ button { cursor: pointer; }
   font-style: italic;
 }
 
+.mcap-change {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.mcap-change-pos { color: var(--positive); }
+.mcap-change-neg { color: var(--negative); }
+
+/* Infobulle de fraîcheur sur la market cap */
+.mcap-mcap-cell { cursor: help; }
+
+/* Marqueur de variation exceptionnelle — visible mais discret (anti-hype) */
+.mcap-alert {
+  margin-left: 0.35em;
+  color: var(--or);
+  cursor: help;
+  font-size: 0.85em;
+  vertical-align: baseline;
+}
+
 .tech-tag {
   display: inline-block;
   font-size: 0.62rem;

@@ -7,12 +7,21 @@ export const fr = {
       cours: 'Cours',
       capitalisation: 'Capitalisation',
       actionsAu: 'Actions au',
+      jour: 'Jour',
+      semaine: 'Semaine',
+      mois: 'Mois',
     },
     totalPurePlayers: {
       libelle: 'Capitalisation totale pure-players',
       note: 'Hors Alphabet · IBM (géants diversifiés)',
     },
     disclaimer: "Capitalisations indicatives, calculées sur le dernier nombre d'actions connu. À titre informatif.",
+    // Infobulle sur la capitalisation : transparence sur la fraîcheur du nombre d'actions
+    actionsTooltip: "Nombre d'actions au",
+    actionsTooltipStale: "(donnée datant de plus de 5 mois)",
+    // Infobulle sur une variation hebdomadaire exceptionnelle (anti-hype)
+    variationExceptionnelle:
+      'Variation exceptionnelle — forte volatilité, cotation récente (SPAC). À interpréter avec prudence.',
   },
 } as const
 
