@@ -1,5 +1,3 @@
-import Image from 'next/image';
-
 const YOUTUBE_URL = 'https://www.youtube.com/@InvestisseuseQuantique';
 
 export default function SiteHeader() {
@@ -9,14 +7,6 @@ export default function SiteHeader() {
 
         {/* Marque — gauche */}
         <a href="/" className="site-header-brand" aria-label="L'Investisseuse Quantique — accueil">
-          <Image
-            src="/logo.png"
-            alt="L'Investisseuse Quantique"
-            width={160}
-            height={40}
-            priority
-            className="site-header-logo"
-          />
           <span className="site-header-name">L&apos;Investisseuse Quantique</span>
         </a>
 

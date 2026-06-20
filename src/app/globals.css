@@ -53,7 +53,7 @@ button { cursor: pointer; }
   height: 58px;
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .site-header-brand {
@@ -62,13 +62,6 @@ button { cursor: pointer; }
   gap: 0.7rem;
   flex-shrink: 0;
   text-decoration: none;
-}
-
-.site-header-logo {
-  height: 36px;
-  width: auto;
-  object-fit: contain;
-  display: block;
 }
 
 .site-header-name {
@@ -127,8 +120,12 @@ button { cursor: pointer; }
   color: var(--accent-blue);
 }
 
+/* Sous 420px : titre légèrement resserré pour cohabiter avec le bouton YouTube */
 @media (max-width: 420px) {
-  .site-header-name { display: none; }
+  .site-header-name {
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+  }
 }
 
 /* ── Layout shell ── */
