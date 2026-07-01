@@ -41,9 +41,13 @@ from dotenv import load_dotenv
 from supabase import create_client
 
 from market_data import fetch_revenue_ttm, fetch_fx_to_usd
+from guards import is_manual_source, emit_warning
 
 load_dotenv(dotenv_path="../.env.local")
 load_dotenv()
+
+_RECOUP_ALERT = 0.05   # écart CA rapporté vs Σ4T > 5 % → alerte CI (recoupement douteux)
+_CONTRADICT_ALERT = 0.15  # yfinance vs surcharge manuelle > 15 % → alerte CI
 
 # 12 sociétés sectorielles — QNTM.L, QQQ (ETF) et NVDA (infrastructure) exclus.
 TICKERS = ["GOOGL", "IBM", "IONQ", "QBTS", "LAES", "INFQ", "RGTI", "QUBT", "QNT",
@@ -95,11 +99,60 @@ def main() -> None:
             errors.append(ticker)
             print(f"  ✗ {ticker} — {exc}", file=sys.stderr)
 
+    # ── Garde-fous : règle d'or + alertes CI ──────────────────────────────────
+    # Lecture des lignes existantes (peut échouer si la table n'existe pas encore →
+    # on continue sans garde-fou de non-écrasement, l'upsert plus bas tranchera).
+    existing: list[dict] = []
+    try:
+        existing = (
+            db.table("revenue_ttm")
+            .select("ticker, as_of_date, revenue_reported, source")
+            .in_("ticker", TICKERS)
+            .order("as_of_date", desc=True)
+            .execute()
+        ).data or []
+    except Exception:  # noqa: BLE001
+        existing = []
+
+    manual_pks = {(r["ticker"], r["as_of_date"]) for r in existing if is_manual_source(r["source"])}
+    latest_manual: dict[str, dict] = {}
+    for r in existing:
+        if is_manual_source(r["source"]):
+            latest_manual.setdefault(r["ticker"], r)
+
+    # RÈGLE D'OR : yfinance ne remplace jamais une surcharge manuelle (même PK).
+    safe_rows: list[dict] = []
+    for r in rows:
+        if (r["ticker"], r["as_of_date"]) in manual_pks:
+            print(f"  ⛔ {r['ticker']} @ {r['as_of_date']} — surcharge manuelle sanctuarisée, valeur yfinance ignorée.")
+        else:
+            safe_rows.append(r)
+
+    # Alertes CI — recoupement TTM douteux + contradiction vs surcharge SEC.
+    for r in rows:
+        t = r["ticker"]
+        rep, s4 = r["revenue_reported"], r["revenue_sum_4q"]
+        if rep and s4 and rep != 0 and abs(s4 - rep) / abs(rep) > _RECOUP_ALERT:
+            emit_warning(
+                f"CA {t} — recoupement douteux",
+                f"rapporté {rep/1e6:.0f} M$ vs Σ4T {s4/1e6:.0f} M$ "
+                f"(écart {(s4-rep)/abs(rep)*100:+.1f} % > 5 %) — confronter aux états financiers SEC.",
+            )
+        mo = latest_manual.get(t)
+        if mo and rep and mo.get("revenue_reported"):
+            mv = float(mo["revenue_reported"])
+            if mv != 0 and abs(rep - mv) / abs(mv) > _CONTRADICT_ALERT:
+                emit_warning(
+                    f"CA {t} — contredit surcharge",
+                    f"yfinance {rep/1e6:.0f} M$ vs surcharge {mv/1e6:.0f} M$ ({mo['source']}) — "
+                    f"écart {(rep-mv)/abs(mv)*100:+.1f} %. Re-vérifier le dépôt SEC et ajuster si besoin.",
+                )
+
     # Upsert atomique : on n'écrit rien si aucune ligne n'a pu être constituée.
-    if rows:
+    if safe_rows:
         try:
-            db.table("revenue_ttm").upsert(rows).execute()
-            print(f"\n✓ {len(rows)} ligne(s) upsertée(s) dans revenue_ttm.")
+            db.table("revenue_ttm").upsert(safe_rows).execute()
+            print(f"\n✓ {len(safe_rows)} ligne(s) upsertée(s) dans revenue_ttm.")
         except Exception as exc:  # noqa: BLE001
             print(
                 f"\n✗ Échec de l'upsert dans revenue_ttm : {exc}\n"

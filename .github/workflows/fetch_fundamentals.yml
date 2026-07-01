@@ -1,0 +1,56 @@
+name: Fetch fondamentaux (actions + CA) trimestriel
+
+# Rafraîchit le nombre d'actions en circulation (shares_outstanding) et le chiffre
+# d'affaires TTM (revenue_ttm) une fois par trimestre, après la saison des résultats.
+# Approche « auto avec garde-fous » :
+#   - yfinance ne met à jour que les lignes dont la source est 'yfinance' ;
+#     les surcharges manuelles ('SEC…' / 'annual-report') sont sanctuarisées (règle d'or).
+#   - tout écart suspect est signalé en ::warning:: dans les logs GitHub (voir CLAUDE.md).
+# Idempotent (upsert partout) ; relançable manuellement via workflow_dispatch.
+
+on:
+  schedule:
+    # Le 1er de février, mai, août, novembre à 06h00 UTC — après la saison des résultats
+    # du trimestre précédent. Cadence trimestrielle (les dépôts SEC ne bougent pas plus souvent).
+    - cron: '0 6 1 2,5,8,11 *'
+  workflow_dispatch:
+
+jobs:
+  fundamentals:
+    name: Fetch + upsert shares_outstanding & revenue_ttm
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: scripts/requirements.txt
+
+      - name: Installer les dépendances
+        run: pip install -r scripts/requirements.txt
+
+      # Nombre d'actions — règle d'or + alertes variation/contradiction (::warning::)
+      - name: Fetch shares outstanding
+        working-directory: scripts
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python fetch_shares.py
+
+      # Chiffre d'affaires TTM — règle d'or + alertes recoupement/contradiction (::warning::)
+      - name: Fetch revenue TTM
+        working-directory: scripts
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python fetch_revenue.py
+
+      - name: Signaler l'échec
+        if: failure()
+        run: |
+          echo "::error title=Fetch fondamentaux échoué::fetch_shares.py ou fetch_revenue.py a échoué le $(date -u +%Y-%m-%d). Vérifier les logs et relancer."

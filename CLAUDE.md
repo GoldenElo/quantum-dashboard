@@ -109,6 +109,32 @@ indépendants de l'app Next.js. GitHub Actions les exécute directement.
   - envoyer une alerte (GitHub Actions notice / email) si un ticker échoue après les réessais ;
   - **ne jamais écrire un snapshot partiel** — upsert atomique ou rollback complet pour la journée.
 
+### Cron trimestriel des fondamentaux (`fetch_fundamentals.yml`)
+
+Rafraîchit **shares_outstanding** (actions) et **revenue_ttm** (chiffre d'affaires TTM),
+données trimestrielles distinctes du cron quotidien des prix. Lance `fetch_shares.py`
+puis `fetch_revenue.py`. Idempotent (upsert), échoue proprement (annotation `::error::`).
+
+- **Cadence** : `cron '0 6 1 2,5,8,11 *'` — le 1er de février / mai / août / novembre à 06h00 UTC,
+  après la saison des résultats du trimestre précédent. Relançable via `workflow_dispatch`.
+- **RÈGLE D'OR — non-écrasement des surcharges manuelles** : une ligne dont la `source`
+  commence par `'SEC'` ou `'annual-report'` est **sanctuarisée**. yfinance ne met à jour
+  que les lignes `source = 'yfinance'`. Implémenté dans `scripts/guards.py` (`is_manual_source`)
+  et appliqué par les deux scripts (filtre sur la PK `(ticker, as_of_date)` avant upsert).
+  Exemple protégé : la surcharge QNT en Up-C (322 M actions pleinement diluées).
+- **Alertes CI** (`::warning::` dans les logs GitHub — à vérifier d'un coup d'œil sur SEC.gov) :
+  - **Actions — variation forte** : nb d'actions yfinance varie de > ±15 % vs la valeur précédente
+    (offering / dilution / split possible).
+  - **Actions — contredit surcharge** : yfinance diverge de > ±15 % d'une surcharge SEC existante.
+    Peut être **normal et permanent** (ex. QNT : yfinance ne voit que le flottant Class A ≈ 10 %
+    du total Up-C → écart ~-90 % attendu à chaque exécution) ; sinon re-vérifier le dépôt SEC.
+  - **CA — recoupement douteux** : écart `|Σ4T − rapporté| / rapporté` > 5 % (INFQ, QNT, XNDU
+    au 2026-07-01) — confronter aux états financiers officiels.
+  - **CA — contredit surcharge** : yfinance diverge de > ±15 % d'une surcharge SEC/annual-report.
+  Les alertes **signalent sans masquer** — l'humain tranche et surcharge en base si besoin
+  (`source = 'SEC 10-Q YYYY-MM-DD'` avec une `as_of_date` récente → prime via ORDER BY DESC).
+- **Secrets GitHub requis** : `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (identiques aux autres crons).
+
 ## Schéma SQL (Supabase)
 
 ```sql

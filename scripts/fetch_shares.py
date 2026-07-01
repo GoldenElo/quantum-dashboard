@@ -23,6 +23,7 @@ from dotenv import load_dotenv
 from supabase import create_client
 
 from market_data import check_ticker_coverage, fetch_shares_outstanding
+from guards import is_manual_source, emit_warning
 
 load_dotenv(dotenv_path="../.env.local")
 load_dotenv()
@@ -36,7 +37,8 @@ TICKERS = ["GOOGL", "IBM", "IONQ", "QBTS", "LAES", "INFQ", "RGTI", "QUBT", "QNT"
 _REF_SHARES: dict[str, tuple[int, str]] = {
     "IONQ": (373_000_000, "10-Q Q1 2026 (31/03/2026)"),
 }
-_ALERT_THRESHOLD = 0.10  # ±10 % → AVERTISSEMENT
+_ALERT_THRESHOLD = 0.10  # ±10 % → AVERTISSEMENT (écart vs référence primaire connue)
+_VARIATION_ALERT = 0.15  # ±15 % → alerte CI (variation vs valeur précédente / contradiction surcharge)
 
 # Notes de vigilance — affichées dans le tableau de contrôle (stderr), pas en base.
 # Distinct de _MANUAL_OVERRIDES : ce sont des alertes éditoriales, pas des corrections de données.
@@ -187,10 +189,61 @@ def main() -> None:
             print(_CAUTION_NOTES[r["ticker"]], file=sys.stderr)
         print()
 
+    # ── 4d. Garde-fous : règle d'or + alertes CI ──────────────────────────────
+    # Lecture des lignes existantes pour (a) sanctuariser les surcharges manuelles,
+    # (b) détecter variation forte vs valeur précédente, (c) contradiction vs surcharge.
+    existing = (
+        db.table("shares_outstanding")
+        .select("ticker, as_of_date, shares, source")
+        .in_("ticker", TICKERS)
+        .order("as_of_date", desc=True)
+        .execute()
+    ).data or []
+
+    manual_pks = {(r["ticker"], r["as_of_date"]) for r in existing if is_manual_source(r["source"])}
+    latest_any: dict[str, dict] = {}     # dernière ligne connue par ticker (toutes sources)
+    latest_manual: dict[str, dict] = {}  # dernière surcharge manuelle par ticker
+    for r in existing:
+        latest_any.setdefault(r["ticker"], r)
+        if is_manual_source(r["source"]):
+            latest_manual.setdefault(r["ticker"], r)
+
+    # RÈGLE D'OR : yfinance ne remplace jamais une surcharge manuelle (même PK).
+    safe_fetched: list[dict] = []
+    for r in fetched:
+        if (r["ticker"], r["as_of_date"]) in manual_pks:
+            print(f"  ⛔ {r['ticker']} @ {r['as_of_date']} — surcharge manuelle sanctuarisée, valeur yfinance ignorée.")
+        else:
+            safe_fetched.append(r)
+
+    # Alertes CI (::warning::) — signaler sans masquer, l'humain vérifie sur SEC.gov.
+    for r in fetched:
+        t, yf_shares = r["ticker"], r["shares"]
+        prev = latest_any.get(t)
+        if prev and prev["source"].startswith("yfinance") and prev["as_of_date"] != r["as_of_date"]:
+            pv = int(prev["shares"])
+            if pv > 0 and abs(yf_shares - pv) / pv > _VARIATION_ALERT:
+                emit_warning(
+                    f"Actions {t} — variation forte",
+                    f"{yf_shares/1e6:.1f} M vs précédent {pv/1e6:.1f} M "
+                    f"({(yf_shares-pv)/pv*100:+.1f} % depuis {prev['as_of_date']}) — "
+                    f"vérifier offering / dilution / split sur SEC.gov.",
+                )
+        mo = latest_manual.get(t)
+        if mo:
+            mv = int(mo["shares"])
+            if mv > 0 and abs(yf_shares - mv) / mv > _VARIATION_ALERT:
+                emit_warning(
+                    f"Actions {t} — contredit surcharge",
+                    f"yfinance {yf_shares/1e6:.1f} M vs surcharge {mv/1e6:.1f} M ({mo['source']}) — "
+                    f"écart {(yf_shares-mv)/mv*100:+.1f} %. Peut être normal (ex. QNT Up-C, flottant "
+                    f"Class A) ; sinon re-vérifier le dépôt SEC et ajuster la surcharge.",
+                )
+
     # ── 5. Upsert ─────────────────────────────────────────────────────────────
-    if fetched:
-        db.table("shares_outstanding").upsert(fetched).execute()
-        print(f"✓ {len(fetched)} ligne(s) yfinance upsertée(s) dans shares_outstanding.")
+    if safe_fetched:
+        db.table("shares_outstanding").upsert(safe_fetched).execute()
+        print(f"✓ {len(safe_fetched)} ligne(s) yfinance upsertée(s) dans shares_outstanding.")
     if _MANUAL_OVERRIDES:
         db.table("shares_outstanding").upsert(_MANUAL_OVERRIDES).execute()
         print(f"✓ {len(_MANUAL_OVERRIDES)} surcharge(s) manuelle(s) upsertée(s) (prime sur yfinance via as_of_date).")
