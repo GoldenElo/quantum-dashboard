@@ -10,6 +10,26 @@ export const fr = {
       jour: 'Jour',
       semaine: 'Semaine',
       mois: 'Mois',
+      ps: 'P/S',
+    },
+    // Ratio P/S — affichage à deux niveaux. Les DEUX marqueurs sont de nature
+    // distincte et ne doivent pas se confondre visuellement :
+    //   ⚠ = données fiables mais valorisation extrême · ‡ = données incertaines.
+    ps: {
+      insignifiant: 'n.s.',
+      extremeMarker: '⚠',
+      incertainMarker: '‡',
+      extremeTooltip:
+        'P/S supérieur à 200 — valorisation très élevée rapportée au chiffre d’affaires actuel, ' +
+        'caractéristique d’un secteur en phase pré-revenus. À interpréter comme un signal, pas comme une erreur.',
+      partielTooltip:
+        'Estimation — chiffre d’affaires partiel, société cotée depuis peu (moins de 4 trimestres publiés). ' +
+        'À ne pas interpréter comme un ratio ferme.',
+      nonRecoupeTooltip:
+        'Estimation — chiffre d’affaires non recoupé (détail trimestriel indisponible). ' +
+        'À ne pas interpréter comme un ratio ferme.',
+      insignifiantTooltip:
+        'Non significatif — chiffre d’affaires quasi nul, le ratio n’a pas de sens à ce stade.',
     },
     totalPurePlayers: {
       libelle: 'Capitalisation totale pure-players',

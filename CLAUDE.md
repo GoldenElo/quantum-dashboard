@@ -294,9 +294,42 @@ Le chiffre d'actions (17,4 M, très bas) est à surveiller — vérifier dilutio
       ET côté lecteur, infobulle anti-hype « Variation exceptionnelle — forte volatilité, cotation
       récente (SPAC). À interpréter avec prudence. »). **Signale sans masquer** — l'humain tranche.
 
-**État actuel (2026-06-20) : V1.5 + S1 (market cap, 12 sociétés sectorielles affichées) + S2
-(variations multi-horizons). Date d'inception portefeuilles : `2026-06-01`. Historique sectoriel
-backfillé depuis `2025-06-01` (variations uniquement, distinct de l'inception).**
+12. 🚧 S-P/S : ratio price-to-sales sectoriel (fondation de données #3).
+    - **Migration 007** (`supabase/migrations/007_revenue_ttm.sql`) : table `revenue_ttm`
+      (CA TTM par ticker, donnée externe comme `shares_outstanding`). Conserve les DEUX mesures
+      du TTM — `revenue_reported` (totalRevenue) ET `revenue_sum_4q` (somme 4 trimestres) — pour
+      le **recoupement anti-erreur**. `financial_currency` + `fx_rate` stockés (voir règle devise).
+      **À appliquer manuellement dans le dashboard Supabase avant `fetch_revenue.py`.**
+    - `market_data.fetch_revenue_ttm()` encapsule yfinance (totalRevenue + somme trimestres +
+      `financialCurrency`) ; `market_data.fetch_fx_to_usd()` fournit le taux de clôture natif→USD.
+    - `scripts/fetch_revenue.py` : persistance (upsert atomique, échec gracieux si migration absente).
+    - `scripts/check_ps.py` : tableau de contrôle **lecture seule** — recoupement des deux mesures
+      côte à côte sur chaque ligne + P/S. Ne stocke rien (recalcule depuis la source, comme
+      `check_changes.py`).
+    - **P/S calculé à la volée, jamais stocké** (principe « ne jamais stocker le calculable »,
+      cohérent market cap S1 / variations S2). P/S = market_cap (USD) / CA (USD).
+    - **RÈGLE DEVISE (dure) :** `totalRevenue` yfinance est dans la devise de reporting
+      (`financialCurrency`), pas forcément en USD. Convertir le CA en USD (`revenue × fx_rate`)
+      **avant** tout P/S — ne jamais mélanger market cap USD et CA en devise étrangère. Constat
+      2026-07-01 : les 12 sociétés rapportent en USD (SEC foreign private issuers, y compris XNDU/CA,
+      ARQQ/UK, LAES/CH, HQ/SG) → `fx_rate = 1.0`. La machinerie de conversion existe et est prouvée
+      (CAD/GBP/CHF/EUR) pour absorber un futur ticker non-USD sans refonte.
+    - **Recoupement STRICT à 5 %** : écart `|Σ4T − rapporté| / rapporté` > 5 % → marqueur ⚑.
+      Au 2026-07-01 : INFQ (-19,6 %), QNT (+42,4 %), XNDU (-5,3 %, marginal) signalés.
+    - **Affichage à deux niveaux (garde-fou anti-hype) :** P/S **ferme** uniquement si 4 trimestres
+      cotés + devise convertie (GOOGL, IBM, IONQ, QBTS, RGTI, QUBT). Sinon marqueur distinct `‡`
+      + infobulle (« estimation — CA partiel, société cotée depuis peu » / « CA non recoupé ») —
+      **jamais un ratio ferme**. IPO récentes à TTM partiel : INFQ, QNT, HQ. CA quasi nul → `n.s.`
+      (non significatif, ex. HQ). **Signale sans masquer** — l'humain tranche.
+    - **⚠ LAES — vérification annuelle manuelle requise :** yfinance ne fournit pas le détail
+      trimestriel de LAES (SEALSQ) → recoupement impossible, P/S non ferme (`‡`). Vérifier le CA
+      dans le rapport annuel SEALSQ et surcharger `revenue_ttm` (source `annual-report`) le moment venu.
+    - **ARQQ** conserve son avertissement quantum washing (recoupement également impossible via yfinance).
+
+**État actuel (2026-07-01) : V1.5 + S1 (market cap, 12 sociétés sectorielles) + S2 (variations
+multi-horizons) + S-P/S en cours (migration 007 + scripts revenue/P·S écrits, chiffres validés,
+affichage frontend en attente de feu vert). Date d'inception portefeuilles : `2026-06-01`. Historique
+sectoriel backfillé depuis `2025-06-01`.**
 
 **Checklist de mise en service V1.5 (à faire manuellement) :**
 1. Appliquer la migration `supabase/migrations/003_v1_5_personal_portfolio.sql` dans le dashboard Supabase.

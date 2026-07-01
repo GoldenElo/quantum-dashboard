@@ -1,5 +1,5 @@
-import type { MarketCapData } from '@/lib/api';
-import { formatMarketCap, formatDateCompact, formatPct } from '@/lib/format';
+import type { MarketCapData, MarketCapRow } from '@/lib/api';
+import { formatMarketCap, formatDateCompact, formatPct, formatRatio } from '@/lib/format';
 import { t, TICKER_NOTES, TICKER_MODALITIES } from '@/i18n/t';
 
 // Seuil de détection "données anciennes" : 150 jours ≈ 5 mois (ex. LAES au 31/12/2025)
@@ -25,6 +25,43 @@ function ChangeCell({ value, alert = false }: { value: number | null; alert?: bo
       )}
     </td>
   );
+}
+
+// Cellule P/S — affichage à DEUX niveaux, marqueurs de nature distincte :
+//   ⚠ (valorisation extrême) sur données FIABLES ≠ ‡ (données incertaines).
+// Un P/S ferme normal s'affiche sans aucun marqueur. « n.s. » / « — » = pas de ratio.
+function PsCell({ row }: { row: MarketCapRow }) {
+  switch (row.ps_status) {
+    case 'none':
+      return <td className="right mono mcap-ps">—</td>;
+    case 'insignificant':
+      return (
+        <td className="right mono mcap-ps mcap-ps-ns" title={t.secteur.ps.insignifiantTooltip}>
+          {t.secteur.ps.insignifiant}
+        </td>
+      );
+    case 'firm':
+      return <td className="right mono mcap-ps">{formatRatio(row.ps_ratio)}</td>;
+    case 'firm_extreme':
+      return (
+        <td className="right mono mcap-ps">
+          {formatRatio(row.ps_ratio)}
+          <span className="mcap-ps-extreme" title={t.secteur.ps.extremeTooltip}>
+            {t.secteur.ps.extremeMarker}
+          </span>
+        </td>
+      );
+    case 'partial':
+    case 'unrecouped': {
+      const tip = row.ps_status === 'partial' ? t.secteur.ps.partielTooltip : t.secteur.ps.nonRecoupeTooltip;
+      return (
+        <td className="right mono mcap-ps mcap-ps-uncertain" title={tip}>
+          {formatRatio(row.ps_ratio)}
+          <span className="mcap-ps-marker">{t.secteur.ps.incertainMarker}</span>
+        </td>
+      );
+    }
+  }
 }
 
 export default function MarketCapTable({ data }: { data: MarketCapData }) {
@@ -55,6 +92,7 @@ export default function MarketCapTable({ data }: { data: MarketCapData }) {
                 <th>{t.secteur.colonnes.ticker}</th>
                 <th className="right">{t.secteur.colonnes.cours}</th>
                 <th className="right">{t.secteur.colonnes.capitalisation}</th>
+                <th className="right">{t.secteur.colonnes.ps}</th>
                 <th className="right">{t.secteur.colonnes.jour}</th>
                 <th className="right">{t.secteur.colonnes.semaine}</th>
                 <th className="right">{t.secteur.colonnes.mois}</th>
@@ -82,6 +120,7 @@ export default function MarketCapTable({ data }: { data: MarketCapData }) {
                       {stale && <span className="mcap-stale-icon" aria-hidden="true">⚠ </span>}
                       {formatMarketCap(row.market_cap_usd)}
                     </td>
+                    <PsCell row={row} />
                     <ChangeCell value={row.change_1d} />
                     <ChangeCell value={row.change_1w} alert={row.change_1w_extreme} />
                     <ChangeCell value={row.change_1m} />

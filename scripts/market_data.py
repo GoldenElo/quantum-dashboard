@@ -180,3 +180,108 @@ def fetch_shares_outstanding(ticker: str) -> dict:
     mrq = info.get("mostRecentQuarter")
     as_of = date.fromtimestamp(mrq) if mrq else date.today()
     return {"shares": int(shares), "as_of_date": as_of, "source": "yfinance"}
+
+
+_REVENUE_ROW_LABELS = ("Total Revenue", "TotalRevenue", "Operating Revenue")
+
+
+@_retry
+def fetch_revenue_ttm(ticker: str) -> dict:
+    """
+    Retourne les DEUX mesures du chiffre d'affaires TTM pour un ticker, afin de
+    permettre le recoupement anti-erreur exigé (jamais une seule source) :
+
+      {
+        'ticker':        str,
+        'reported':      float | None,  # totalRevenue TTM tel que rapporté (info)
+        'sum_4q':        float | None,  # somme des 4 derniers trimestres publiés
+        'quarters_used': int,           # nb de trimestres réellement sommés (0..4)
+        'quarter_dates': list[str],     # dates (fin de trimestre) des trim. sommés, récent → ancien
+        'as_of_date':    date,          # fin du trimestre le plus récent utilisé
+        'source':        'yfinance',
+      }
+
+    `reported` provient de info['totalRevenue'] (TTM constitué côté Yahoo).
+    `sum_4q` est recalculé à partir de l'état de résultat trimestriel — c'est le
+    contrôle indépendant. Un écart notable entre les deux = donnée à confronter.
+
+    Aucune des deux mesures n'est garantie : les IPO récentes cotent < 4 trimestres
+    (quarters_used < 4 → TTM partiel) et certains pure-players pré-revenus n'ont
+    aucun chiffre d'affaires publié (les deux à None, quarters_used = 0).
+    """
+    tk = yf.Ticker(ticker)
+    info = tk.info
+
+    reported_raw = info.get("totalRevenue")
+    reported = float(reported_raw) if reported_raw not in (None, 0) else None
+
+    # État de résultat trimestriel — API récente (quarterly_income_stmt) avec
+    # repli sur l'ancien alias (quarterly_financials).
+    qf = None
+    for attr in ("quarterly_income_stmt", "quarterly_financials"):
+        cand = getattr(tk, attr, None)
+        if cand is not None and not cand.empty:
+            qf = cand
+            break
+
+    quarters: list = []  # [(date, revenue), …]
+    if qf is not None and not qf.empty:
+        label = next((lbl for lbl in _REVENUE_ROW_LABELS if lbl in qf.index), None)
+        if label is not None:
+            row = qf.loc[label]
+            for col, val in row.items():
+                if pd.notna(val):
+                    quarters.append((pd.to_datetime(col).date(), float(val)))
+
+    quarters.sort(key=lambda x: x[0], reverse=True)  # plus récent en premier
+    last4 = quarters[:4]
+    quarters_used = len(last4)
+    sum_4q = float(sum(v for _, v in last4)) if last4 else None
+
+    if last4:
+        as_of = last4[0][0]
+    elif info.get("mostRecentQuarter"):
+        as_of = date.fromtimestamp(info["mostRecentQuarter"])
+    else:
+        as_of = date.today()
+
+    # Devise de reporting des états financiers — DISTINCTE de la devise de cotation
+    # (info['currency']). totalRevenue et les trimestres sont exprimés dans CETTE
+    # devise ; il faut la convertir en USD avant tout P/S (cf. fetch_fx_to_usd).
+    fin_ccy = info.get("financialCurrency")
+
+    return {
+        "ticker":             ticker,
+        "reported":           reported,
+        "sum_4q":             sum_4q,
+        "quarters_used":      quarters_used,
+        "quarter_dates":      [d.isoformat() for d, _ in last4],
+        "as_of_date":         as_of,
+        "financial_currency": fin_ccy,
+        "source":             "yfinance",
+    }
+
+
+@_retry
+def fetch_fx_to_usd(currency: str) -> dict:
+    """
+    Retourne {'rate': float, 'pair': str, 'date': date | None} où `rate` = nombre
+    d'USD pour 1 unité de `currency`, au dernier taux de clôture disponible.
+
+    currency == 'USD' → {'rate': 1.0, 'pair': 'USD', 'date': None} (aucun appel réseau).
+    Sinon, paire yfinance '{CUR}USD=X' (ex. CADUSD=X, GBPUSD=X, CHFUSD=X).
+    Lève ValueError si la paire ne renvoie aucun taux.
+    """
+    cur = currency.upper()
+    if cur == "USD":
+        return {"rate": 1.0, "pair": "USD", "date": None}
+    pair = f"{cur}USD=X"
+    hist = yf.Ticker(pair).history(period="7d")
+    close = hist["Close"].dropna() if hist is not None and not hist.empty else None
+    if close is None or close.empty:
+        raise ValueError(f"Taux de change indisponible pour {pair}")
+    return {
+        "rate": float(close.iloc[-1]),
+        "pair": pair,
+        "date": pd.to_datetime(close.index[-1]).date(),
+    }

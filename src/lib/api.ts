@@ -131,6 +131,16 @@ export type MarketCapRow = {
   change_1m: number | null;
   change_1y: number | null;          // calculé, non affiché en V1 (réservé infobulle/usage futur)
   change_1w_extreme: boolean;        // variation hebdo > ±150 % → marqueur de vérification (jamais masqué)
+  // Ratio P/S (price-to-sales) — market_cap (USD) / CA TTM (USD). Calculé à la volée.
+  ps_ratio: number | null;
+  // Affichage à DEUX niveaux, marqueurs de nature distincte (ne pas confondre) :
+  //   'firm'          → données fiables (4 trim. + devise convertie) → aucun marqueur
+  //   'firm_extreme'  → fiable MAIS P/S > 200 → marqueur ⚠ « valorisation extrême »
+  //   'partial'       → CA partiel (IPO récente, < 4 trim.) → marqueur ‡ (estimation)
+  //   'unrecouped'    → CA non recoupé (détail trimestriel indisponible) → marqueur ‡
+  //   'insignificant' → CA quasi nul, P/S aberrant → « n.s. »
+  //   'none'          → CA indisponible / non calculable → « — »
+  ps_status: 'firm' | 'firm_extreme' | 'partial' | 'unrecouped' | 'insignificant' | 'none';
 };
 
 export type MarketCapData = {
@@ -154,6 +164,12 @@ const SECTORAL_WINDOW = 260;
 // Au-delà, on signale (⚑) sans masquer ; l'humain tranche vraie variation vs artefact.
 const WEEKLY_ALERT_THRESHOLD = 1.5; // ±150 %
 
+// Seuils P/S — miroir de check_ps.py.
+// P/S > 200 sur données fiables → marqueur « valorisation extrême » (secteur pré-revenus).
+const PS_EXTREME_THRESHOLD = 200;
+// P/S > 5000 → non significatif (CA quasi nul), on n'affiche pas de ratio ferme.
+const PS_INSIGNIFICANT_THRESHOLD = 5000;
+
 // Variation sur `offset` séances depuis une série triée par date croissante. null si court.
 function computeChange(closesAsc: number[], offset: number): number | null {
   if (closesAsc.length <= offset) return null;
@@ -161,6 +177,29 @@ function computeChange(closesAsc: number[], offset: number): number | null {
   const past = closesAsc[closesAsc.length - 1 - offset];
   if (!past) return null;
   return last / past - 1;
+}
+
+// P/S = market cap (USD) / CA TTM (USD). Détermine aussi la fiabilité (statut à
+// deux niveaux). Le CA est converti en USD via fx_rate (natif → USD) AVANT le ratio.
+// CA de référence : le rapporté (totalRevenue) en priorité, sinon la somme des 4 trim.
+function computePs(
+  marketCapUsd: number,
+  rev: { revenue_reported: number | null; revenue_sum_4q: number | null; quarters_used: number; fx_rate: number } | undefined,
+): { ratio: number | null; status: MarketCapRow['ps_status'] } {
+  if (!rev) return { ratio: null, status: 'none' };
+  const fx = rev.fx_rate || 1;
+  const reportedUsd = rev.revenue_reported != null ? rev.revenue_reported * fx : null;
+  const sum4qUsd = rev.revenue_sum_4q != null ? rev.revenue_sum_4q * fx : null;
+  const revUsd = reportedUsd ?? sum4qUsd;
+  if (revUsd == null || revUsd <= 0) return { ratio: null, status: 'none' };
+
+  const ratio = marketCapUsd / revUsd;
+  if (ratio > PS_INSIGNIFICANT_THRESHOLD) return { ratio, status: 'insignificant' };
+  if (rev.quarters_used >= 4) {
+    return { ratio, status: ratio > PS_EXTREME_THRESHOLD ? 'firm_extreme' : 'firm' };
+  }
+  if (rev.quarters_used >= 1) return { ratio, status: 'partial' };
+  return { ratio, status: 'unrecouped' }; // CA rapporté mais aucun détail trimestriel
 }
 
 // ─── Homepage ─────────────────────────────────────────────────────────────────
@@ -540,6 +579,34 @@ export async function fetchMarketCapsData(): Promise<MarketCapData | null> {
 
   if (assetsRes.error || sharesRes.error) return null;
 
+  // CA TTM (revenue_ttm) — table optionnelle (migration 007). Si absente ou vide,
+  // le P/S retombe proprement sur 'none' sans casser le tableau des capitalisations.
+  const revenueRes = await supabase
+    .from('revenue_ttm')
+    .select('ticker, as_of_date, revenue_reported, revenue_sum_4q, quarters_used, fx_rate')
+    .in('ticker', [...SECTORAL_TICKERS])
+    .order('as_of_date', { ascending: false });
+
+  // Dernière ligne par ticker (surcharge manuelle SEC prime via as_of_date DESC)
+  const latestRevenue = new Map<string, {
+    revenue_reported: number | null;
+    revenue_sum_4q: number | null;
+    quarters_used: number;
+    fx_rate: number;
+  }>();
+  if (!revenueRes.error) {
+    for (const row of revenueRes.data ?? []) {
+      if (!latestRevenue.has(row.ticker)) {
+        latestRevenue.set(row.ticker, {
+          revenue_reported: row.revenue_reported != null ? Number(row.revenue_reported) : null,
+          revenue_sum_4q: row.revenue_sum_4q != null ? Number(row.revenue_sum_4q) : null,
+          quarters_used: Number(row.quarters_used),
+          fx_rate: row.fx_rate != null ? Number(row.fx_rate) : 1,
+        });
+      }
+    }
+  }
+
   // Prix : une requête bornée PAR ticker (≤ 260 lignes) — jamais tronqué par le
   // plafond PostgREST de 1000 lignes/réponse (≠ un .in() global qui le dépasserait).
   const priceResults = await Promise.all(
@@ -585,6 +652,8 @@ export async function fetchMarketCapsData(): Promise<MarketCapData | null> {
     const closesAsc = series.map(s => s.adj_close);
     const latest = series[series.length - 1];
     const change_1w = computeChange(closesAsc, 5);
+    const market_cap_usd = shares.shares * latest.adj_close;
+    const ps = computePs(market_cap_usd, latestRevenue.get(asset.ticker));
 
     rows.push({
       ticker: asset.ticker,
@@ -595,12 +664,14 @@ export async function fetchMarketCapsData(): Promise<MarketCapData | null> {
       shares: shares.shares,
       shares_date: shares.date,
       shares_source: shares.source,
-      market_cap_usd: shares.shares * latest.adj_close,
+      market_cap_usd,
       change_1d: computeChange(closesAsc, 1),
       change_1w,
       change_1m: computeChange(closesAsc, 21),
       change_1y: computeChange(closesAsc, 252),
       change_1w_extreme: change_1w !== null && Math.abs(change_1w) > WEEKLY_ALERT_THRESHOLD,
+      ps_ratio: ps.ratio,
+      ps_status: ps.status,
     });
   }
 

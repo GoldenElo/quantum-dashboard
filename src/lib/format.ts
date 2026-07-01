@@ -66,6 +66,16 @@ export function formatDateCompact(value: string): string {
   return compactDateFmt.format(new Date(y, m - 1, d));
 }
 
+// Ratio P/S : 1 décimale sous 100 (ex. 5,0 · 77,7), entier au-dessus (ex. 708).
+export function formatRatio(value: number | null | undefined): string {
+  if (value == null) return '—';
+  const decimals = value < 100 ? 1 : 0;
+  return new Intl.NumberFormat('fr-FR', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(value);
+}
+
 export function formatQty(value: number): string {
   return new Intl.NumberFormat('fr-FR', {
     minimumFractionDigits: 2,

@@ -779,3 +779,42 @@ button { cursor: pointer; }
   font-size: 0.7rem;
   color: var(--text-muted);
 }
+
+/* ── Ratio P/S — affichage à deux niveaux ──────────────────────────────────
+   Deux marqueurs de NATURE DISTINCTE, à ne pas confondre visuellement :
+   ⚠ (or) = données fiables mais valorisation extrême — un SIGNAL.
+   ‡ (gris, valeur atténuée) = données incertaines (CA partiel / non recoupé).
+   Un P/S ferme normal s'affiche sans marqueur, couleur de texte standard. */
+.mcap-ps {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Valorisation extrême : données fiables → valeur normale + marqueur or « signal » */
+.mcap-ps-extreme {
+  margin-left: 0.3em;
+  color: var(--or);
+  cursor: help;
+  font-size: 0.85em;
+  vertical-align: baseline;
+}
+
+/* Données incertaines : valeur atténuée (jamais lue comme un ratio ferme) */
+.mcap-ps-uncertain {
+  color: var(--text-muted);
+  font-style: italic;
+  cursor: help;
+}
+
+.mcap-ps-marker {
+  margin-left: 0.2em;
+  font-style: normal;
+  font-size: 0.85em;
+}
+
+/* Non significatif (CA quasi nul) : pas de ratio, mention neutre atténuée */
+.mcap-ps-ns {
+  color: var(--text-muted);
+  font-style: italic;
+  cursor: help;
+}
