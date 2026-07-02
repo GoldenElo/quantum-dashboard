@@ -1,6 +1,6 @@
 export const fr = {
   mur: {
-    titre: 'Le Mur',
+    titre: 'HeatMap',
     soustitre:
       'Capitalisations du secteur quantique — taille de tuile proportionnelle à la capitalisation, ' +
       'couleur selon la variation sur l’horizon choisi.',
@@ -49,7 +49,7 @@ export const fr = {
       'Variation exceptionnelle — forte volatilité, cotation récente. À interpréter avec prudence.',
     marqueursTitre: 'Repères',
     aria: {
-      region: 'Le Mur — treemap des capitalisations du secteur quantique',
+      region: 'HeatMap — treemap des capitalisations du secteur quantique',
       tuile: 'Capitalisation et variation',
     },
   },

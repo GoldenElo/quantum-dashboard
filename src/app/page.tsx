@@ -52,8 +52,8 @@ export default async function HomePage() {
         </p>
       </section>
 
-      {/* Le Mur — treemap sectorielle (ancre de navigation depuis le header) */}
-      <section className="section mur-section" id="mur" aria-label={t.mur.aria.region}>
+      {/* HeatMap — treemap sectorielle (ancre de navigation depuis le header) */}
+      <section className="section mur-section" id="heatmap" aria-label={t.mur.aria.region}>
         <h2 className="section-title">{t.mur.titre}</h2>
         <p className="mur-soustitre">{t.mur.soustitre}</p>
         {/* Disclaimer éditorial non négociable — jamais un signal d'achat/vente */}

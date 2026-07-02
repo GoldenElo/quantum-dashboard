@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 
-// Le Mur a été regroupé sur l'accueil (section #mur). On conserve /mur comme
-// redirection permanente pour ne pas casser les liens/bookmarks existants.
+// La HeatMap sectorielle a été regroupée sur l'accueil (section #heatmap). On
+// conserve /mur comme redirection permanente pour ne pas casser d'anciens liens.
 export default function MurPage() {
-  redirect('/#mur');
+  redirect('/#heatmap');
 }
