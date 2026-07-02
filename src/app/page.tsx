@@ -3,6 +3,8 @@ import { formatDate } from '@/lib/format';
 import PortfolioCard from '@/components/PortfolioCard';
 import ComparativeChart from '@/components/ComparativeChart';
 import MarketCapTable from '@/components/MarketCapTable';
+import SectorTreemap from '@/components/SectorTreemap';
+import { t } from '@/i18n/t';
 import type { SeriesConfig } from '@/components/ComparativeChart';
 
 export const revalidate = 86400;
@@ -48,6 +50,18 @@ export default async function HomePage() {
         <p className="chart-note">
           Base 100 depuis le {formatDate(inceptionDate)} · Benchmarks en tirets : VanEck Quantum Computing UCITS ETF (QNTM.L) · Nasdaq-100 (QQQ)
         </p>
+      </section>
+
+      {/* Le Mur — treemap sectorielle (ancre de navigation depuis le header) */}
+      <section className="section mur-section" id="mur" aria-label={t.mur.aria.region}>
+        <h2 className="section-title">{t.mur.titre}</h2>
+        <p className="mur-soustitre">{t.mur.soustitre}</p>
+        {/* Disclaimer éditorial non négociable — jamais un signal d'achat/vente */}
+        <p className="mur-disclaimer-edito">{t.mur.disclaimerEditorial}</p>
+        {marketCapData
+          ? <SectorTreemap rows={marketCapData.rows} />
+          : <div className="chart-placeholder mur-placeholder" />}
+        <p className="chart-note">{t.mur.disclaimerDonnees}</p>
       </section>
 
       {marketCapData && <MarketCapTable data={marketCapData} />}

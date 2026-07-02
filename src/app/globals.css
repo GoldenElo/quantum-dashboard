@@ -824,15 +824,30 @@ button { cursor: pointer; }
 
 /* ══ Le Mur (S3) — treemap sectorielle ══ */
 
-/* Lien de navigation dans le header */
+/* Lien de navigation dans le header — pastille teal bien visible (aplat plein) */
 .site-header-navlink {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.9rem;
+  border-radius: 5px;
+  background: var(--accent-blue);
+  color: #ffffff;
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--text);
   text-decoration: none;
-  transition: color 0.15s;
+  white-space: nowrap;
+  transition: background 0.15s;
 }
-.site-header-navlink:hover { color: var(--accent-blue); }
+.site-header-navlink:hover { background: #0b7d73; }
+
+/* Section Le Mur sur l'accueil — offset d'ancre sous le header sticky (58px) */
+.mur-section { scroll-margin-top: 74px; }
+.mur-soustitre {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  margin: 0.15rem 0 0.6rem;
+  max-width: 70ch;
+}
 
 /* Disclaimer éditorial (non négociable) en tête de page */
 .mur-disclaimer-edito {
