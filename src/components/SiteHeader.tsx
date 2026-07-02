@@ -12,7 +12,9 @@ export default function SiteHeader() {
         </a>
 
         {/* Slot de navigation — V2 : indices sectoriels / V3 : vue secteur */}
-        <nav className="site-header-nav" aria-label="Navigation principale" />
+        <nav className="site-header-nav" aria-label="Navigation principale">
+          <a href="/mur" className="site-header-navlink">Le Mur</a>
+        </nav>
 
         {/* Actions — droite */}
         <div className="site-header-actions">

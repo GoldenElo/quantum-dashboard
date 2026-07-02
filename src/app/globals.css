@@ -818,3 +818,150 @@ button { cursor: pointer; }
   font-style: italic;
   cursor: help;
 }
+
+/* ══ Slots publicitaires réservés (vides — hauteur 0, n'affectent pas le layout) ══ */
+.ad-slot { height: 0; }
+
+/* ══ Le Mur (S3) — treemap sectorielle ══ */
+
+/* Lien de navigation dans le header */
+.site-header-navlink {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.site-header-navlink:hover { color: var(--accent-blue); }
+
+/* Disclaimer éditorial (non négociable) en tête de page */
+.mur-disclaimer-edito {
+  margin-top: 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-left: 2px solid var(--or);
+  padding-left: 0.6rem;
+}
+
+.mur { display: flex; flex-direction: column; gap: 0.85rem; }
+
+/* Contrôles — segmented controls Vue / Horizon */
+.mur-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+.mur-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-panel);
+}
+.mur-toggle-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 0.4rem 0.85rem;
+  font-family: var(--font-body), sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  min-height: 38px; /* cible tap mobile */
+}
+.mur-toggle-btn + .mur-toggle-btn { border-left: 1px solid var(--border); }
+.mur-toggle-btn:hover { color: var(--text); }
+.mur-toggle-btn.is-active {
+  background: var(--accent-blue);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Canvas de la treemap */
+.mur-canvas {
+  width: 100%;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.mur-canvas svg { display: block; }
+.mur-placeholder { height: 420px; }
+
+/* Texte des tuiles — chiffres en mono (charte) */
+.mur-tile-ticker {
+  font-family: var(--font-mono), monospace;
+  font-size: 13px;
+  font-weight: 700;
+}
+.mur-tile-ticker.sm { font-size: 11px; }
+.mur-tile-ticker.xs { font-size: 10px; }
+.mur-tile-mark { font-size: 0.8em; font-weight: 400; }
+.mur-tile-perf {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+.mur-tile-perf.sm { font-size: 10px; }
+.mur-tile-cap {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+}
+
+/* Légende de l'échelle divergente */
+.mur-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.mur-legend-scale { display: inline-flex; align-items: center; gap: 0.5rem; }
+.mur-legend-label { font-family: var(--font-mono), monospace; }
+.mur-legend-bar {
+  display: inline-block;
+  width: 140px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: linear-gradient(to right, #dc2626, #eef1f5, #15803d);
+}
+.mur-legend-null { display: inline-flex; align-items: center; gap: 0.4rem; }
+.mur-legend-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: #dde3ea;
+}
+
+/* Repères (marqueurs présents dans la vue) */
+.mur-markers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+.mur-markers-title { font-weight: 600; color: var(--text); }
+.mur-marker-item { display: inline-flex; gap: 0.3rem; align-items: baseline; }
+.mur-marker-sym { font-weight: 700; color: var(--text); }
+
+.mur-floor-note {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.5;
+}
+
+@media (max-width: 560px) {
+  .mur-controls { flex-direction: column; align-items: stretch; }
+  .mur-toggle { width: 100%; }
+  .mur-toggle-btn { flex: 1; text-align: center; }
+}

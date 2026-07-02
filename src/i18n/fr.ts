@@ -1,4 +1,58 @@
 export const fr = {
+  mur: {
+    titre: 'Le Mur',
+    soustitre:
+      'Capitalisations du secteur quantique — taille de tuile proportionnelle à la capitalisation, ' +
+      'couleur selon la variation sur l’horizon choisi.',
+    // Disclaimer éditorial NON négociable (règle de la chaîne) : jamais un signal d'achat/vente.
+    disclaimerEditorial:
+      'Performances passées, à titre informatif — ni conseil ni recommandation d’investissement.',
+    disclaimerDonnees:
+      'Capitalisations indicatives (dernier nombre d’actions connu) · variations sur cours de clôture à J‑1.',
+    vueLabel: 'Vue',
+    vues: {
+      pure_players: 'Pure-players',
+      secteur_complet: 'Tout le secteur',
+    },
+    vuesAria: {
+      pure_players: 'Afficher les pure-players quantiques uniquement',
+      secteur_complet: 'Afficher tout le secteur, Alphabet et IBM inclus',
+    },
+    horizonLabel: 'Horizon',
+    horizons: {
+      jour: 'Jour',
+      semaine: 'Semaine',
+      mois: 'Mois',
+    },
+    nonCalculable: '—',
+    // Légende de l'échelle divergente
+    legende: {
+      baisse: 'Baisse',
+      neutre: 'Stable',
+      hausse: 'Hausse',
+      nonCalculableItem: 'Variation non calculable (cotation trop récente)',
+    },
+    // Garde-fou vue "Tout le secteur" : Alphabet écrase la surface (propos assumé) ;
+    // une taille minimale garantit que les pure-players restent identifiables.
+    floorNote:
+      'En vue « Tout le secteur », Alphabet domine volontairement la surface. Les plus petites ' +
+      'tuiles sont affichées à une taille minimale pour rester lisibles — leur aire n’est donc ' +
+      'plus strictement proportionnelle à ce niveau d’écart.',
+    // Note HQ (volatilité extrême) — propre au Mur, volontairement HORS du TICKER_NOTES
+    // partagé pour ne pas altérer le tableau des capitalisations existant.
+    hqNote: {
+      marker: '‡',
+      text: 'cotation très récente (fusion SPAC) — volatilité extrême, à interpréter avec prudence',
+    },
+    // Infobulle du marqueur de variation exceptionnelle (miroir du tableau caps)
+    variationExceptionnelle:
+      'Variation exceptionnelle — forte volatilité, cotation récente. À interpréter avec prudence.',
+    marqueursTitre: 'Repères',
+    aria: {
+      region: 'Le Mur — treemap des capitalisations du secteur quantique',
+      tuile: 'Capitalisation et variation',
+    },
+  },
   secteur: {
     titre: 'Capitalisations du secteur',
     colonnes: {
