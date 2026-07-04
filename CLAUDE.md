@@ -513,6 +513,115 @@ yfinance (usage commercial) ou migrer vers Twelve Data.
 
 ---
 
+## Phase Croissance — transformer le Wall en asset
+
+**Principe directeur :** l'objectif n'est plus d'ajouter des features de données mais de construire
+**trois actifs défendables** — l'historique accumulé, la couche de curation éditoriale, et une
+audience mesurée/possédée. Chaque brique ci-dessous sert l'un de ces trois actifs ; une brique
+qui n'y contribue pas n'a pas sa place dans cette phase. La séquence est **ordonnée** : la mesure
+(C1) précède tout, car sans elle rien n'est vendable à un sponsor.
+
+**Anti-objectifs explicites (garde-fous non négociables de la phase) :**
+- **Pas de temps réel** — les données restent en J-1, cohérence avec la règle dure V1.
+- **Pas de gamification** — aucun mécanisme de jeu, score utilisateur, badge ou classement social.
+- **Pas d'accès payant avant une audience mesurée significative** — la séquence est **audience
+  d'abord, monétisation ensuite**. Le paywall ne s'ouvre pas tant que C1 n'a pas prouvé l'audience.
+
+### C1 — Mesure (prérequis de tout)
+
+**Ce qui est construit :** analytics respectueux de la vie privée (**Plausible** ou **Fathom**),
+**sans cookie, sans bannière RGPD**. Objectifs de conversion basiques : clic vers YouTube,
+futur signup newsletter (C5).
+
+**Pourquoi en premier :** sans mesure, rien n'est vendable à un sponsor. C1 débloque la
+justification commerciale de toutes les briques suivantes — c'est le prérequis dur de la phase.
+
+### C2 — Fiches sociétés
+
+**Ce qui est construit :** pages `/societe/[ticker]` pour les **12 acteurs** du suivi sectoriel —
+graphique de capitalisation historique, P/S dans le temps, variations multi-horizons, notes
+éditoriales existantes (Up-C QNT, quantum washing ARQQ, flags ⚑/‡), et **méthodologie de la donnée**
+affichée en clair. Réutilise **100 % des données déjà en base** — aucune nouvelle source.
+
+**Objectif SEO :** capter la requête « nom d'entreprise + bourse / action » (cohérent avec la
+Règle 1 §3 de la bible éditoriale, appliquée au site). Ces pages deviennent la **destination des
+intégrations mi-vidéo** (§10) — le lien qu'on pose sous une vidéo pointe vers la fiche société.
+
+**Dépendances :** S1 (market cap) + S2 (variations) + S-P/S (ratio). Aucune source externe nouvelle.
+
+### C3 — Indice Quantique propriétaire (« Indice IQ »)
+
+**Ce qui est construit :** un indice sectoriel propriétaire avec **méthodologie publiée** — univers,
+pondération (par capi flottante ou totale — **à trancher**), règles d'inclusion / exclusion,
+rebalancement trimestriel, date d'inception documentée. Calcul **quotidien dans l'ingestion**
+(jamais dans le front), page dédiée avec courbe. **Document de méthodologie en PDF téléchargeable.**
+
+**Pourquoi :** c'est la **propriété intellectuelle licenciable** du projet — modèle MarketVector.
+L'indice, sa méthodologie et son historique constituent un actif cessible indépendamment du site.
+
+**Dépendances :** S1 (pondération par capi) + historique `price_daily`. Calcul côté cron uniquement.
+
+### C4 — Images OG auto-générées
+
+**Ce qui est construit :** image de partage (Open Graph) **générée quotidiennement depuis la treemap**
+(le Mur du jour), pour que tout lien partagé sur X montre **le Mur vivant** plutôt qu'une carte statique.
+
+**Pourquoi :** boucle virale gratuite — chaque partage social affiche l'état du secteur du jour.
+
+**Dépendances :** S3 (treemap du Mur) pour la source visuelle.
+
+### C5 — Newsletter hebdomadaire auto-générée
+
+**Ce qui est construit :** digest hebdomadaire **construit depuis les données** (mouvements de la
+semaine, Mur, un événement commenté issu de C6), avec **capture d'email** sur le site.
+
+**Pourquoi :** l'**audience possédée** (liste d'emails) est l'actif que les sponsors achètent —
+distinct d'une audience empruntée à une plateforme tierce. C'est l'aboutissement de la séquence
+« audience d'abord ».
+
+**Dépendances :** C1 (objectif signup), C6 (événement commenté), données S1–S2 (mouvements).
+
+### C6 — Base d'événements sectoriels (fil continu)
+
+**Ce qui est construit :** une table `events` alimentée **manuellement au fil de la veille éditoriale**.
+Démarre **tôt** dans la phase et se remplit **en permanence** — l'accumulation est le mécanisme.
+Affichée sur les fiches sociétés (C2) sous forme de **frise chronologique**.
+
+**Pourquoi :** dans 18 mois, c'est **la seule chronologie annotée du quantique coté en français** —
+un **moat par accumulation** qu'aucun concurrent ne peut rattraper rétroactivement.
+
+**Schéma :**
+```sql
+create table events (
+  id          serial primary key,
+  date        date not null,
+  ticker      text references asset(ticker),
+  type        text not null,     -- 'contrat' | 'dilution' | 'reverse-split' | 'IPO' | 'stage-DARPA'
+  description text not null,
+  source      text not null,     -- source primaire (nom du document / annonce officielle)
+  link        text               -- lien vers la source primaire
+);
+```
+
+**Dépendances :** aucune (saisie manuelle) — démarre indépendamment, se déverse dans C2 et C5.
+
+### Dettes d'architecture à traiter dans cette phase (exigences d'une due diligence)
+
+Ces dettes ne sont pas optionnelles : elles conditionnent la **cessibilité** de l'actif.
+
+- **(a) Licence de données — BLOQUANTE avant monétisation.** La migration `yfinance → Twelve Data`
+  (ou équivalent avec **droit de redistribution**) devient un prérequis dur **avant toute
+  monétisation ou tout trafic significatif**. yfinance (scraping non officiel) ne peut pas
+  soutenir une exploitation commerciale.
+- **(b) Tests automatisés sur les calculs critiques.** Couverture obligatoire des calculs
+  perf, volatilité, P/S et **indice IQ (C3)** — la valeur de l'actif repose sur l'exactitude
+  de ces chiffres.
+- **(c) Exportabilité.** Schéma documenté, dump reproductible : **l'actif vendable est la base
+  de données + la couche de curation, pas le front**. Toute décision de schéma doit préserver
+  un export propre et autonome.
+
+---
+
 ### S4 — Classement et agrégats sectoriels
 
 **Ce qui est construit :** page `/secteur` avec :
