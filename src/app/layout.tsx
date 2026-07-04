@@ -24,7 +24,11 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+// URL de production — une seule ligne à changer le jour où un domaine propre arrive.
+const SITE_URL = "https://quantum-wall.netlify.app";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: t.meta.title,
     template: t.meta.titleTemplate,

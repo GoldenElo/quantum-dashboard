@@ -16,6 +16,9 @@ export const fr = {
     accueilAria: 'The Quantum Wall — accueil',
   },
   accueil: {
+    titre: 'The Quantum Wall',
+    // Sous-titre porteur des mots-clés SEO (« tableau de bord du quantique coté »).
+    soustitre: 'Le tableau de bord du quantique coté — portefeuilles suivis et panorama sectoriel',
     // Horodatage : preuve visible que le Wall est vivant. La date vient de la base
     // (dernier snapshot), jamais en dur — composée autour de formatDate().
     horodatagePrefix: 'Données du',
