@@ -1,3 +1,5 @@
+import { t } from '@/i18n/t';
+
 const YOUTUBE_URL = 'https://www.youtube.com/@InvestisseuseQuantique';
 const X_URL = 'https://x.com/InvestQuantique';
 
@@ -6,9 +8,10 @@ export default function SiteHeader() {
     <header className="site-header">
       <div className="site-header-inner">
 
-        {/* Marque — gauche */}
-        <a href="/" className="site-header-brand" aria-label="L'Investisseuse Quantique — accueil">
-          <span className="site-header-name">L&apos;Investisseuse Quantique</span>
+        {/* Marque — gauche : wordmark produit + signature éditeur */}
+        <a href="/" className="site-header-brand" aria-label={t.header.accueilAria}>
+          <span className="site-header-wordmark">{t.header.wordmark}</span>
+          <span className="site-header-editor">{t.header.editeur}</span>
         </a>
 
         {/* Slot de navigation — V2 : indices sectoriels / V3 : vue secteur */}

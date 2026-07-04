@@ -1,4 +1,26 @@
 export const fr = {
+  // Métadonnées produit (title / description / OG) — The Quantum Wall est la marque,
+  // L'Investisseuse Quantique l'éditeur (cf. Règle 1 de la bible produit).
+  meta: {
+    title: 'The Quantum Wall — le tableau de bord du quantique coté',
+    titleTemplate: '%s · The Quantum Wall',
+    description:
+      'Portefeuilles quantiques fictifs à but pédagogique et panorama des capitalisations ' +
+      'du secteur quantique coté. Données de clôture à J‑1, à titre informatif.',
+    siteName: 'The Quantum Wall',
+  },
+  // Marque affichée dans le header du site.
+  header: {
+    wordmark: 'The Quantum Wall',
+    editeur: 'édité par L’Investisseuse Quantique',
+    accueilAria: 'The Quantum Wall — accueil',
+  },
+  accueil: {
+    // Horodatage : preuve visible que le Wall est vivant. La date vient de la base
+    // (dernier snapshot), jamais en dur — composée autour de formatDate().
+    horodatagePrefix: 'Données du',
+    horodatageSuffix: ', clôture US',
+  },
   mur: {
     titre: 'HeatMap',
     soustitre:

@@ -24,6 +24,13 @@ export default async function HomePage() {
     fetchMarketCapsData(),
   ]);
   const inceptionDate = summaries[0]?.inception_date ?? '';
+  // Dernière clôture ingérée = date du snapshot le plus récent (dates ISO → tri lexical = chrono).
+  // Lue depuis la base, jamais en dur : preuve visible que le Wall est vivant.
+  const lastCloseDate = summaries
+    .map(s => s.latestDate)
+    .filter((d): d is string => Boolean(d))
+    .sort()
+    .at(-1) ?? '';
 
   return (
     <main className="page">
@@ -32,6 +39,11 @@ export default async function HomePage() {
         <p className="home-subtitle">
           Suivi de 3 portefeuilles fictifs à but pédagogique — données de clôture à J&#8209;1
         </p>
+        {lastCloseDate && (
+          <p className="home-timestamp">
+            {t.accueil.horodatagePrefix} {formatDate(lastCloseDate)}{t.accueil.horodatageSuffix}
+          </p>
+        )}
       </header>
 
       <section aria-label="Portefeuilles">

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Sans, Inter, JetBrains_Mono } from "next/font/google";
 import Footer from "@/components/Footer";
 import SiteHeader from "@/components/SiteHeader";
+import { t } from "@/i18n/t";
 import "./globals.css";
 
 const ibmPlexSans = IBM_Plex_Sans({
@@ -24,9 +25,24 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "L'Investisseuse Quantique — Dashboard Quantique",
-  description:
-    "Suivi de 3 portefeuilles quantiques fictifs à but pédagogique. Données de clôture à J-1.",
+  title: {
+    default: t.meta.title,
+    template: t.meta.titleTemplate,
+  },
+  description: t.meta.description,
+  applicationName: t.meta.siteName,
+  openGraph: {
+    title: t.meta.title,
+    description: t.meta.description,
+    siteName: t.meta.siteName,
+    locale: "fr_FR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: t.meta.title,
+    description: t.meta.description,
+  },
 };
 
 export default function RootLayout({

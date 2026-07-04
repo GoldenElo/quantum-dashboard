@@ -58,19 +58,30 @@ button { cursor: pointer; }
 
 .site-header-brand {
   display: flex;
-  align-items: center;
-  gap: 0.7rem;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.18rem;
   flex-shrink: 0;
   text-decoration: none;
 }
 
-.site-header-name {
+.site-header-wordmark {
   font-family: var(--font-heading), Arial, sans-serif;
-  font-size: 0.82rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.site-header-editor {
+  font-family: var(--font-body), Arial, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
   line-height: 1;
   white-space: nowrap;
 }
@@ -120,11 +131,14 @@ button { cursor: pointer; }
   color: var(--accent-blue);
 }
 
-/* Sous 420px : titre légèrement resserré pour cohabiter avec le bouton YouTube */
+/* Sous 420px : wordmark resserré pour cohabiter avec les boutons YouTube / X */
 @media (max-width: 420px) {
-  .site-header-name {
-    font-size: 0.72rem;
-    letter-spacing: 0.05em;
+  .site-header-wordmark {
+    font-size: 0.82rem;
+    letter-spacing: 0.06em;
+  }
+  .site-header-editor {
+    font-size: 0.58rem;
   }
 }
 
@@ -184,6 +198,15 @@ button { cursor: pointer; }
   color: var(--text-muted);
   font-size: 1.05rem;
   margin-top: 0.75rem;
+}
+
+/* Horodatage « Données du … clôture US » — discret mais visible, chiffres en mono */
+.home-timestamp {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  margin-top: 1rem;
 }
 
 /* ── Portfolio cards grid ── */
