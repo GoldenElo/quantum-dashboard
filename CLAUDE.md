@@ -8,6 +8,17 @@ issus de la vidéo #33 « Investir dans le quantique en 2026 »). Langue par dé
 
 ## Vision produit & contraintes d'architecture long terme
 
+> **OBJECTIF STRATÉGIQUE — cession du média à horizon 3 ans (2029).**
+> Toute décision produit se juge à l'aune de la **thèse d'acquisition** :
+> - **audience mesurée et possédée** (analytics, liste d'emails) ;
+> - **IP démontrable** — indice propriétaire, historique accumulé, base d'événements, curation éditoriale ;
+> - **marque autonome** — The Quantum Wall existe indépendamment de la chaîne ;
+> - **due diligence propre** — licence de données, tests des calculs critiques, exportabilité,
+>   doctrine d'indépendance (§18 de la bible éditoriale).
+>
+> Une feature qui ne renforce aucun de ces axes n'a pas de priorité. Ce qui n'est pas cessible
+> n'est pas un actif.
+
 Ces contraintes s'appliquent **dès maintenant** à chaque ligne de code écrite.
 Ce ne sont pas des features à implémenter plus tard — ce sont des rails à ne jamais enfreindre.
 Principe directeur : **prévoir la place sans construire prématurément** — l'architecture
@@ -526,6 +537,28 @@ qui n'y contribue pas n'a pas sa place dans cette phase. La séquence est **ordo
 - **Pas de gamification** — aucun mécanisme de jeu, score utilisateur, badge ou classement social.
 - **Pas d'accès payant avant une audience mesurée significative** — la séquence est **audience
   d'abord, monétisation ensuite**. Le paywall ne s'ouvre pas tant que C1 n'a pas prouvé l'audience.
+
+### Piste Design (parallèle à la phase Croissance)
+
+Une piste **Design** court en parallèle des briques C1–C6 : elle habille et fiabilise l'expérience
+pendant que les actifs de données se construisent. Chaque étape D est calée sur un jalon C.
+
+**Anti-objectif design (garde-fou dur) :** **jamais de dérive crypto-flashy** — pas de néons,
+de dégradés animés, de tickers clignotants ni de hype visuelle. Le standard est **Bloomberg-lite** :
+la **sobriété est le moat**. Toute proposition visuelle qui « fait crypto » est refusée d'office.
+
+- **D1 — Identité produit (avant C1).** The Quantum Wall devient la **marque du site** : wordmark,
+  header « édité par L'Investisseuse Quantique », favicon, meta / OG de base. Ajout d'un
+  **horodatage visible « Données du [date], clôture US »** sur l'accueil. Pose la marque autonome
+  exigée par la thèse d'acquisition — donc **avant** la mesure (C1).
+- **D2 — Sparklines 7 jours (avec C2).** Mini-courbes 7 jours dans le tableau des capitalisations.
+  Réutilise `price_daily` — **aucune nouvelle donnée**. Livré avec les fiches sociétés (C2).
+- **D3 — Mode sombre.** Toggle clair / sombre — l'**infra de variables CSS existe déjà**
+  (tokens de la charte graphique), le coût est faible.
+- **D4 — Refonte mobile du tableau (bloquant avant toute campagne d'audience).** Colonnes
+  essentielles + détail au tap, **remplace le swipe** actuel. **Prérequis dur** : ne lancer
+  aucune campagne d'audience (C5, intégrations mi-vidéo) tant que l'expérience mobile du tableau
+  n'est pas refaite — l'audience YouTube/X est majoritairement mobile.
 
 ### C1 — Mesure (prérequis de tout)
 
