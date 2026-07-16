@@ -96,6 +96,8 @@ est refusé à partir de la première feature post-V1.5.
 ## Stack
 
 - **Next.js (App Router, TypeScript)** déployé sur **Netlify** (repo Git déjà connecté).
+  Domaine officiel : **thequantumwall.com** (constante `SITE_URL` dans `src/app/layout.tsx`).
+  L'ancien `quantum-wall.netlify.app` redirige en **301** vers le domaine officiel.
 - **Supabase** (Postgres) — accès serveur uniquement, clé service en variable d'env Netlify.
 - **GitHub Actions** : cron d'ingestion du lundi au vendredi à 22h30 UTC (après clôture US),
   relançable manuellement (`workflow_dispatch`). Doit être **idempotent** (upsert partout).
