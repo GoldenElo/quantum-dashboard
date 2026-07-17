@@ -1,7 +1,5 @@
 import { t } from '@/i18n/t';
-
-const YOUTUBE_URL = 'https://www.youtube.com/@InvestisseuseQuantique';
-const X_URL = 'https://x.com/InvestQuantique';
+import { YOUTUBE_URL, X_URL } from '@/lib/site';
 
 export default function SiteHeader() {
   return (

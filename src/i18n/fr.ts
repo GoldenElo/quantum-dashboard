@@ -122,6 +122,68 @@ export const fr = {
     variationExceptionnelle:
       'Variation exceptionnelle — forte volatilité, cotation récente (SPAC). À interpréter avec prudence.',
   },
+  // Fiches sociétés /societe/[ticker] (C2) — pages SEO, destination des intégrations mi-vidéo.
+  societe: {
+    retour: '← Accueil',
+    // SEO — title.absolute (court-circuite le titleTemplate du layout) et description.
+    metaTitleSuffix: 'en bourse — capitalisation, valorisation, analyse | The Quantum Wall',
+    // Catégories (asset.category) — libellé lisible.
+    categories: {
+      geant: 'Géant diversifié',
+      infrastructure: 'Infrastructure',
+      pure_player: 'Pure-player quantique',
+      etf: 'ETF',
+    } as Record<string, string>,
+    // Grille de chiffres actuels.
+    chiffres: {
+      cours: 'Cours (clôture)',
+      capitalisation: 'Capitalisation',
+      ps: 'P/S (cours/CA)',
+      jour: 'Var. jour',
+      semaine: 'Var. semaine',
+      mois: 'Var. mois',
+      actions: 'Actions en circulation',
+    },
+    depuisCotation: 'depuis cotation',
+    // Fraîcheur du nombre d'actions.
+    actionsSourcePrefix: 'Source :',
+    actionsAuPrefix: 'au',
+    actionsStale: '(donnée datant de plus de 5 mois)',
+    // Courbe de capitalisation.
+    capChart: {
+      titre: 'Capitalisation — historique disponible',
+      // Note de méthode obligatoire (honnêteté sur l'approximation).
+      methode:
+        'Capitalisation reconstituée : cours de clôture × dernier nombre d’actions connu à chaque date. ' +
+        'En l’absence d’historique du nombre d’actions, le nombre courant est appliqué rétroactivement — ' +
+        'approximation à des fins de tendance, non un relevé historique du flottant.',
+      insuffisant: 'Historique insuffisant pour tracer une courbe (cotation trop récente).',
+      serieLabel: 'Capitalisation',
+    },
+    // Bloc de curation éditoriale — mis en avant (différenciation).
+    notesTitre: 'Notes de la rédaction',
+    // Placeholders des briques à venir — structurés, discrets.
+    evenements: {
+      titre: 'Événements',
+      bientot: 'Frise chronologique des événements (contrats, dilutions, jalons) — bientôt.',
+    },
+    dilution: {
+      titre: 'Dilution',
+      bientot: 'Historique du nombre d’actions et signaux de dilution — bientôt.',
+    },
+    // Ligne d'acquisition vers la chaîne (conversion du trafic froid).
+    acquisition: "L’analyse en vidéo sur L’Investisseuse Quantique",
+    // Disclaimer propre à la fiche (≠ portefeuilles).
+    disclaimer:
+      'À titre informatif uniquement — ni conseil ni recommandation d’investissement. ' +
+      'Données de clôture à J‑1, sans garantie d’exactitude.',
+    // Horodatage.
+    horodatagePrefix: 'Données du',
+    horodatageSuffix: ', clôture US',
+    // Accessibilité.
+    ficheAria: 'Fiche société',
+    lienFicheAria: 'Voir la fiche',
+  },
 } as const
 
 // Notes de bas de tableau par ticker — marqueur exposant + texte de note.

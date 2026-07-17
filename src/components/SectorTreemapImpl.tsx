@@ -224,7 +224,15 @@ export default function SectorTreemapImpl({ rows }: { rows: MarketCapRow[] }) {
               const compact = !full && !medium && w >= 32 && h >= 18;
 
               return (
-                <g key={leaf.row.ticker} transform={`translate(${leaf.x0}, ${leaf.y0})`}>
+                <a
+                  key={leaf.row.ticker}
+                  href={`/societe/${leaf.row.ticker.toLowerCase()}`}
+                  className="mur-tile-link"
+                  aria-label={`${t.societe.lienFicheAria} ${leaf.row.name}`}
+                  data-umami-event="clic-fiche-societe"
+                  data-umami-event-ticker={leaf.row.ticker}
+                >
+                  <g transform={`translate(${leaf.x0}, ${leaf.y0})`}>
                   <title>{titleText}</title>
                   <rect width={w} height={h} rx={2} fill={fill} stroke="#ffffff" strokeWidth={1} />
                   {full && (
@@ -257,7 +265,8 @@ export default function SectorTreemapImpl({ rows }: { rows: MarketCapRow[] }) {
                       {leaf.row.ticker}
                     </text>
                   )}
-                </g>
+                  </g>
+                </a>
               );
             })}
           </svg>

@@ -4,6 +4,7 @@ import Script from "next/script";
 import Footer from "@/components/Footer";
 import SiteHeader from "@/components/SiteHeader";
 import { t } from "@/i18n/t";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const ibmPlexSans = IBM_Plex_Sans({
@@ -24,9 +25,6 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
   display: "swap",
 });
-
-// URL de production — domaine officiel. L'ancien quantum-wall.netlify.app redirige en 301.
-const SITE_URL = "https://thequantumwall.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

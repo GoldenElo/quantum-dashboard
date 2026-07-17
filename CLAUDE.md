@@ -586,7 +586,7 @@ justification commerciale de toutes les briques suivantes — c'est le prérequi
   (thèse d'acquisition — audience mesurée et possédée). Une rupture d'historique détruit
   la démonstration d'audience ; l'export préalable est non négociable.
 
-### C2 — Fiches sociétés
+### C2 — Fiches sociétés — ✅ RÉALISÉE (2026-07-17)
 
 **Ce qui est construit :** pages `/societe/[ticker]` pour les **12 acteurs** du suivi sectoriel —
 graphique de capitalisation historique, P/S dans le temps, variations multi-horizons, notes
@@ -598,6 +598,41 @@ Règle 1 §3 de la bible éditoriale, appliquée au site). Ces pages deviennent 
 intégrations mi-vidéo** (§10) — le lien qu'on pose sous une vidéo pointe vers la fiche société.
 
 **Dépendances :** S1 (market cap) + S2 (variations) + S-P/S (ratio). Aucune source externe nouvelle.
+
+**État réel (implémentation) :**
+- **Route** : `src/app/societe/[ticker]/page.tsx` (Server Component, ISR 24 h, `dynamicParams = false`
+  → seuls les 12 tickers existent, tout autre renvoie un 404). URLs en **minuscules**
+  (`/societe/ionq`). `generateStaticParams` alimenté par `listCompanyTickers()` (`api.ts`).
+- **Données** : `fetchCompanyData(ticker)` (`api.ts`) — fonction dédiée qui **ne skip jamais** un
+  ticker (une fiche rend toujours, chiffres « — » si donnée absente), et **réutilise les mêmes
+  helpers** `computeChange` / `computePs` que le tableau → chiffres strictement identiques.
+- **Courbe de capitalisation** (`CompanyCapChart` + `CompanyCapChartImpl`, pattern `dynamic(ssr:false)`
+  comme DetailChart) : **step-function des actions** — à chaque date, cours × dernier nb d'actions
+  connu (`as_of_date` ≤ date) ; à défaut d'historique d'actions, le nb courant est appliqué
+  rétroactivement. **Approximation documentée en note de méthode** sous la courbe (i18n). Prête à
+  refléter les révisions d'actions dès que C7 backfillera l'historique — aucune refonte.
+- **Données manquantes / IPO récentes** : historique court → courbe sur les seules séances cotées,
+  variations `null` → « — », mention **« depuis cotation »** quand l'offset annuel est incalculable.
+  Fraîcheur du nb d'actions (`isStale` > 5 mois, ex. LAES) reprise du tableau.
+- **Curation mise en avant** : bloc « Notes de la rédaction » (≠ footnote discrète) fusionnant
+  `TICKER_NOTES` (QNT Up-C, ARQQ †) + note HQ volatilité (`t.mur.hqNote`).
+- **Placeholders C6/C7** : sections « Événements » et « Dilution » visibles mais discrètes (titre +
+  ligne « bientôt »), structure prête.
+- **SEO** : `title: { absolute: 'Nom (TICKER) en bourse — capitalisation, valorisation, analyse |
+  The Quantum Wall' }` (court-circuite le `titleTemplate` du layout), meta `description` dynamique
+  par société (capi + P/S + variation), `alternates.canonical`, OG par société.
+  `src/app/sitemap.ts` (accueil + 12 fiches + 3 portefeuilles fictifs ; `/portefeuille/personnel`
+  **exclu**) et `src/app/robots.ts` (disallow `/connexion`, `/portefeuille/personnel`).
+  `SITE_URL` / `YOUTUBE_URL` / `X_URL` centralisés dans `src/lib/site.ts`.
+- **Navigation** : cellule « Société » du tableau des caps ET tuiles du Mur cliquables vers la fiche
+  (affordance discrète, SVG `<a>` pour les tuiles). **Événement Umami `clic-fiche-societe`** avec
+  `data-umami-event-ticker` (mesure des sociétés qui attirent — cf. [C1]).
+- **Acquisition (conversion trafic froid)** : ligne « L'analyse en vidéo sur L'Investisseuse
+  Quantique » en bas de chaque fiche (avant le disclaimer), lien chaîne + événement Umami
+  **`clic-youtube-fiche`** (`data-umami-event-ticker`). Les fiches captent du trafic froid → point
+  de conversion vers la chaîne (actif d'audience de la thèse de cession).
+- **Disclaimer** propre à la fiche (i18n, « ni conseil ni recommandation ») + horodatage
+  « Données du [date], clôture US ». i18n intégral sous `t.societe.*` (`src/i18n/fr.ts`).
 
 ### C7 — Module Dilution
 

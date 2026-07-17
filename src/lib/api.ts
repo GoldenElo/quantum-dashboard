@@ -148,11 +148,42 @@ export type MarketCapData = {
   pure_player_total_usd: number;
 };
 
+// ─── Type fiche société (C2) ──────────────────────────────────────────────────
+
+export type CompanyData = {
+  ticker: string;
+  name: string;
+  category: string;
+  // Chiffres actuels — null si la donnée manque (fiche rendue quand même, SEO).
+  adj_close: number | null;
+  price_date: string | null;
+  shares: number | null;
+  shares_date: string | null;
+  shares_source: string | null;
+  market_cap_usd: number | null;
+  change_1d: number | null;
+  change_1w: number | null;
+  change_1m: number | null;
+  change_1y: number | null;          // sert au distinguo « depuis cotation » (IPO récente)
+  change_1w_extreme: boolean;
+  ps_ratio: number | null;
+  ps_status: MarketCapRow['ps_status'];
+  hasHistory: boolean;               // au moins une séance en base
+  // Série de capitalisation reconstituée : cours × dernier nb d'actions connu ≤ date.
+  capHistory: { date: string; market_cap: number }[];
+};
+
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const FICTIF_IDS = ['defensif', 'dynamique', 'agressif'] as const;
 const BENCHMARK_TICKER = 'QNTM.L';
-const SECTORAL_TICKERS = ['GOOGL', 'IBM', 'IONQ', 'QBTS', 'LAES', 'INFQ', 'RGTI', 'QUBT', 'QNT', 'XNDU', 'ARQQ', 'HQ'] as const;
+export const SECTORAL_TICKERS = ['GOOGL', 'IBM', 'IONQ', 'QBTS', 'LAES', 'INFQ', 'RGTI', 'QUBT', 'QNT', 'XNDU', 'ARQQ', 'HQ'] as const;
+
+// Les 12 tickers sectoriels ont chacun une fiche société /societe/[ticker].
+// Source unique pour generateStaticParams + sitemap (aucune fiche hors de cette liste).
+export function listCompanyTickers(): string[] {
+  return [...SECTORAL_TICKERS];
+}
 
 // Fenêtre de lecture par ticker pour les variations : 260 séances couvrent l'offset
 // annuel (252) et restent SOUS le plafond PostgREST (1000 lignes/réponse). Une lecture
@@ -682,6 +713,129 @@ export async function fetchMarketCapsData(): Promise<MarketCapData | null> {
     .reduce((sum, r) => sum + r.market_cap_usd, 0);
 
   return { rows, pure_player_total_usd };
+}
+
+// Dernière date de clôture connue (sitemap lastModified). null si base vide.
+export async function fetchLatestCloseDate(): Promise<string | null> {
+  const { data } = await supabase
+    .from('price_daily')
+    .select('date')
+    .order('date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.date ?? null;
+}
+
+// ─── Fiche société (C2) ───────────────────────────────────────────────────────
+
+// Une fiche par ticker sectoriel. Réutilise les MÊMES helpers que le tableau des
+// capitalisations (computeChange / computePs) → chiffres strictement identiques.
+// Contrairement à fetchMarketCapsData, ne « skip » jamais un ticker : la fiche doit
+// toujours rendre pour le SEO (chiffres « — » si donnée absente).
+export async function fetchCompanyData(ticker: string): Promise<CompanyData | null> {
+  const upper = ticker.toUpperCase();
+  if (!SECTORAL_TICKERS.includes(upper as (typeof SECTORAL_TICKERS)[number])) return null;
+
+  const [assetRes, sharesRes, revenueRes, priceRes] = await Promise.all([
+    supabase.from('asset').select('ticker, name, category').eq('ticker', upper).maybeSingle(),
+    // Tout l'historique des actions (ASC) → step-function pour la courbe de capi.
+    supabase
+      .from('shares_outstanding')
+      .select('shares, as_of_date, source')
+      .eq('ticker', upper)
+      .order('as_of_date', { ascending: true }),
+    // revenue_ttm optionnelle (migration 007) — absente ⇒ P/S 'none' proprement.
+    supabase
+      .from('revenue_ttm')
+      .select('revenue_reported, revenue_sum_4q, quarters_used, fx_rate, as_of_date')
+      .eq('ticker', upper)
+      .order('as_of_date', { ascending: false }),
+    // Fenêtre bornée par ticker (≤ 260 séances) — jamais tronquée par PostgREST.
+    supabase
+      .from('price_daily')
+      .select('adj_close, date')
+      .eq('ticker', upper)
+      .order('date', { ascending: false })
+      .limit(SECTORAL_WINDOW),
+  ]);
+
+  if (assetRes.error || !assetRes.data) return null;
+  const asset = assetRes.data;
+
+  // Série de prix triée par date CROISSANTE.
+  const series = (priceRes.data ?? [])
+    .map(r => ({ date: r.date, adj_close: Number(r.adj_close) }))
+    .reverse();
+  const hasHistory = series.length > 0;
+
+  // Historique des actions (ASC) pour la step-function.
+  const sharesHistory = (sharesRes.data ?? []).map(r => ({
+    date: r.as_of_date as string,
+    shares: Number(r.shares),
+    source: r.source as string,
+  }));
+  const latestShares = sharesHistory.length > 0 ? sharesHistory[sharesHistory.length - 1] : null;
+
+  // Nb d'actions applicable à une date : dernier as_of_date ≤ date ; à défaut
+  // (dates antérieures au 1er relevé connu), on applique le plus ancien relevé —
+  // approximation documentée en note de méthode côté fiche.
+  const sharesAsOf = (date: string): number | null => {
+    if (sharesHistory.length === 0) return null;
+    let applicable = sharesHistory[0].shares;
+    for (const s of sharesHistory) {
+      if (s.date <= date) applicable = s.shares;
+      else break;
+    }
+    return applicable;
+  };
+
+  const closesAsc = series.map(s => s.adj_close);
+  const latest = hasHistory ? series[series.length - 1] : null;
+
+  const market_cap_usd =
+    latest && latestShares ? latestShares.shares * latest.adj_close : null;
+
+  // CA TTM le plus récent (surcharge SEC prime via as_of_date DESC).
+  const revRow = (revenueRes.error ? [] : revenueRes.data ?? [])[0];
+  const rev = revRow
+    ? {
+        revenue_reported: revRow.revenue_reported != null ? Number(revRow.revenue_reported) : null,
+        revenue_sum_4q: revRow.revenue_sum_4q != null ? Number(revRow.revenue_sum_4q) : null,
+        quarters_used: Number(revRow.quarters_used),
+        fx_rate: revRow.fx_rate != null ? Number(revRow.fx_rate) : 1,
+      }
+    : undefined;
+  const ps = market_cap_usd != null ? computePs(market_cap_usd, rev) : { ratio: null, status: 'none' as const };
+
+  const change_1w = computeChange(closesAsc, 5);
+
+  const capHistory = series
+    .map(s => {
+      const sh = sharesAsOf(s.date);
+      return sh != null ? { date: s.date, market_cap: sh * s.adj_close } : null;
+    })
+    .filter((p): p is { date: string; market_cap: number } => p != null);
+
+  return {
+    ticker: asset.ticker,
+    name: asset.name,
+    category: asset.category,
+    adj_close: latest?.adj_close ?? null,
+    price_date: latest?.date ?? null,
+    shares: latestShares?.shares ?? null,
+    shares_date: latestShares?.date ?? null,
+    shares_source: latestShares?.source ?? null,
+    market_cap_usd,
+    change_1d: computeChange(closesAsc, 1),
+    change_1w,
+    change_1m: computeChange(closesAsc, 21),
+    change_1y: computeChange(closesAsc, 252),
+    change_1w_extreme: change_1w !== null && Math.abs(change_1w) > WEEKLY_ALERT_THRESHOLD,
+    ps_ratio: ps.ratio,
+    ps_status: ps.status,
+    hasHistory,
+    capHistory,
+  };
 }
 
 // ─── Portefeuille personnel — données privées (nécessite auth) ────────────────

@@ -107,14 +107,27 @@ export default function MarketCapTable({ data }: { data: MarketCapData }) {
                 const mcapTitle =
                   `${t.secteur.actionsTooltip} ${formatDateCompact(row.shares_date)}` +
                   (stale ? ` ${t.secteur.actionsTooltipStale}` : '');
+                const ficheHref = `/societe/${row.ticker.toLowerCase()}`;
                 return (
                   <tr key={row.ticker}>
                     <td className="name">
-                      {row.name}
+                      <a
+                        href={ficheHref}
+                        className="mcap-fiche-link"
+                        aria-label={`${t.societe.lienFicheAria} ${row.name}`}
+                        data-umami-event="clic-fiche-societe"
+                        data-umami-event-ticker={row.ticker}
+                      >
+                        {row.name}
+                      </a>
                       {modality && <span className="tech-tag">{modality}</span>}
                       {note && <sup className="mcap-fn-marker">{note.marker}</sup>}
                     </td>
-                    <td className="ticker">{row.ticker}</td>
+                    <td className="ticker">
+                      <a href={ficheHref} className="mcap-fiche-link" tabIndex={-1} aria-hidden="true">
+                        {row.ticker}
+                      </a>
+                    </td>
                     <td className="right mono">${row.adj_close.toFixed(2)}</td>
                     <td className="right mono mcap-mcap-cell" title={mcapTitle}>
                       {stale && <span className="mcap-stale-icon" aria-hidden="true">⚠ </span>}
