@@ -599,6 +599,42 @@ intégrations mi-vidéo** (§10) — le lien qu'on pose sous une vidéo pointe v
 
 **Dépendances :** S1 (market cap) + S2 (variations) + S-P/S (ratio). Aucune source externe nouvelle.
 
+### C7 — Module Dilution
+
+**Positionnement :** après C2 — le module vit **principalement sur les fiches sociétés**
+(`/societe/[ticker]`), avec un complément possible dans le tableau des capitalisations.
+
+**Ce qui est construit :**
+
+1. **Nombre d'actions en circulation (existant, S1).** Afficher `shares_outstanding` avec **sa
+   date et sa source** (`SEC-10Q` / `SEC-10K` / `annual-report` / surcharge `SEC ...`) sur les
+   fiches sociétés et/ou le tableau. Réutilise la donnée S1 déjà en base — aucune nouvelle source.
+   Respecte la RÈGLE D'OR de non-écrasement des surcharges manuelles (cf. cron trimestriel).
+
+2. **Dilution historique mesurée.** Backfill des `shares_outstanding` **annuelles sur 5 ans**
+   depuis les dépôts SEC (**10-K**, via l'**API EDGAR** + complément manuel là où EDGAR est
+   lacunaire), **AJUSTÉES des splits / reverse splits** — piège documenté **Arqit (ARQQ) reverse
+   split 25:1**, déjà signalé par le marqueur † et les `_CAUTION_NOTES`. À partir de la série
+   ajustée, calculer le **taux de dilution annualisé**. IPO récentes (QNT, XNDU, HQ, INFQ) =
+   mesure **« depuis cotation »**, jamais extrapolée avant la 1re cotation. **Chaque point
+   historique est sourcé** (document SEC daté). Cohérent avec le principe « signale sans masquer,
+   l'humain tranche » et « ne jamais stocker le calculable » (le taux se recalcule depuis la série).
+
+3. **Signaux factuels de dilution future — JAMAIS de score prédictif.** Règle §10 de la bible
+   éditoriale : **information, pas recommandation**. Présenter uniquement des **faits datés et
+   sourcés**, sans agrégation en note ou probabilité :
+   - **cash burn trimestriel** et **runway estimé** (depuis les états financiers) ;
+   - **programmes ATM** (at-the-market) et **shelf registrations** déclarés (sourcés SEC).
+   Aucun indicateur composite, aucun classement « risque de dilution » — ce serait une
+   recommandation déguisée, interdite.
+
+**Note éditoriale :** la dilution est **l'angle différenciant n°1 vs les agrégateurs grand public**
+(Bloomberg, Morningstar n'exposent pas la dilution ajustée sourcée par acteur du quantique coté).
+**Candidat fort pour une vidéo dédiée** à la sortie du module.
+
+**Dépendances :** S1 (`shares_outstanding`) pour le point 1 ; C2 (fiches sociétés) comme support
+d'affichage ; API EDGAR (SEC) + curation manuelle pour le backfill historique du point 2.
+
 ### C3 — Indice Quantique propriétaire (« Indice IQ »)
 
 **Ce qui est construit :** un indice sectoriel propriétaire avec **méthodologie publiée** — univers,
