@@ -13,7 +13,13 @@ export default function PortfolioCard({ summary }: { summary: PortfolioSummary }
   const perfSign = perf_cumul == null ? '' : perf_cumul >= 0 ? 'positive' : 'negative';
 
   return (
-    <a href={`/portefeuille/${id}`} className="portfolio-card" aria-label={`Voir le portefeuille ${name}`}>
+    <a
+      href={`/portefeuille/${id}`}
+      className="portfolio-card"
+      aria-label={`Voir le portefeuille ${name}`}
+      data-umami-event="clic-detail-portefeuille"
+      data-umami-event-portefeuille={id}
+    >
       <div className="card-top">
         <span className={`card-badge badge-${id}`}>{PROFILE_LABELS[id] ?? id}</span>
         {latestDate && (

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, Inter, JetBrains_Mono } from "next/font/google";
+import Script from "next/script";
 import Footer from "@/components/Footer";
 import SiteHeader from "@/components/SiteHeader";
 import { t } from "@/i18n/t";
@@ -55,6 +56,12 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${ibmPlexSans.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
       <body>
+        {/* Analytics Umami Cloud — cookieless, sans bannière RGPD. Chargé après l'hydratation. */}
+        <Script
+          src="https://cloud.umami.is/script.js"
+          data-website-id="587d3c04-a8a9-4c31-b70e-18b37be6efe6"
+          strategy="afterInteractive"
+        />
         <div className="site-wrapper">
           <SiteHeader />
           {children}

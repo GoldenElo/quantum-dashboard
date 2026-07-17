@@ -562,7 +562,7 @@ la **sobriété est le moat**. Toute proposition visuelle qui « fait crypto » 
   aucune campagne d'audience (C5, intégrations mi-vidéo) tant que l'expérience mobile du tableau
   n'est pas refaite — l'audience YouTube/X est majoritairement mobile.
 
-### C1 — Mesure (prérequis de tout)
+### C1 — Mesure (prérequis de tout) — ✅ RÉALISÉE
 
 **Ce qui est construit :** analytics respectueux de la vie privée (**Plausible** ou **Fathom**),
 **sans cookie, sans bannière RGPD**. Objectifs de conversion basiques : clic vers YouTube,
@@ -570,6 +570,21 @@ futur signup newsletter (C5).
 
 **Pourquoi en premier :** sans mesure, rien n'est vendable à un sponsor. C1 débloque la
 justification commerciale de toutes les briques suivantes — c'est le prérequis dur de la phase.
+
+**État réel (depuis le 2026-07-17) — Umami Cloud :**
+- Outil retenu : **Umami Cloud** (cookieless, sans bannière RGPD — cohérent avec l'anti-objectif RGPD).
+- Snippet intégré dans `src/app/layout.tsx` via `next/script` (`strategy="afterInteractive"`),
+  chargé sur **toutes les pages** (App Router root layout).
+- **Website ID** : `587d3c04-a8a9-4c31-b70e-18b37be6efe6` (domaine `thequantumwall.com`).
+- **Événements personnalisés** (via `data-umami-event`) :
+  - `clic-youtube` — lien YouTube du header (`src/components/SiteHeader.tsx`).
+  - `clic-detail-portefeuille` — clic sur une carte portefeuille « Voir le détail »
+    (`src/components/PortfolioCard.tsx`), avec propriété `data-umami-event-portefeuille`
+    portant l'id du profil (defensif/dynamique/agressif/personnel).
+- **RÈGLE DE CESSION (dure)** : **exporter les données Umami avant tout changement d'outil
+  d'analytics**. La continuité de la courbe d'audience est un **actif du dossier de cession**
+  (thèse d'acquisition — audience mesurée et possédée). Une rupture d'historique détruit
+  la démonstration d'audience ; l'export préalable est non négociable.
 
 ### C2 — Fiches sociétés
 
