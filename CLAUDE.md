@@ -702,27 +702,56 @@ distinct d'une audience empruntée à une plateforme tierce. C'est l'aboutisseme
 
 **Dépendances :** C1 (objectif signup), C6 (événement commenté), données S1–S2 (mouvements).
 
-### C6 — Base d'événements sectoriels (fil continu)
+### C6 — Base d'événements sectoriels (fil continu) — 🚧 DÉMARRÉE (2026-07-18)
 
-**Ce qui est construit :** une table `events` alimentée **manuellement au fil de la veille éditoriale**.
-Démarre **tôt** dans la phase et se remplit **en permanence** — l'accumulation est le mécanisme.
-Affichée sur les fiches sociétés (C2) sous forme de **frise chronologique**.
+**Ce qui est construit :** une table `sector_event` alimentée **manuellement au fil de la veille
+éditoriale**. Démarre **tôt** dans la phase et se remplit **en permanence** — l'accumulation est le
+mécanisme. Affichée sur les fiches sociétés (C2) sous forme de **frise chronologique**.
 
 **Pourquoi :** dans 18 mois, c'est **la seule chronologie annotée du quantique coté en français** —
 un **moat par accumulation** qu'aucun concurrent ne peut rattraper rétroactivement.
 
-**Schéma :**
+**Schéma réel (migration 008, ≠ le plan initial `events` ci-dessous — conservé pour mémoire) :**
 ```sql
-create table events (
-  id          serial primary key,
-  date        date not null,
-  ticker      text references asset(ticker),
-  type        text not null,     -- 'contrat' | 'dilution' | 'reverse-split' | 'IPO' | 'stage-DARPA'
-  description text not null,
-  source      text not null,     -- source primaire (nom du document / annonce officielle)
-  link        text               -- lien vers la source primaire
+create table sector_event (
+  id            serial primary key,
+  ticker        text references asset(ticker),   -- NULL = événement sectoriel GLOBAL
+  event_date    date not null,
+  type          text not null check (type in (   -- liste FERMÉE
+                  'ipo','spac','reverse_split','dilution','contrat',
+                  'resultats','acquisition','reglementaire','technologie','autre')),
+  title         text not null,
+  description   text,
+  source_url    text not null,                    -- OBLIGATOIRE — règle de la maison
+  source_label  text,
+  created_at    timestamptz not null default now(),
+  unique (ticker, event_date, title)              -- seed idempotent (on_conflict)
 );
 ```
+
+**RÈGLE DE LA MAISON (dure) :** `source_url` est **NOT NULL** — aucun événement sans lien vers une
+source primaire. Garanti en base (contrainte) ET revérifié par `seed_events.py` (refus d'écriture
+si un seul événement est invalide : source manquante, type hors liste, date non ISO — jamais d'état
+partiel). `type` est une **liste fermée** (CHECK) ; les libellés vivent dans `t.evenements.types.*`.
+
+**Saisie (pas d'interface d'admin — hors périmètre C6) :** SQL direct dans Supabase, ou
+`scripts/seed_events.py` — liste Python `EVENTS` lisible/éditable, upsert idempotent
+`on_conflict=(ticker,event_date,title)`. Une admin viendra plus tard ; en attendant, le script
+est la voie d'entrée. Prérequis : **migration 008 appliquée manuellement**.
+
+**Affichage :** `EventTimeline.tsx` (Server Component, pas de JS client) remplace le placeholder
+« Événements » sur `/societe/[ticker]` : frise verticale des événements **du ticker** (event_date
+DESC), badge type coloré discret (familles charte claire : or IPO/SPAC · teal contrat/résultats/
+acquisition · rouge dilution/reverse_split · gris réglementaire/techno/autre), titre, description,
+lien source « Source : [label] ↗ » (`data-umami-event="clic-source-evenement"` +
+`data-umami-event-ticker`/`-type`). **0 événement → le placeholder « Bientôt » reste.**
+Lecture repliée dans `fetchCompanyData` (api.ts), **fallback gracieux** si la table n'existe pas
+encore (events=[]). Les **événements globaux (`ticker=null`) sont exclus des fiches** — réservés à
+une future page secteur / la newsletter (C5). i18n intégral `t.evenements.*`. ISR 24 h inchangé.
+
+**Mise en service (à faire manuellement) :** 1) appliquer `supabase/migrations/008_sector_events.sql`
+dans le dashboard Supabase ; 2) `cd scripts && python3 seed_events.py` (seede les 7 premiers
+événements réels). Tant que (1) n'est pas fait, toutes les fiches affichent « Bientôt » (fallback).
 
 **Dépendances :** aucune (saisie manuelle) — démarre indépendamment, se déverse dans C2 et C5.
 

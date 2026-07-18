@@ -150,6 +150,16 @@ export type MarketCapData = {
 
 // ─── Type fiche société (C2) ──────────────────────────────────────────────────
 
+export type SectorEvent = {
+  id: number;
+  event_date: string;
+  type: string;
+  title: string;
+  description: string | null;
+  source_url: string;
+  source_label: string | null;
+};
+
 export type CompanyData = {
   ticker: string;
   name: string;
@@ -171,6 +181,9 @@ export type CompanyData = {
   hasHistory: boolean;               // au moins une séance en base
   // Série de capitalisation reconstituée : cours × dernier nb d'actions connu ≤ date.
   capHistory: { date: string; market_cap: number }[];
+  // Événements sectoriels du ticker (C6), du plus récent au plus ancien. [] si aucun
+  // ou si la table sector_event n'existe pas encore (migration 008 non appliquée).
+  events: SectorEvent[];
 };
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -736,7 +749,7 @@ export async function fetchCompanyData(ticker: string): Promise<CompanyData | nu
   const upper = ticker.toUpperCase();
   if (!SECTORAL_TICKERS.includes(upper as (typeof SECTORAL_TICKERS)[number])) return null;
 
-  const [assetRes, sharesRes, revenueRes, priceRes] = await Promise.all([
+  const [assetRes, sharesRes, revenueRes, priceRes, eventsRes] = await Promise.all([
     supabase.from('asset').select('ticker, name, category').eq('ticker', upper).maybeSingle(),
     // Tout l'historique des actions (ASC) → step-function pour la courbe de capi.
     supabase
@@ -757,6 +770,13 @@ export async function fetchCompanyData(ticker: string): Promise<CompanyData | nu
       .eq('ticker', upper)
       .order('date', { ascending: false })
       .limit(SECTORAL_WINDOW),
+    // Événements du ticker (C6) — table optionnelle (migration 008). Absente ⇒ [].
+    // Événements globaux (ticker null) exclus des fiches individuelles.
+    supabase
+      .from('sector_event')
+      .select('id, event_date, type, title, description, source_url, source_label')
+      .eq('ticker', upper)
+      .order('event_date', { ascending: false }),
   ]);
 
   if (assetRes.error || !assetRes.data) return null;
@@ -816,6 +836,19 @@ export async function fetchCompanyData(ticker: string): Promise<CompanyData | nu
     })
     .filter((p): p is { date: string; market_cap: number } => p != null);
 
+  // Fallback gracieux si la table sector_event n'existe pas encore.
+  const events: SectorEvent[] = eventsRes.error
+    ? []
+    : (eventsRes.data ?? []).map(e => ({
+        id: Number(e.id),
+        event_date: e.event_date as string,
+        type: e.type as string,
+        title: e.title as string,
+        description: (e.description as string | null) ?? null,
+        source_url: e.source_url as string,
+        source_label: (e.source_label as string | null) ?? null,
+      }));
+
   return {
     ticker: asset.ticker,
     name: asset.name,
@@ -835,6 +868,7 @@ export async function fetchCompanyData(ticker: string): Promise<CompanyData | nu
     ps_status: ps.status,
     hasHistory,
     capHistory,
+    events,
   };
 }
 

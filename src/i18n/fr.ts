@@ -162,11 +162,8 @@ export const fr = {
     },
     // Bloc de curation éditoriale — mis en avant (différenciation).
     notesTitre: 'Notes de la rédaction',
-    // Placeholders des briques à venir — structurés, discrets.
-    evenements: {
-      titre: 'Événements',
-      bientot: 'Frise chronologique des événements (contrats, dilutions, jalons) — bientôt.',
-    },
+    // Placeholder Dilution (C7 à venir) — structuré, discret. Le placeholder
+    // Événements est remplacé par la frise C6 (voir bloc `evenements` ci-dessous).
     dilution: {
       titre: 'Dilution',
       bientot: 'Historique du nombre d’actions et signaux de dilution — bientôt.',
@@ -183,6 +180,30 @@ export const fr = {
     // Accessibilité.
     ficheAria: 'Fiche société',
     lienFicheAria: 'Voir la fiche',
+  },
+  // Base d'événements sectoriels (C6) — frise sur les fiches sociétés.
+  evenements: {
+    titre: 'Événements',
+    // Placeholder si aucun événement pour le ticker (le "Bientôt" reste).
+    bientot: 'Frise chronologique des événements (contrats, dilutions, jalons) — bientôt.',
+    sourcePrefix: 'Source :',
+    aria: {
+      frise: 'Frise chronologique des événements',
+      lienSource: 'Ouvrir la source (nouvel onglet)',
+    },
+    // Libellés des types — miroir de la liste fermée (CHECK migration 008).
+    types: {
+      ipo: 'IPO',
+      spac: 'SPAC',
+      reverse_split: 'Reverse split',
+      dilution: 'Dilution',
+      contrat: 'Contrat',
+      resultats: 'Résultats',
+      acquisition: 'Acquisition',
+      reglementaire: 'Réglementaire',
+      technologie: 'Technologie',
+      autre: 'Autre',
+    } as Record<string, string>,
   },
 } as const
 

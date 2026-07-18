@@ -5,6 +5,7 @@ import { formatMarketCap, formatPct, formatDate, formatDateCompact, formatRatio 
 import { t, TICKER_NOTES, TICKER_MODALITIES } from '@/i18n/t';
 import { SITE_URL, YOUTUBE_URL } from '@/lib/site';
 import CompanyCapChart from '@/components/CompanyCapChart';
+import EventTimeline from '@/components/EventTimeline';
 
 export const revalidate = 86400;
 // Seules les 12 fiches existent — tout autre ticker renvoie un 404 propre.
@@ -186,11 +187,18 @@ export default async function CompanyPage({ params }: Props) {
         </section>
       )}
 
-      {/* Placeholders des briques à venir — structurés, discrets */}
-      <section className="section company-placeholder" aria-label={t.societe.evenements.titre}>
-        <h2 className="section-title">{t.societe.evenements.titre}</h2>
-        <p className="company-soon">{t.societe.evenements.bientot}</p>
+      {/* Événements (C6) — frise si le ticker en a, sinon placeholder "Bientôt" */}
+      <section
+        className={`section${data.events.length === 0 ? ' company-placeholder' : ''}`}
+        aria-label={t.evenements.titre}
+      >
+        <h2 className="section-title">{t.evenements.titre}</h2>
+        {data.events.length > 0
+          ? <EventTimeline events={data.events} ticker={data.ticker} />
+          : <p className="company-soon">{t.evenements.bientot}</p>}
       </section>
+
+      {/* Placeholder Dilution (C7 à venir) — structuré, discret */}
       <section className="section company-placeholder" aria-label={t.societe.dilution.titre}>
         <h2 className="section-title">{t.societe.dilution.titre}</h2>
         <p className="company-soon">{t.societe.dilution.bientot}</p>
