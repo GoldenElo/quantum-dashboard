@@ -49,9 +49,35 @@ load_dotenv()
 _RECOUP_ALERT = 0.05   # écart CA rapporté vs Σ4T > 5 % → alerte CI (recoupement douteux)
 _CONTRADICT_ALERT = 0.15  # yfinance vs surcharge manuelle > 15 % → alerte CI
 
-# 12 sociétés sectorielles — QNTM.L, QQQ (ETF) et NVDA (infrastructure) exclus.
+# 13 sociétés sectorielles — QNTM.L, QQQ (ETF) et NVDA (infrastructure) exclus.
 TICKERS = ["GOOGL", "IBM", "IONQ", "QBTS", "LAES", "INFQ", "RGTI", "QUBT", "QNT",
-           "XNDU", "ARQQ", "HQ"]
+           "XNDU", "ARQQ", "HQ", "IQMX"]
+
+# ─── Surcharges manuelles de CA (priment sur yfinance, sanctuarisées) ─────────
+# Même rôle que _MANUAL_OVERRIDES dans fetch_shares.py : une source primaire datée
+# remplace une donnée yfinance absente ou fausse. `source` commençant par 'SEC' ou
+# 'annual-report' → is_manual_source() → jamais écrasée par yfinance.
+#
+# fx_rate n'est PAS figé ici : il est recalculé au taux de clôture courant à chaque
+# exécution (la machinerie fetch_fx_to_usd fait foi), pour que le P/S reste juste.
+#
+# IQMX : yfinance ne déclare AUCUNE devise de reporting (financialCurrency = None)
+#        alors que les états financiers sont en EUR — sans cette surcharge, le
+#        garde-fou devise ci-dessous refuse la ligne (et c'est le comportement voulu).
+#        CA de l'EXERCICE CLOS au 31/12/2025 : 31,333 M€. Ce n'est pas un TTM et
+#        aucun détail trimestriel n'est publié via yfinance → quarters_used = 0 →
+#        statut 'unrecouped' côté API → marqueur ‡, jamais un ratio ferme.
+_MANUAL_OVERRIDES: list[dict] = [
+    {
+        "ticker":             "IQMX",
+        "as_of_date":         "2025-12-31",
+        "revenue_reported":   31_333_000,   # EUR — converti en USD via fx_rate
+        "revenue_sum_4q":     None,         # aucun détail trimestriel → recoupement impossible
+        "quarters_used":      0,
+        "financial_currency": "EUR",
+        "source":             "SEC 6-K 2026-07-01 (exercice clos 31/12/2025, reporting EUR)",
+    },
+]
 
 
 def _fmt_rev(v: float | None) -> str:
@@ -75,10 +101,33 @@ def main() -> None:
             fx_cache[ccy] = fetch_fx_to_usd(ccy)
         return fx_cache[ccy]
 
+    overridden = {o["ticker"] for o in _MANUAL_OVERRIDES}
+    currency_refused: list[str] = []
+
     for ticker in TICKERS:
         try:
             rev = fetch_revenue_ttm(ticker)
-            ccy = (rev.get("financial_currency") or "USD").upper()
+
+            # ── RÈGLE DEVISE (durcie) : aucune devise devinée ──────────────────
+            # Un CA sans devise déclarée est INEXPLOITABLE : le convertir à 1.0 par
+            # défaut revient à affirmer « c'est de l'USD » sans preuve. Constaté sur
+            # IQMX (états financiers en EUR, financialCurrency = None) → P/S faux de
+            # +14 %. On refuse la ligne au lieu de produire un chiffre faux ;
+            # une surcharge manuelle sourcée prend le relais.
+            raw_ccy = rev.get("financial_currency")
+            if not raw_ccy:
+                currency_refused.append(ticker)
+                covered = "surcharge manuelle présente" if ticker in overridden else \
+                          "AUCUNE surcharge — le P/S sera absent"
+                emit_warning(
+                    f"CA {ticker} — devise de reporting non déclarée",
+                    f"yfinance ne renvoie pas financialCurrency : ligne REFUSÉE (aucun défaut USD). "
+                    f"{covered}. Vérifier la devise dans le dépôt SEC et surcharger "
+                    f"_MANUAL_OVERRIDES dans fetch_revenue.py avec financial_currency explicite.",
+                )
+                continue
+
+            ccy = raw_ccy.upper()
             fx = _fx(ccy)  # devise native → USD (1.0 si USD), au dernier taux de clôture
             rows.append({
                 "ticker":             ticker,
@@ -161,6 +210,36 @@ def main() -> None:
                 file=sys.stderr,
             )
             sys.exit(1)
+
+    # Surcharges manuelles : upsertées APRÈS les lignes yfinance (elles priment).
+    # fx recalculé au taux courant — la devise, elle, est explicite et figée.
+    if _MANUAL_OVERRIDES:
+        override_rows = []
+        for o in _MANUAL_OVERRIDES:
+            fx = _fx(o["financial_currency"].upper())
+            row = {**o, "fx_rate": fx["rate"]}
+            override_rows.append(row)
+            rev_usd = (o["revenue_reported"] or 0) * fx["rate"]
+            print(
+                f"  ⚑ {o['ticker']:<6} surcharge {o['financial_currency']} "
+                f"{_fmt_rev(o['revenue_reported'])} × fx {fx['rate']:.4f} "
+                f"= {_fmt_rev(rev_usd)} ({o['quarters_used']} trim. → non recoupé) — {o['source']}"
+            )
+        try:
+            db.table("revenue_ttm").upsert(override_rows).execute()
+            print(f"✓ {len(override_rows)} surcharge(s) manuelle(s) upsertée(s) dans revenue_ttm.")
+        except Exception as exc:  # noqa: BLE001
+            print(f"\n✗ Échec de l'upsert des surcharges : {exc}", file=sys.stderr)
+            sys.exit(1)
+
+    if currency_refused:
+        print(
+            f"\n⚑ {len(currency_refused)} ticker(s) refusé(s) faute de devise déclarée : "
+            f"{', '.join(currency_refused)}\n"
+            "  Comportement VOULU (règle devise durcie) — aucun défaut USD n'est appliqué.\n"
+            "  Couvrir chacun par une surcharge sourcée dans _MANUAL_OVERRIDES.",
+            file=sys.stderr,
+        )
 
     if errors:
         print(

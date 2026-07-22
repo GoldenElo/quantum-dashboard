@@ -26,6 +26,7 @@ TICKERS = [
     "GOOGL", "IBM", "NVDA", "IONQ", "QBTS", "LAES", "INFQ",
     "RGTI", "QUBT", "QNT",            # suivi sectoriel pur — hors portefeuilles (migration 005)
     "XNDU", "ARQQ", "HQ",             # suivi sectoriel pur — hors portefeuilles (migration 006)
+    "IQMX",                           # suivi sectoriel pur — hors portefeuilles (migration 009)
     "QNTM.L", "QQQ",                   # benchmarks
 ]
 
@@ -33,7 +34,10 @@ TICKERS = [
 # yfinance retourne naturellement les dates depuis la première cotation — pas de ligne fantôme.
 # Utilisé dans print_control_table pour ne pas signaler le manque de jours pre-IPO comme erreur.
 TICKER_FIRST_TRADE: dict[str, date] = {
-    "QNT": date(2026, 6, 4),  # IPO Nasdaq — premier cours le 04/06/2026
+    "QNT":  date(2026, 6, 4),  # IPO Nasdaq — premier cours le 04/06/2026
+    # IQMX : cotation ADS le 02/07/2026 après fusion SPAC avec RAAQ.
+    # ⚠ yfinance sert l'historique du SPAC sous ce ticker — voir backfill_sectoral.py.
+    "IQMX": date(2026, 7, 2),
 }
 
 BATCH_SIZE = 500

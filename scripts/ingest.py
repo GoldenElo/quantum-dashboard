@@ -27,13 +27,18 @@ TICKERS = [
     "GOOGL", "IBM", "NVDA", "IONQ", "QBTS", "LAES", "INFQ",
     "RGTI", "QUBT", "QNT",            # suivi sectoriel pur — hors portefeuilles (migration 005)
     "XNDU", "ARQQ", "HQ",             # suivi sectoriel pur — hors portefeuilles (migration 006)
+    "IQMX",                           # suivi sectoriel pur — hors portefeuilles (migration 009)
     "QNTM.L", "QQQ",                   # benchmarks graphique comparatif
 ]
 
 # Tickers dont l'IPO est postérieure à l'inception (01/06/2026).
 # Exclus du fetch avant leur première cotation — pas d'erreur, pas de ligne fantôme.
 TICKER_FIRST_TRADE: dict[str, date] = {
-    "QNT": date(2026, 6, 4),  # IPO Nasdaq — premier cours le 04/06/2026
+    "QNT":  date(2026, 6, 4),  # IPO Nasdaq — premier cours le 04/06/2026
+    # IQMX : fusion SPAC avec RAAQ (closing 01/07/2026), cotation ADS le 02/07/2026.
+    # ⚠ yfinance sert sous IQMX l'historique du SPAC RAAQ (depuis juin 2025, ~10 $ =
+    # valeur de trust) — ces cours ne sont PAS ceux d'IQM. Cette borne les exclut.
+    "IQMX": date(2026, 7, 2),
 }
 
 INITIAL_CAPITAL_USD = 10_000.0

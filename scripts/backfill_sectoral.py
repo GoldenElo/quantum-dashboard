@@ -35,11 +35,27 @@ logger = logging.getLogger(__name__)
 # ~1 an avant l'inception des portefeuilles. DISTINCT de INCEPTION_DATE (2026-06-01).
 SECTORAL_HISTORY_START = date(2025, 6, 1)
 
-# Les 12 sociétés de l'univers sectoriel — SANS NVDA (infra) ni benchmarks (QNTM.L, QQQ).
+# Les 13 sociétés de l'univers sectoriel — SANS NVDA (infra) ni benchmarks (QNTM.L, QQQ).
 SECTORAL_TICKERS = [
     "GOOGL", "IBM", "IONQ", "QBTS", "LAES", "INFQ",
-    "RGTI", "QUBT", "QNT", "XNDU", "ARQQ", "HQ",
+    "RGTI", "QUBT", "QNT", "XNDU", "ARQQ", "HQ", "IQMX",
 ]
+
+# ─── Garde-fou historique fantôme (sociétés issues d'une fusion SPAC) ─────────
+# Pour un ticker né d'une fusion SPAC, yfinance sert SOUS LE NOUVEAU TICKER
+# l'historique de cotation de la coquille SPAC pré-fusion (cours de trust ~10 $).
+# Ces cours ne sont PAS ceux de la société : les importer fabriquerait une fausse
+# profondeur d'historique et des variations multi-horizons mensongères.
+#
+# Toute date STRICTEMENT ANTÉRIEURE à la borne ci-dessous est écartée à l'écriture.
+# Conséquence assumée et correcte : historique court → variations Mois/Année à null
+# ("—" à l'affichage), comme pour toute IPO récente. On préfère l'absence au faux.
+#
+# IQMX : fusion avec Real Asset Acquisition Corp. (RAAQ), closing 01/07/2026 ;
+#        cotation des ADS le 02/07/2026 (6-K SEC du 01/07/2026).
+SECTORAL_FIRST_TRADE: dict[str, date] = {
+    "IQMX": date(2026, 7, 2),
+}
 
 # Seuil "année complète" : 252 séances ≈ 1 an de cotation.
 _FULL_YEAR_SESSIONS = 252
@@ -68,6 +84,26 @@ def backfill_sectoral(db: Client, start: date, end: date) -> dict[str, dict]:
         if df.empty:
             logger.error("Données vides pour %s — backfill interrompu.", ticker)
             sys.exit(1)
+
+        # Garde-fou historique fantôme : on coupe tout ce qui précède la 1re cotation réelle.
+        first_trade = SECTORAL_FIRST_TRADE.get(ticker)
+        if first_trade is not None:
+            before = len(df)
+            df = df[pd.to_datetime(df.index).date >= first_trade]
+            dropped = before - len(df)
+            if dropped:
+                logger.warning(
+                    "%s : %d séance(s) antérieure(s) au %s écartée(s) "
+                    "(historique de la coquille SPAC, pas de la société).",
+                    ticker, dropped, first_trade,
+                )
+            if df.empty:
+                logger.error(
+                    "%s : aucune séance depuis le %s — vérifier le ticker et la date "
+                    "de première cotation avant de relancer.", ticker, first_trade,
+                )
+                sys.exit(1)
+
         stats[ticker] = {
             "count": len(df),
             "first": df.index.min(),

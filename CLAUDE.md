@@ -222,7 +222,7 @@ Chaque colonne doit sommer à 100 % — vérifier par un test.
 **Ne jamais inclure QQQ dans les portefeuilles, les snapshots, ni les agrégats sectoriels futurs.**
 C'est une référence de marché d'affichage uniquement — en base : `asset.category = 'etf'`.
 
-## Univers sectoriel (suivi market cap — 12 sociétés)
+## Univers sectoriel (suivi market cap — 13 sociétés)
 
 Tickers suivis dans `price_daily` et `shares_outstanding` pour le tableau de market cap (S1/S4).
 Distinct des portefeuilles : aucune de ces sociétés ne peut être ajoutée à un portefeuille après l'inception.
@@ -241,6 +241,7 @@ Distinct des portefeuilles : aucune de ces sociétés ne peut être ajoutée à 
 | XNDU | Xanadu Quantum Technologies | pure_player | modalité PHOTONIQUE — IPO 27/03/2026 |
 | ARQQ | Arqit Quantum | pure_player | ⚠ **quantum washing documenté** — voir note ci-dessous |
 | HQ | Horizon Quantum Holdings | pure_player | fusion SPAC dMY Squared, cotation ~20/03/2026 |
+| IQMX | IQM Quantum Computers | pure_player | modalité SUPRACONDUCTEUR — fusion SPAC RAAQ, cotation 02/07/2026 — voir note ci-dessous |
 
 **NVDA (infrastructure)** : dans les portefeuilles, pas dans l'univers sectoriel pure-player.
 
@@ -262,8 +263,32 @@ Le chiffre d'actions (17,4 M, très bas) est à surveiller — vérifier dilutio
 **Migration 005** (`supabase/migrations/005_add_sectoral_tickers.sql`) : ajoute QNT, RGTI, QUBT dans
 `asset` (idempotent — ON CONFLICT DO NOTHING). À appliquer avant tout backfill de ces tickers.
 
+**Note IQMX — quatre pièges documentés (société finlandaise, ex-SPAC) :**
+IQM Quantum Computers Oyj (Espoo), première société européenne du quantique cotée sur une grande
+place US. Quatre écarts vérifiés le 22/07/2026, tous traités — **ne jamais les « re-simplifier »** :
+1. **Ticker.** `IQM` sur Yahoo est le **Franklin Intelligent Machines ETF**, pas la société.
+   Le ticker correct est **`IQMX`** (Nasdaq Global Select). Titre coté = **ADS, ratio 1:1**.
+2. **Historique fantôme.** yfinance sert sous `IQMX` l'historique du SPAC **RAAQ** depuis juin 2025
+   (~10 $ = valeur de trust). Borné par `TICKER_FIRST_TRADE['IQMX'] = 2026-07-02` (ingest.py,
+   backfill.py) et `SECTORAL_FIRST_TRADE` (backfill_sectoral.py, qui **filtre à l'écriture** car il
+   remonte à 2025-06-01). Conséquence assumée : variations Mois/Année à `—` (on préfère l'absence au faux).
+3. **Actions sous-estimées de 24,7 %.** yfinance : 210 988 684. Registre du commerce finlandais :
+   **263 039 597 actions et votes au 16/07/2026** (6-K du 20/07). Surcharge sanctuarisée
+   `SEC 6-K 2026-07-16`. L'alerte « contredit surcharge » se déclenchera **à chaque exécution** —
+   c'est **normal et permanent**, comme pour QNT.
+4. **Devise de reporting non déclarée.** `financialCurrency` est `None` alors que les comptes sont
+   en **EUR**. Voir RÈGLE DEVISE durcie (§ S-P/S) — c'est ce ticker qui a motivé le durcissement.
+
+**P/S IQMX non ferme (`‡`), durablement :** aucun détail trimestriel via yfinance (recoupement
+impossible, comme LAES/ARQQ) **et** le seul CA disponible est celui de l'**exercice clos au
+31/12/2025** (31,333 M€) — ce n'est pas un TTM. Marqueur `§` en note de tableau. Ne passer en ratio
+ferme que le jour où 4 trimestres publiés sont recoupables.
+
 **Migration 006** (`supabase/migrations/006_add_xndu_arqq_hq.sql`) : ajoute XNDU, ARQQ, HQ dans
 `asset` (idempotent — ON CONFLICT DO NOTHING). À appliquer avant tout backfill de ces tickers.
+
+**Migration 009** (`supabase/migrations/009_add_iqmx.sql`) : ajoute IQMX dans `asset`
+(idempotent — ON CONFLICT DO NOTHING). À appliquer avant tout backfill de ce ticker.
 
 ## Calculs (dans le cron, jamais dans le front)
 
@@ -314,7 +339,7 @@ Le chiffre d'actions (17,4 M, très bas) est à surveiller — vérifier dilutio
     badge modalité (XNDU photonique), marqueur ARQQ † (reverse split / quantum washing).
 11. ✅ S2 : variations multi-horizons des capitalisations sectorielles.
     - `scripts/backfill_sectoral.py` : backfill historique ~1 an (depuis **2025-06-01**) pour les
-      12 tickers sectoriels UNIQUEMENT — **distinct de l'inception des portefeuilles (2026-06-01)**.
+      13 tickers sectoriels UNIQUEMENT — **distinct de l'inception des portefeuilles (2026-06-01)**.
       Ne backfille NI NVDA NI les benchmarks (QNTM.L/QQQ) → courbes base 100 et étalon marché intacts.
       Les IPO récentes (QNT, XNDU, HQ, INFQ) ne renvoient que depuis leur 1re cotation (pas de fantôme).
     - **Garde-fou inception** dans `ingest.py` (`compute_snapshots`) : aucun snapshot avant
@@ -347,12 +372,22 @@ Le chiffre d'actions (17,4 M, très bas) est à surveiller — vérifier dilutio
       `check_changes.py`).
     - **P/S calculé à la volée, jamais stocké** (principe « ne jamais stocker le calculable »,
       cohérent market cap S1 / variations S2). P/S = market_cap (USD) / CA (USD).
-    - **RÈGLE DEVISE (dure) :** `totalRevenue` yfinance est dans la devise de reporting
-      (`financialCurrency`), pas forcément en USD. Convertir le CA en USD (`revenue × fx_rate`)
-      **avant** tout P/S — ne jamais mélanger market cap USD et CA en devise étrangère. Constat
-      2026-07-01 : les 12 sociétés rapportent en USD (SEC foreign private issuers, y compris XNDU/CA,
-      ARQQ/UK, LAES/CH, HQ/SG) → `fx_rate = 1.0`. La machinerie de conversion existe et est prouvée
-      (CAD/GBP/CHF/EUR) pour absorber un futur ticker non-USD sans refonte.
+    - **RÈGLE DEVISE (dure, DURCIE le 2026-07-22) :** `totalRevenue` yfinance est dans la devise de
+      reporting (`financialCurrency`), pas forcément en USD. Convertir le CA en USD
+      (`revenue × fx_rate`) **avant** tout P/S — ne jamais mélanger market cap USD et CA en devise
+      étrangère. Constat 2026-07-01 : les 12 sociétés d'alors rapportent en USD (SEC foreign private
+      issuers, y compris XNDU/CA, ARQQ/UK, LAES/CH, HQ/SG) → `fx_rate = 1.0`. La machinerie de
+      conversion existe et est prouvée (CAD/GBP/CHF/EUR).
+      **AUCUNE DEVISE DEVINÉE — devise explicite ou refus.** Si `financialCurrency` est absent,
+      `fetch_revenue.py` **refuse la ligne** (alerte CI explicite) au lieu de retomber sur USD.
+      Un défaut à USD revient à *affirmer sans preuve* que le CA est en dollars : c'est produire un
+      chiffre faux, pas une approximation. Le relais est une **surcharge manuelle sourcée**
+      (`_MANUAL_OVERRIDES` dans `fetch_revenue.py`) portant une `financial_currency` explicite ;
+      `fx_rate` y est recalculé au taux courant à chaque exécution, jamais figé en dur.
+      **Origine du durcissement — IQMX** (2026-07-22) : `financialCurrency = None` alors que les
+      comptes sont en EUR ; l'ancien défaut USD donnait un P/S de **100,3 au lieu de 87,9 (+14 %)**.
+      Un P/S faux est pire qu'un P/S absent — il survit à la relecture. Vaut pour **tout futur
+      ticker non-US**, pas seulement IQMX.
     - **Recoupement STRICT à 5 %** : écart `|Σ4T − rapporté| / rapporté` > 5 % → marqueur ⚑.
       Au 2026-07-01 : INFQ (-19,6 %), QNT (+42,4 %), XNDU (-5,3 %, marginal) signalés.
     - **Affichage à deux niveaux (garde-fou anti-hype) :** P/S **ferme** uniquement si 4 trimestres
@@ -364,6 +399,10 @@ Le chiffre d'actions (17,4 M, très bas) est à surveiller — vérifier dilutio
       trimestriel de LAES (SEALSQ) → recoupement impossible, P/S non ferme (`‡`). Vérifier le CA
       dans le rapport annuel SEALSQ et surcharger `revenue_ttm` (source `annual-report`) le moment venu.
     - **ARQQ** conserve son avertissement quantum washing (recoupement également impossible via yfinance).
+
+**Univers sectoriel porté à 13 sociétés le 2026-07-22 : ajout d'IQMX (IQM Quantum Computers) —
+migration 009, `TICKER_FIRST_TRADE`/`SECTORAL_FIRST_TRADE` contre l'historique fantôme RAAQ,
+surcharges SEC actions + CA (EUR), RÈGLE DEVISE durcie, événement C6 de cotation.**
 
 **État actuel (2026-07-01) : V1.5 + S1 (market cap, 12 sociétés sectorielles) + S2 (variations
 multi-horizons) + S-P/S en cours (migration 007 + scripts revenue/P·S écrits, chiffres validés,
@@ -491,7 +530,7 @@ market cap S1 — conformément au principe directeur « ne jamais stocker en ba
 calculé à la volée ». Aucune migration SQL pour S2.
 
 **Ce qui est construit (réel) :**
-- Backfill historique ~1 an `scripts/backfill_sectoral.py` (depuis **2025-06-01**, 12 tickers
+- Backfill historique ~1 an `scripts/backfill_sectoral.py` (depuis **2025-06-01**, 13 tickers
   sectoriels uniquement — pas NVDA, pas les benchmarks). Distinct de l'inception portefeuilles.
 - Variations à la volée dans `src/lib/api.ts` (`fetchMarketCapsData`) : horizons en **jours de
   cotation** — Jour (offset 1), Semaine (5), Mois (21), Année (252, calculée non affichée).
@@ -588,7 +627,7 @@ justification commerciale de toutes les briques suivantes — c'est le prérequi
 
 ### C2 — Fiches sociétés — ✅ RÉALISÉE (2026-07-17)
 
-**Ce qui est construit :** pages `/societe/[ticker]` pour les **12 acteurs** du suivi sectoriel —
+**Ce qui est construit :** pages `/societe/[ticker]` pour les **13 acteurs** du suivi sectoriel —
 graphique de capitalisation historique, P/S dans le temps, variations multi-horizons, notes
 éditoriales existantes (Up-C QNT, quantum washing ARQQ, flags ⚑/‡), et **méthodologie de la donnée**
 affichée en clair. Réutilise **100 % des données déjà en base** — aucune nouvelle source.
@@ -601,7 +640,7 @@ intégrations mi-vidéo** (§10) — le lien qu'on pose sous une vidéo pointe v
 
 **État réel (implémentation) :**
 - **Route** : `src/app/societe/[ticker]/page.tsx` (Server Component, ISR 24 h, `dynamicParams = false`
-  → seuls les 12 tickers existent, tout autre renvoie un 404). URLs en **minuscules**
+  → seuls les 13 tickers existent, tout autre renvoie un 404). URLs en **minuscules**
   (`/societe/ionq`). `generateStaticParams` alimenté par `listCompanyTickers()` (`api.ts`).
 - **Données** : `fetchCompanyData(ticker)` (`api.ts`) — fonction dédiée qui **ne skip jamais** un
   ticker (une fiche rend toujours, chiffres « — » si donnée absente), et **réutilise les mêmes

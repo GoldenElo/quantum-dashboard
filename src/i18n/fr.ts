@@ -218,10 +218,18 @@ export const TICKER_NOTES: Record<string, { marker: string; text: string }> = {
     marker: '†',
     text: 'profil à risque élevé — reverse split 25:1 (sept. 2024) pour conformité Nasdaq, voir analyse quantum washing',
   },
+  IQMX: {
+    marker: '§',
+    text:
+      "cotée depuis le 2 juillet 2026 (fusion SPAC) — capitalisation sur le total des actions et votes " +
+      "au registre finlandais, et non sur le flottant. P/S estimé à partir du chiffre d'affaires de " +
+      "l'exercice 2025 converti d'euros en dollars : ce n'est pas un TTM et il n'est pas recoupable",
+  },
 }
 
 // Modalités technologiques par ticker — badge affiché après le nom de société.
 // N'ajouter que lorsque la modalité est distincte du reste du panel (valeur éditoriale).
 export const TICKER_MODALITIES: Record<string, string> = {
   XNDU: 'photonique',
+  IQMX: 'supraconducteur',
 }

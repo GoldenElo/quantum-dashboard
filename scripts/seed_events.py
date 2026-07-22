@@ -126,6 +126,23 @@ EVENTS = [
         "source_url": "https://thequantumwall.com/societe/hq",
         "source_label": "Données de marché — The Quantum Wall",
     },
+    {
+        "ticker": "IQMX",
+        "event_date": "2026-07-02",
+        "type": "spac",
+        "title": "Cotation au Nasdaq après fusion SPAC avec RAAQ",
+        "description": (
+            "Première société européenne du quantique cotée sur une grande place américaine. "
+            "Fusion avec Real Asset Acquisition Corp. finalisée le 1er juillet 2026, cotation "
+            "des ADS le 2 juillet sous le symbole IQMX (1 ADS = 1 action ordinaire). "
+            "14 381 747 actions remises aux actionnaires du SPAC et 14 548 000 actions placées "
+            "à 10 $ auprès d'investisseurs institutionnels (PIPE de 127,7 M€), pour un produit "
+            "net total d'environ 198,7 M€. Double cotation au Nasdaq Helsinki le lendemain."
+        ),
+        # Lien profond vers l'exhibit 99.1 du 6-K de closing (communiqué officiel).
+        "source_url": "https://www.sec.gov/Archives/edgar/data/0002113060/000119312526292513/d61136dex991.htm",
+        "source_label": "Communiqué de closing — 6-K SEC du 01/07/2026",
+    },
 ]
 
 

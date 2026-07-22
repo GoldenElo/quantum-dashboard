@@ -28,10 +28,10 @@ from guards import is_manual_source, emit_warning
 load_dotenv(dotenv_path="../.env.local")
 load_dotenv()
 
-# 12 sociétés sectorielles — QNTM.L, QQQ (ETF) et NVDA (infrastructure) exclus.
-# Migration 005 : RGTI, QUBT, QNT | Migration 006 : XNDU, ARQQ, HQ
+# 13 sociétés sectorielles — QNTM.L, QQQ (ETF) et NVDA (infrastructure) exclus.
+# Migration 005 : RGTI, QUBT, QNT | Migration 006 : XNDU, ARQQ, HQ | Migration 009 : IQMX
 TICKERS = ["GOOGL", "IBM", "IONQ", "QBTS", "LAES", "INFQ", "RGTI", "QUBT", "QNT",
-           "XNDU", "ARQQ", "HQ"]
+           "XNDU", "ARQQ", "HQ", "IQMX"]
 
 # Valeurs de référence pour les alertes (sources primaires vérifiées)
 _REF_SHARES: dict[str, tuple[int, str]] = {
@@ -63,6 +63,18 @@ _MANUAL_OVERRIDES: list[dict] = [
         # Valeur pleinement diluée = 32,86 M / 10,2 % ≈ 322 M actions (Class A + Common Units B).
         "source":     "SEC 424B4 2026-06-04 (fully-diluted, Up-C structure)",
     },
+    {
+        "ticker":     "IQMX",
+        "as_of_date": "2026-07-16",
+        "shares":     263_039_597,
+        # Source : 6-K du 20/07/2026, exhibit 99.1 « Total number of voting rights and shares ».
+        # Nombre total d'actions et de votes enregistré au registre du commerce finlandais
+        # le 16/07/2026, après exercice net des warrants Kreos (+577 237 actions).
+        # yfinance ne voit que 210 988 684 actions (-19,8 %) — écart permanent attendu,
+        # l'alerte "contredit surcharge" se déclenchera à chaque exécution (normal).
+        # Titre coté = ADS, ratio 1 ADS = 1 action ordinaire → aucun ajustement.
+        "source":     "SEC 6-K 2026-07-16 (total actions et votes, registre finlandais)",
+    },
 ]
 _OVERRIDE_MAP: dict[str, dict] = {o["ticker"]: o for o in _MANUAL_OVERRIDES}
 
@@ -70,6 +82,7 @@ _OVERRIDE_MAP: dict[str, dict] = {o["ticker"]: o for o in _MANUAL_OVERRIDES}
 # À réutiliser lors de l'implémentation du tableau frontend (S1 Étape C).
 _DISPLAY_NOTES: dict[str, str] = {
     "QNT": "market cap pleinement diluée — structure Up-C, flottant Class A ≈ 10 %",
+    "IQMX": "total actions et votes (registre finlandais) — yfinance sous-estime de ~20 %",
 }
 
 

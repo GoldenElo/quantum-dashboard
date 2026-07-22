@@ -190,7 +190,7 @@ export type CompanyData = {
 
 const FICTIF_IDS = ['defensif', 'dynamique', 'agressif'] as const;
 const BENCHMARK_TICKER = 'QNTM.L';
-export const SECTORAL_TICKERS = ['GOOGL', 'IBM', 'IONQ', 'QBTS', 'LAES', 'INFQ', 'RGTI', 'QUBT', 'QNT', 'XNDU', 'ARQQ', 'HQ'] as const;
+export const SECTORAL_TICKERS = ['GOOGL', 'IBM', 'IONQ', 'QBTS', 'LAES', 'INFQ', 'RGTI', 'QUBT', 'QNT', 'XNDU', 'ARQQ', 'HQ', 'IQMX'] as const;
 
 // Les 12 tickers sectoriels ont chacun une fiche société /societe/[ticker].
 // Source unique pour generateStaticParams + sitemap (aucune fiche hors de cette liste).
