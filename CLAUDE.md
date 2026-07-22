@@ -158,6 +158,24 @@ puis `fetch_revenue.py`. Idempotent (upsert), échoue proprement (annotation `::
   (`source = 'SEC 10-Q YYYY-MM-DD'` avec une `as_of_date` récente → prime via ORDER BY DESC).
 - **Secrets GitHub requis** : `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (identiques aux autres crons).
 
+## Maintenance planifiée (échéances datées)
+
+Tâches à déclencher sur événement externe, pas sur une cadence. Une surcharge manuelle est un
+**instantané** : elle ne vieillit pas toute seule, c'est à nous de la retirer quand la source
+automatique redevient fiable. Une surcharge oubliée fige un chiffre périmé sans jamais alerter.
+
+- **IQMX — première publication de résultats (S1 2026, attendue ~août-septembre 2026).**
+  Retirer la surcharge CA d'`_MANUAL_OVERRIDES` (`fetch_revenue.py`) **si et seulement si** les deux
+  conditions sont réunies : (a) yfinance déclare enfin `financialCurrency`, et (b) 4 trimestres
+  deviennent recoupables (`quarters_used = 4`). Sinon le CA reste **figé sur l'exercice clos au
+  31/12/2025**, qui vieillit à chaque mois qui passe. Tant que la surcharge tient, le P/S doit
+  rester marqué `‡`. Vérifier au passage si la surcharge **actions** (263 039 597 au 16/07/2026)
+  doit être actualisée : tout exercice de warrants ou émission nouvelle est publié en « Total number
+  of voting rights and shares » par le registre finlandais.
+- **QNT — à chaque cron trimestriel.** La surcharge Up-C (322 M actions) est contredite en
+  permanence par yfinance (~31 M, flottant Class A seul) : l'alerte est **normale**. Ne l'aligner
+  sur yfinance sous aucun prétexte — ce serait diviser la capitalisation par dix.
+
 ## Schéma SQL (Supabase)
 
 ```sql
