@@ -47,7 +47,7 @@ load_dotenv()
 
 SECTORAL_TICKERS = [
     "GOOGL", "IBM", "IONQ", "QBTS", "LAES", "INFQ",
-    "RGTI", "QUBT", "QNT", "XNDU", "ARQQ", "HQ",
+    "RGTI", "QUBT", "QNT", "XNDU", "ARQQ", "HQ", "IQMX",
 ]
 
 # IPO récentes : TTM potentiellement incomplet (< 4 trimestres cotés) ou absent.
@@ -96,6 +96,30 @@ def _latest_shares(db: Client, tickers: list[str]) -> dict[str, tuple[int, str]]
     return out
 
 
+def _manual_revenue(db: Client, tickers: list[str]) -> dict[str, dict]:
+    """
+    Dernière ligne revenue_ttm par ticker (as_of_date DESC) — utilisée comme repli
+    quand yfinance ne déclare aucune devise de reporting. C'est la valeur que lit
+    le site : s'y référer ici garantit que le tableau de contrôle et l'affichage
+    public ne peuvent pas diverger. Table optionnelle (migration 007) → {} si absente.
+    """
+    out: dict[str, dict] = {}
+    try:
+        res = (
+            db.table("revenue_ttm")
+            .select("ticker, revenue_reported, revenue_sum_4q, quarters_used, "
+                    "financial_currency, as_of_date, source")
+            .in_("ticker", tickers)
+            .order("as_of_date", desc=True)
+            .execute()
+        )
+    except Exception:  # noqa: BLE001
+        return out
+    for row in res.data or []:
+        out.setdefault(row["ticker"], row)
+    return out
+
+
 def _fmt_rev(v: float | None) -> str:
     if v is None:
         return "—"
@@ -126,6 +150,7 @@ def main() -> None:
 
     prices = _latest_prices(db, tickers)
     shares = _latest_shares(db, tickers)
+    manual_rev = _manual_revenue(db, tickers)
 
     print(f"\nRécupération du CA TTM + devise via yfinance ({len(tickers)} tickers)…")
     revenues: dict[str, dict] = {}
@@ -173,11 +198,30 @@ def main() -> None:
         reported = rev["reported"]
         sum_4q = rev["sum_4q"]
         q = rev["quarters_used"]
+        origin = ""
+
+        # RÈGLE DEVISE : yfinance sans devise déclarée = montant INEXPLOITABLE tel quel.
+        # On ne suppose PAS l'USD (ce serait affirmer sans preuve, et produire un P/S
+        # faux — constaté sur IQMX : CA en EUR → P/S 96 au lieu de 88).
+        # On bascule sur la surcharge sourcée en base, qui porte une devise EXPLICITE ;
+        # c'est aussi ce que lit le site, donc ce tableau reflète enfin l'affichage réel.
+        if ccy == "?":
+            ov = manual_rev.get(t)
+            if ov and ov.get("financial_currency"):
+                ccy = ov["financial_currency"].upper()
+                reported = ov["revenue_reported"]
+                sum_4q = ov["revenue_sum_4q"]
+                q = ov["quarters_used"] or 0
+                origin = " [surcharge base]"
 
         # Conversion en USD au dernier taux de clôture
         rate = 1.0
         ccy_ok = True
-        if ccy not in ("USD", "?"):
+        if ccy == "?":
+            # Devise toujours inconnue et aucune surcharge : on REFUSE de calculer.
+            # Mieux vaut pas de P/S qu'un P/S faux — un chiffre faux survit à la relecture.
+            ccy_ok = False
+        elif ccy != "USD":
             fx = _fx(ccy)
             if fx is None:
                 ccy_ok = False
@@ -202,7 +246,10 @@ def main() -> None:
         # Fiabilité / période
         firm = False
         if not ccy_ok:
-            period = f"devise {ccy} NON convertie (FX indispo)"
+            period = (
+                "devise de reporting inconnue — P/S refusé"
+                if ccy == "?" else f"devise {ccy} NON convertie (FX indispo)"
+            )
         elif q >= 4:
             period = "complet — 4 trim."
             firm = rev_ref_usd is not None
@@ -232,7 +279,7 @@ def main() -> None:
 
         print(
             f"{t:<7} {ccy:>4} {_fmt_rev(reported_usd):>11} {_fmt_rev(sum_4q_usd):>11} {ecart_str:>8} "
-            f"{q:>5} {_fmt_mcap(mcap):>10} {ps_str:>9}  {period}"
+            f"{q:>5} {_fmt_mcap(mcap):>10} {ps_str:>9}  {period}{origin}"
         )
 
     print("─" * len(header))

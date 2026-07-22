@@ -86,6 +86,42 @@ _DISPLAY_NOTES: dict[str, str] = {
 }
 
 
+def _drop_superseding_yf(rows: list[dict]) -> list[dict]:
+    """
+    Écarte toute ligne yfinance qui PASSERAIT DEVANT une surcharge manuelle.
+
+    Pourquoi c'est nécessaire : la lecture côté API prend la ligne la plus récente
+    (ORDER BY as_of_date DESC). La règle d'or ne sanctuarise que la MÊME clé
+    primaire (ticker, as_of_date) — elle ne protège pas contre une ligne yfinance
+    DATÉE PLUS TARD, qui coifferait la surcharge sans jamais l'écraser.
+
+    Ce n'est pas un cas théorique : pour une société fraîchement cotée, yfinance
+    n'expose pas de `mostRecentQuarter` et retombe sur la date du JOUR. La valeur
+    yfinance est donc systématiquement « plus récente » que toute surcharge, et
+    la neutralise en silence. Constaté sur IQMX le 22/07/2026 : yfinance 211,0 M
+    daté du jour passait devant la surcharge SEC 263,0 M du 16/07 → capitalisation
+    minorée de 20 % alors même que la surcharge était bien en base.
+
+    On conserve en revanche les lignes yfinance ANTÉRIEURES à la surcharge :
+    elles sont inoffensives (jamais lues en tête) et nourrissent l'historique
+    d'actions — utile pour la courbe de capitalisation des fiches et pour C7.
+    """
+    kept: list[dict] = []
+    for r in rows:
+        o = _OVERRIDE_MAP.get(r["ticker"])
+        if o and r["as_of_date"] >= o["as_of_date"]:
+            emit_warning(
+                f"Actions {r['ticker']} — ligne yfinance écartée",
+                f"yfinance {r['shares']/1e6:.1f} M daté du {r['as_of_date']} passerait devant la "
+                f"surcharge {o['shares']/1e6:.1f} M du {o['as_of_date']} ({o['source']}) et la "
+                f"neutraliserait. Ligne NON écrite. Si yfinance a raison, mettre à jour la "
+                f"surcharge dans _MANUAL_OVERRIDES après vérification sur SEC.gov.",
+            )
+        else:
+            kept.append(r)
+    return kept
+
+
 def _fmt_mcap(usd: float) -> str:
     if usd >= 1e12:
         return f"{usd / 1e12:.2f} T$"
@@ -152,9 +188,10 @@ def main() -> None:
     for r in fetched:
         ticker = r["ticker"]
 
-        # Surcharge manuelle si as_of_date plus récente que la valeur yfinance
+        # Une surcharge manuelle fait TOUJOURS foi à l'affichage (cf. RÈGLE D'OR).
+        # On n'arbitre plus par date : voir _drop_superseding_yf() pour le pourquoi.
         override = _OVERRIDE_MAP.get(ticker)
-        d = r if (not override or override["as_of_date"] <= r["as_of_date"]) else {**r, **override}
+        d = {**r, **override} if override else r
 
         shares_m   = d["shares"] / 1_000_000
         price_info = latest_prices.get(ticker)
@@ -228,6 +265,8 @@ def main() -> None:
             print(f"  ⛔ {r['ticker']} @ {r['as_of_date']} — surcharge manuelle sanctuarisée, valeur yfinance ignorée.")
         else:
             safe_fetched.append(r)
+
+    safe_fetched = _drop_superseding_yf(safe_fetched)
 
     # Alertes CI (::warning::) — signaler sans masquer, l'humain vérifie sur SEC.gov.
     for r in fetched:

@@ -27,7 +27,7 @@ load_dotenv()
 
 SECTORAL_TICKERS = [
     "GOOGL", "IBM", "IONQ", "QBTS", "LAES", "INFQ",
-    "RGTI", "QUBT", "QNT", "XNDU", "ARQQ", "HQ",
+    "RGTI", "QUBT", "QNT", "XNDU", "ARQQ", "HQ", "IQMX",
 ]
 
 # (libellé, offset en séances)

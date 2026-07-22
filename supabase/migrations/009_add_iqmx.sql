@@ -1,6 +1,6 @@
 -- Ajout d'IQM Quantum Computers à l'univers sectoriel — 13e société.
 -- Couverture yfinance vérifiée le 22/07/2026. ⚠ Couverture PARTIELLEMENT DÉFAILLANTE :
--- trois écarts documentés ci-dessous, tous traités par surcharge manuelle sourcée.
+-- quatre pièges documentés ci-dessous, tous traités (bornage ou surcharge sourcée).
 --
 -- IQMX : IQM Quantum Computers Oyj — modalité SUPRACONDUCTEUR (full-stack), Espoo (Finlande).
 --        Nasdaq Global Select depuis le 02/07/2026, après fusion SPAC avec Real Asset

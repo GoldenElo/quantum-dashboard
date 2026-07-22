@@ -220,9 +220,11 @@ def main() -> None:
             row = {**o, "fx_rate": fx["rate"]}
             override_rows.append(row)
             rev_usd = (o["revenue_reported"] or 0) * fx["rate"]
+            # Montant natif affiché dans SA devise (jamais suffixé « $ » : c'est
+            # précisément la confusion que la règle devise interdit).
+            native = f"{(o['revenue_reported'] or 0) / 1e6:.1f} M {o['financial_currency']}"
             print(
-                f"  ⚑ {o['ticker']:<6} surcharge {o['financial_currency']} "
-                f"{_fmt_rev(o['revenue_reported'])} × fx {fx['rate']:.4f} "
+                f"  ⚑ {o['ticker']:<6} surcharge {native} × fx {fx['rate']:.4f} "
                 f"= {_fmt_rev(rev_usd)} ({o['quarters_used']} trim. → non recoupé) — {o['source']}"
             )
         try:

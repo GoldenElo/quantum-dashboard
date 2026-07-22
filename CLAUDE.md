@@ -135,6 +135,16 @@ puis `fetch_revenue.py`. Idempotent (upsert), échoue proprement (annotation `::
   que les lignes `source = 'yfinance'`. Implémenté dans `scripts/guards.py` (`is_manual_source`)
   et appliqué par les deux scripts (filtre sur la PK `(ticker, as_of_date)` avant upsert).
   Exemple protégé : la surcharge QNT en Up-C (322 M actions pleinement diluées).
+- **COROLLAIRE — non-coiffage des surcharges** (`_drop_superseding_yf`, fetch_shares.py) :
+  sanctuariser la même PK ne suffit pas. La lecture côté API prend la ligne la plus récente
+  (`ORDER BY as_of_date DESC`) : une ligne yfinance **datée plus tard** coifferait la surcharge
+  sans jamais l'écraser, et la neutraliserait **en silence**. Ce n'est pas théorique — pour une
+  société fraîchement cotée, yfinance n'expose pas de `mostRecentQuarter` et retombe sur **la date
+  du jour**, donc sa valeur bat toujours toute surcharge. Constaté sur IQMX le 22/07/2026 :
+  yfinance 211,0 M daté du jour passait devant la surcharge SEC 263,0 M du 16/07 → capitalisation
+  minorée de 20 % alors que la surcharge était correctement en base. Règle : **toute ligne yfinance
+  dont l'`as_of_date` ≥ celle d'une surcharge du même ticker n'est pas écrite** (alerte CI émise).
+  Les lignes yfinance antérieures sont conservées — inoffensives et utiles à l'historique (C7).
 - **Alertes CI** (`::warning::` dans les logs GitHub — à vérifier d'un coup d'œil sur SEC.gov) :
   - **Actions — variation forte** : nb d'actions yfinance varie de > ±15 % vs la valeur précédente
     (offering / dilution / split possible).
