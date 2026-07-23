@@ -143,6 +143,23 @@ EVENTS = [
         "source_url": "https://www.sec.gov/Archives/edgar/data/0002113060/000119312526292513/d61136dex991.htm",
         "source_label": "Communiqué de closing — 6-K SEC du 01/07/2026",
     },
+    {
+        "ticker": "HQ",
+        "event_date": "2026-08-04",
+        "type": "resultats",
+        "title": "Premiers résultats trimestriels (T2 2026)",
+        "description": (
+            "Première publication de résultats depuis la cotation via SPAC. Résultats du "
+            "trimestre clos le 30 juin, publiés avant l'ouverture, conférence à 8h00 ET. "
+            "Rendez-vous clé après l'envolée de +208 % de juin sur un chiffre d'affaires "
+            "quasi nul."
+        ),
+        # Source = communiqué officiel Horizon Quantum via Businesswire (source primaire),
+        # PAS une reprise (ex. The Quantum Insider). URL de news Businesswire de la société ;
+        # à remplacer par le lien profond du communiqué daté quand il est publié (seed idempotent).
+        "source_url": "https://www.businesswire.com/portal/site/home/search/?searchType=news&searchTerm=Horizon+Quantum",
+        "source_label": "Communiqué officiel — Horizon Quantum (Businesswire)",
+    },
 ]
 
 

@@ -187,9 +187,12 @@ export const fr = {
     // Placeholder si aucun événement pour le ticker (le "Bientôt" reste).
     bientot: 'Frise chronologique des événements (contrats, dilutions, jalons) — bientôt.',
     sourcePrefix: 'Source :',
+    // Marqueur discret sur un événement dont la date est postérieure à aujourd'hui.
+    aVenir: 'À venir',
     aria: {
       frise: 'Frise chronologique des événements',
       lienSource: 'Ouvrir la source (nouvel onglet)',
+      aVenir: 'Événement à venir',
     },
     // Libellés des types — miroir de la liste fermée (CHECK migration 008).
     types: {
