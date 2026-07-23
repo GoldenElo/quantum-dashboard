@@ -19,6 +19,8 @@ import logging
 import os
 import sys
 from datetime import date
+from urllib import error as urlerror
+from urllib import request as urlrequest
 
 from dotenv import load_dotenv
 from supabase import create_client, Client
@@ -208,9 +210,32 @@ def seed_events(db: Client, events: list[dict]) -> None:
     logger.info("Seed des événements terminé.")
 
 
+def _revalidate() -> None:
+    """Purge le cache ISR des fiches sociétés après le seed (best-effort).
+
+    Sans REVALIDATE_SECRET configuré, on ne fait rien — le contenu apparaîtra à
+    l'expiration naturelle de l'ISR (24 h) ou au prochain déploiement. Une erreur
+    réseau ne fait jamais échouer le seed : la base est déjà à jour.
+    """
+    secret = os.environ.get("REVALIDATE_SECRET")
+    if not secret:
+        logger.info("REVALIDATE_SECRET absent — pas de purge ISR (contenu visible sous 24 h).")
+        return
+    base = os.environ.get("SITE_URL", "https://thequantumwall.com").rstrip("/")
+    url = f"{base}/api/revalidate?secret={secret}"
+    try:
+        req = urlrequest.Request(url, method="POST")
+        with urlrequest.urlopen(req, timeout=15) as resp:
+            logger.info("Revalidation ISR déclenchée (%s) : HTTP %s", base, resp.status)
+    except (urlerror.URLError, TimeoutError) as e:
+        logger.warning("::warning::Revalidation ISR échouée (%s) — base à jour, "
+                       "contenu visible sous 24 h. Détail : %s", base, e)
+
+
 def main() -> None:
     db = _supabase_client()
     seed_events(db, EVENTS)
+    _revalidate()
 
 
 if __name__ == "__main__":
