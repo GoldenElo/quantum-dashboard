@@ -169,7 +169,10 @@ export const fr = {
       bientot: 'Historique du nombre d’actions et signaux de dilution — bientôt.',
     },
     // Ligne d'acquisition vers la chaîne (conversion du trafic froid).
-    acquisition: "L’analyse en vidéo sur L’Investisseuse Quantique",
+    // Deux formulations selon la cible (voir TICKER_VIDEO_URL) : vidéo dédiée à
+    // la société, ou playlist générale en attendant une vidéo dédiée.
+    acquisitionDediee: 'L’analyse de {societe} en vidéo',
+    acquisitionPlaylist: 'Les analyses quantiques en vidéo',
     // Disclaimer propre à la fiche (≠ portefeuilles).
     disclaimer:
       'À titre informatif uniquement — ni conseil ni recommandation d’investissement. ' +
@@ -228,6 +231,31 @@ export const TICKER_NOTES: Record<string, { marker: string; text: string }> = {
       "au registre finlandais, et non sur le flottant. P/S estimé à partir du chiffre d'affaires de " +
       "l'exercice 2025 converti d'euros en dollars : ce n'est pas un TTM et il n'est pas recoupable",
   },
+}
+
+// URL de la vidéo dédiée à chaque société sur L'Investisseuse Quantique, ciblée
+// depuis la ligne d'acquisition des fiches (/societe/[ticker]).
+// Un ticker qui pointe vers VIDEO_PLAYLIST_URL n'a pas encore de vidéo dédiée :
+// pour en câbler une, il suffit de remplacer cette seule ligne par l'URL de la
+// vidéo (candidats à venir : QNT, HQ, ARQQ). Le libellé s'adapte automatiquement
+// (vidéo dédiée → t.societe.acquisitionDediee ; playlist → acquisitionPlaylist).
+export const VIDEO_PLAYLIST_URL =
+  'https://www.youtube.com/playlist?list=PLAn58cjygWQqLv2rnAIxck_JBIwXh8D6a'
+
+export const TICKER_VIDEO_URL: Record<string, string> = {
+  GOOGL: 'https://youtu.be/hJcJA4n0Bwc',
+  IBM:   'https://youtu.be/hJcJA4n0Bwc', // même vidéo que GOOGL — voulu
+  IONQ:  'https://www.youtube.com/watch?v=I-ZZnWBRz9c',
+  QBTS:  'https://youtu.be/ApQvvicBjTk',
+  RGTI:  'https://youtu.be/U1xAUb8d5RA',
+  IQMX:  'https://youtu.be/h_p7IiXSRsI',
+  LAES:  'https://youtu.be/HdhxkfJQn3c',
+  QNT:   VIDEO_PLAYLIST_URL,
+  INFQ:  VIDEO_PLAYLIST_URL,
+  QUBT:  VIDEO_PLAYLIST_URL,
+  XNDU:  VIDEO_PLAYLIST_URL,
+  HQ:    VIDEO_PLAYLIST_URL,
+  ARQQ:  VIDEO_PLAYLIST_URL,
 }
 
 // Modalités technologiques par ticker — badge affiché après le nom de société.

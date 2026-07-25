@@ -2,8 +2,8 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { fetchCompanyData, listCompanyTickers, type CompanyData } from '@/lib/api';
 import { formatMarketCap, formatPct, formatDate, formatDateCompact, formatRatio } from '@/lib/format';
-import { t, TICKER_NOTES, TICKER_MODALITIES } from '@/i18n/t';
-import { SITE_URL, YOUTUBE_URL } from '@/lib/site';
+import { t, TICKER_NOTES, TICKER_MODALITIES, TICKER_VIDEO_URL, VIDEO_PLAYLIST_URL } from '@/i18n/t';
+import { SITE_URL } from '@/lib/site';
 import CompanyCapChart from '@/components/CompanyCapChart';
 import EventTimeline from '@/components/EventTimeline';
 
@@ -104,6 +104,11 @@ export default async function CompanyPage({ params }: Props) {
   const stale = isStale(data.shares_date);
   // IPO récente : historique présent mais pas d'offset annuel calculable.
   const depuisCotation = data.hasHistory && data.change_1y == null;
+  // Ligne d'acquisition : vidéo dédiée à la société, ou playlist générale à défaut.
+  const videoUrl = TICKER_VIDEO_URL[data.ticker] ?? VIDEO_PLAYLIST_URL;
+  const acquisitionLabel = videoUrl === VIDEO_PLAYLIST_URL
+    ? t.societe.acquisitionPlaylist
+    : t.societe.acquisitionDediee.replace('{societe}', data.name);
 
   return (
     <main className="page" aria-label={`${t.societe.ficheAria} ${data.name}`}>
@@ -204,16 +209,17 @@ export default async function CompanyPage({ params }: Props) {
         <p className="company-soon">{t.societe.dilution.bientot}</p>
       </section>
 
-      {/* Ligne d'acquisition vers la chaîne — conversion du trafic froid */}
+      {/* Ligne d'acquisition vers la chaîne — conversion du trafic froid.
+          Cible la vidéo dédiée à la société (ou la playlist générale à défaut). */}
       <p className="company-acquisition">
         <a
-          href={YOUTUBE_URL}
+          href={videoUrl}
           target="_blank"
           rel="noopener noreferrer"
           data-umami-event="clic-youtube-fiche"
           data-umami-event-ticker={data.ticker}
         >
-          {t.societe.acquisition} →
+          {acquisitionLabel} →
         </a>
       </p>
 
