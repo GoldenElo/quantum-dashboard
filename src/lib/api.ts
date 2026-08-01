@@ -186,6 +186,50 @@ export type CompanyData = {
   events: SectorEvent[];
 };
 
+// ─── Types Indice TQW (C3) ────────────────────────────────────────────────────
+
+export type IndexPoint = {
+  date: string;
+  indice: number | null;      // valeur lue dans index_daily — JAMAIS recalculée ici
+  benchmark: number | null;   // QNTM.L, base 100 à l'inception de l'indice
+  nasdaq100: number | null;   // QQQ, base 100 à l'inception de l'indice
+};
+
+export type IndexConstituent = {
+  ticker: string;
+  name: string;
+  shares: number;
+  shares_source: string;
+  adj_close: number;
+  market_cap_usd: number;
+  weight_at_rebalance: number;  // poids figé au dernier rebalancement (≤ plafond)
+  weight_current: number;       // poids dérivé au dernier cours — peut dépasser le plafond
+  capped_at_rebalance: boolean; // écrêtée lors du rebalancement (cap_factor < 1)
+  over_cap_now: boolean;        // a dérivé au-dessus du plafond depuis — normal, signalé
+};
+
+export type IndexData = {
+  inception_date: string;
+  latest_date: string;
+  value: number;
+  divisor: number;
+  change_1d: number | null;
+  change_1w: number | null;
+  change_1m: number | null;
+  change_since_inception: number;
+  series: IndexPoint[];
+  constituents: IndexConstituent[];
+  last_rebalance: string;
+};
+
+export type IndexSummary = {
+  latest_date: string;
+  value: number;
+  change_1d: number | null;
+  change_since_inception: number;
+  constituents_count: number;
+};
+
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const FICTIF_IDS = ['defensif', 'dynamique', 'agressif'] as const;
@@ -213,6 +257,30 @@ const WEEKLY_ALERT_THRESHOLD = 1.5; // ±150 %
 const PS_EXTREME_THRESHOLD = 200;
 // P/S > 5000 → non significatif (CA quasi nul), on n'affiche pas de ratio ferme.
 const PS_INSIGNIFICANT_THRESHOLD = 5000;
+
+// Plafond de pondération de l'Indice TQW (C3) — miroir de scripts/index_tqw.py.
+// Sert UNIQUEMENT à signaler une dérive au-delà du plafond ; aucun calcul de poids
+// n'est refait ici (les facteurs sont figés en base au rebalancement).
+const INDEX_WEIGHT_CAP = 0.25;
+
+// Pagination PostgREST. Toute lecture NON bornée par ticker doit paginer : le
+// plafond max-rows (1000) tronque silencieusement sinon. index_daily et les séries
+// benchmark depuis l'inception croissent de ~252 lignes par an et franchiront ce
+// seuil — on pagine dès maintenant plutôt que de découvrir la troncature en 2029.
+const PAGE_SIZE = 1000;
+
+async function fetchAllRows<T>(
+  buildQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const { data, error } = await buildQuery(offset, offset + PAGE_SIZE - 1);
+    if (error || !data) break;
+    rows.push(...data);
+    if (data.length < PAGE_SIZE) break;
+  }
+  return rows;
+}
 
 // Variation sur `offset` séances depuis une série triée par date croissante. null si court.
 function computeChange(closesAsc: number[], offset: number): number | null {
@@ -726,6 +794,187 @@ export async function fetchMarketCapsData(): Promise<MarketCapData | null> {
     .reduce((sum, r) => sum + r.market_cap_usd, 0);
 
   return { rows, pure_player_total_usd };
+}
+
+// ─── Indice TQW (C3) ──────────────────────────────────────────────────────────
+
+// Série base 100 d'un benchmark depuis l'inception de l'indice, indexée par date.
+// Normalisée sur son PREMIER point à partir de l'inception (≠ son premier point
+// absolu) : les trois séries partent donc bien du même 100 à la même date.
+async function fetchBenchmarkBase100(
+  ticker: string,
+  inception: string,
+): Promise<Map<string, number>> {
+  const rows = await fetchAllRows<{ date: string; adj_close: number }>((from, to) =>
+    supabase
+      .from('price_daily')
+      .select('date, adj_close')
+      .eq('ticker', ticker)
+      .gte('date', inception)
+      .order('date', { ascending: true })
+      .range(from, to),
+  );
+  const out = new Map<string, number>();
+  if (rows.length === 0) return out;
+  const base = Number(rows[0].adj_close);
+  if (!base) return out;
+  for (const row of rows) out.set(row.date, (Number(row.adj_close) / base) * 100);
+  return out;
+}
+
+// Composition du dernier rebalancement + poids COURANTS dérivés au dernier cours.
+// Les poids courants sont calculés à la volée (jamais stockés) à partir des
+// paramètres figés en base : poids = actions × cap_factor × cours / Σ. C'est la
+// même arithmétique que le moteur, appliquée aux seuls poids — la VALEUR de
+// l'indice, elle, est lue dans index_daily et n'est jamais recalculée ici.
+async function fetchIndexConstituents(
+  latestDate: string,
+): Promise<{ constituents: IndexConstituent[]; last_rebalance: string }> {
+  const weightsRes = await supabase
+    .from('index_weights')
+    .select('rebalance_date, ticker, shares, weight_capped, cap_factor, shares_source')
+    .order('rebalance_date', { ascending: false });
+
+  const all = weightsRes.error ? [] : weightsRes.data ?? [];
+  if (all.length === 0) return { constituents: [], last_rebalance: '' };
+
+  const lastRebalance = all[0].rebalance_date as string;
+  const rows = all.filter(r => r.rebalance_date === lastRebalance);
+  const tickers = rows.map(r => r.ticker as string);
+
+  const [assetsRes, ...priceResults] = await Promise.all([
+    supabase.from('asset').select('ticker, name').in('ticker', tickers),
+    // Dernier cours connu à la date de l'indice (report inclus) — une requête
+    // bornée par ticker, comme partout ailleurs.
+    ...tickers.map(ticker =>
+      supabase
+        .from('price_daily')
+        .select('adj_close, date')
+        .eq('ticker', ticker)
+        .lte('date', latestDate)
+        .order('date', { ascending: false })
+        .limit(1),
+    ),
+  ]);
+
+  const names = new Map((assetsRes.data ?? []).map(a => [a.ticker as string, a.name as string]));
+  const closes = new Map<string, number>();
+  tickers.forEach((ticker, i) => {
+    const res = priceResults[i];
+    if (!res.error && res.data && res.data.length > 0) {
+      closes.set(ticker, Number(res.data[0].adj_close));
+    }
+  });
+
+  // Capitalisation ajustée du facteur de plafonnement = base des poids courants.
+  const adjusted = new Map<string, number>();
+  for (const row of rows) {
+    const close = closes.get(row.ticker as string);
+    if (close == null) continue;
+    adjusted.set(row.ticker as string, Number(row.shares) * Number(row.cap_factor) * close);
+  }
+  const totalAdjusted = [...adjusted.values()].reduce((sum, v) => sum + v, 0);
+
+  const constituents: IndexConstituent[] = [];
+  for (const row of rows) {
+    const ticker = row.ticker as string;
+    const close = closes.get(ticker);
+    const adj = adjusted.get(ticker);
+    if (close == null || adj == null || totalAdjusted <= 0) continue;
+    const shares = Number(row.shares);
+    const weightCurrent = adj / totalAdjusted;
+    constituents.push({
+      ticker,
+      name: names.get(ticker) ?? ticker,
+      shares,
+      shares_source: row.shares_source as string,
+      adj_close: close,
+      market_cap_usd: shares * close,
+      weight_at_rebalance: Number(row.weight_capped),
+      weight_current: weightCurrent,
+      capped_at_rebalance: Number(row.cap_factor) < 1 - 1e-9,
+      over_cap_now: weightCurrent > INDEX_WEIGHT_CAP + 1e-9,
+    });
+  }
+
+  constituents.sort((a, b) => b.weight_current - a.weight_current);
+  return { constituents, last_rebalance: lastRebalance };
+}
+
+// Données complètes de la page /indice. null si la migration 010 n'est pas encore
+// appliquée ou si aucune valeur n'a été calculée (dégradation gracieuse, comme
+// revenue_ttm et sector_event).
+export async function fetchIndexData(): Promise<IndexData | null> {
+  const daily = await fetchAllRows<{ date: string; value: number; divisor: number }>((from, to) =>
+    supabase
+      .from('index_daily')
+      .select('date, value, divisor')
+      .order('date', { ascending: true })
+      .range(from, to),
+  );
+  if (daily.length === 0) return null;
+
+  const inception = daily[0].date;
+  const latest = daily[daily.length - 1];
+  const values = daily.map(d => Number(d.value));
+
+  const [benchmark, nasdaq, composition] = await Promise.all([
+    fetchBenchmarkBase100(BENCHMARK_TICKER, inception),
+    fetchBenchmarkBase100('QQQ', inception),
+    fetchIndexConstituents(latest.date),
+  ]);
+
+  // La série est cadencée sur les séances de l'INDICE ; les benchmarks sont
+  // rapprochés par date (null si la place était fermée ce jour-là — le calendrier
+  // LSE de QNTM.L diffère du calendrier US).
+  const series: IndexPoint[] = daily.map(d => ({
+    date: d.date,
+    indice: Number(d.value),
+    benchmark: benchmark.get(d.date) ?? null,
+    nasdaq100: nasdaq.get(d.date) ?? null,
+  }));
+
+  return {
+    inception_date: inception,
+    latest_date: latest.date,
+    value: Number(latest.value),
+    divisor: Number(latest.divisor),
+    change_1d: computeChange(values, 1),
+    change_1w: computeChange(values, 5),
+    change_1m: computeChange(values, 21),
+    change_since_inception: values[values.length - 1] / values[0] - 1,
+    series,
+    constituents: composition.constituents,
+    last_rebalance: composition.last_rebalance,
+  };
+}
+
+// Version légère pour la carte d'accueil — pas de série, pas de constituants.
+export async function fetchIndexSummary(): Promise<IndexSummary | null> {
+  const [firstRes, lastRes, weightsRes] = await Promise.all([
+    supabase.from('index_daily').select('date, value').order('date', { ascending: true }).limit(1),
+    supabase.from('index_daily').select('date, value').order('date', { ascending: false }).limit(2),
+    supabase.from('index_weights').select('rebalance_date, ticker').order('rebalance_date', { ascending: false }),
+  ]);
+
+  if (firstRes.error || lastRes.error) return null;
+  const first = firstRes.data?.[0];
+  const recent = lastRes.data ?? [];
+  if (!first || recent.length === 0) return null;
+
+  const latest = recent[0];
+  const previous = recent[1];
+  const all = weightsRes.error ? [] : weightsRes.data ?? [];
+  const lastRebalance = all[0]?.rebalance_date;
+  const count = all.filter(r => r.rebalance_date === lastRebalance).length;
+
+  return {
+    latest_date: latest.date,
+    value: Number(latest.value),
+    change_1d: previous ? Number(latest.value) / Number(previous.value) - 1 : null,
+    change_since_inception: Number(latest.value) / Number(first.value) - 1,
+    constituents_count: count,
+  };
 }
 
 // Dernière date de clôture connue (sitemap lastModified). null si base vide.

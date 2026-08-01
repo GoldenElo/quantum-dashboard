@@ -90,7 +90,7 @@ button { cursor: pointer; }
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 0.5rem;
 }
 
 .site-header-actions {
@@ -129,6 +129,15 @@ button { cursor: pointer; }
 
 .footer-yt-link:hover {
   color: var(--accent-blue);
+}
+
+/* Sous 560px : le header porte 2 pastilles de nav + 2 boutons sociaux — on
+   resserre plutôt que de masquer une entrée de navigation. */
+@media (max-width: 560px) {
+  .site-header-inner { gap: 0.6rem; padding: 0 0.9rem; }
+  .site-header-nav { gap: 0.35rem; }
+  .site-header-navlink { padding: 0.3rem 0.6rem; font-size: 0.72rem; }
+  .site-header-yt { padding: 0.28rem 0.55rem; font-size: 0.7rem; gap: 0.3rem; }
 }
 
 /* Sous 420px : wordmark resserré pour cohabiter avec les boutons YouTube / X */
@@ -1200,3 +1209,194 @@ button { cursor: pointer; }
   transition: border-color 0.15s;
 }
 .evt-source:hover { border-bottom-color: var(--accent-blue); }
+
+/* ══ Indice TQW (C3) ══ */
+
+/* — Bandeau d'accueil : compact, entre le graphique comparatif et la HeatMap — */
+.indice-banner { padding: 0; }
+
+.indice-banner-link {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.25rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s;
+}
+.indice-banner-link:hover { border-color: var(--accent-blue); }
+
+.indice-banner-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.indice-banner-title {
+  font-family: var(--font-heading), Arial, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text);
+}
+
+.indice-banner-tagline {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.indice-banner-figures {
+  display: flex;
+  align-items: baseline;
+  gap: 1.1rem;
+  flex-wrap: wrap;
+}
+
+/* Chiffre-vedette de l'accueil — or foncé, une seule occurrence par vue */
+.indice-banner-value {
+  font-size: 1.45rem;
+  font-weight: 600;
+  color: var(--or);
+  line-height: 1;
+}
+
+.indice-banner-change,
+.indice-banner-since {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.indice-banner-since-label {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.indice-banner-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.indice-banner-cta {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent-blue);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .indice-banner-link { gap: 0.75rem; padding: 0.9rem 1rem; }
+  .indice-banner-figures { gap: 0.75rem; width: 100%; }
+  .indice-banner-value { font-size: 1.25rem; }
+  .indice-banner-since-label { display: none; }
+  .indice-banner-cta { width: 100%; }
+}
+
+/* — Page /indice — */
+.indice-hero-value {
+  color: var(--or);
+  font-weight: 600;
+}
+
+/* Marqueur discret « écrêtée au plafond lors du rebalancement » */
+.indice-capped-marker {
+  color: var(--text-muted);
+  cursor: help;
+}
+
+.indice-drift { color: var(--text-muted); }
+
+/* — Méthodologie rendue depuis docs/methodologie-indice-tqw.fr.md — */
+.indice-methodo {
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: var(--text);
+  max-width: 68ch;
+}
+
+.indice-methodo h2 {
+  font-family: var(--font-heading), Arial, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 2rem 0 0.75rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.indice-methodo > h2:first-child { margin-top: 0; }
+
+.indice-methodo h3 {
+  font-family: var(--font-heading), Arial, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 1.5rem 0 0.5rem;
+}
+
+.indice-methodo p { margin: 0 0 0.85rem; }
+.indice-methodo ul { margin: 0 0 0.85rem; padding-left: 1.2rem; }
+.indice-methodo li { margin-bottom: 0.4rem; }
+.indice-methodo strong { font-weight: 600; }
+
+.indice-methodo code {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.85em;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+}
+
+.indice-methodo a {
+  color: var(--accent-blue);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+.indice-methodo a:hover { border-bottom-color: var(--accent-blue); }
+
+/* Les tableaux du document débordent horizontalement sur mobile — ils défilent
+   dans leur propre conteneur, jamais la page. */
+.indice-methodo table {
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin: 0 0 1.1rem;
+}
+
+.indice-methodo th {
+  text-align: left;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0.5rem 0.8rem 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.indice-methodo td {
+  padding: 0.5rem 0.8rem 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+/* Colonnes de chiffres du document : mono, comme partout ailleurs */
+.indice-methodo td:not(:first-child) {
+  font-family: var(--font-mono), monospace;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .indice-methodo { font-size: 0.88rem; }
+}

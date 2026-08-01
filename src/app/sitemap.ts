@@ -4,7 +4,7 @@ import { SITE_URL } from '@/lib/site';
 
 export const revalidate = 86400;
 
-// Accueil + 12 fiches sociétés + 3 portefeuilles fictifs (pages publiques SEO).
+// Accueil + /indice + 13 fiches sociétés + 3 portefeuilles fictifs (pages publiques SEO).
 // /portefeuille/personnel volontairement exclu (données perso, pas une cible SEO).
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const latest = await fetchLatestCloseDate();
@@ -15,6 +15,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified,
     changeFrequency: 'daily',
     priority: 1,
+  };
+
+  // Indice TQW — IP propriétaire, priorité juste sous l'accueil.
+  const indice: MetadataRoute.Sitemap[number] = {
+    url: `${SITE_URL}/indice`,
+    lastModified,
+    changeFrequency: 'daily',
+    priority: 0.9,
   };
 
   const companies: MetadataRoute.Sitemap = listCompanyTickers().map(ticker => ({
@@ -31,5 +39,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [home, ...companies, ...portfolios];
+  return [home, indice, ...companies, ...portfolios];
 }

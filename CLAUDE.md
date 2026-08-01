@@ -172,6 +172,13 @@ automatique redevient fiable. Une surcharge oubliée fige un chiffre périmé sa
   rester marqué `‡`. Vérifier au passage si la surcharge **actions** (263 039 597 au 16/07/2026)
   doit être actualisée : tout exercice de warrants ou émission nouvelle est publié en « Total number
   of voting rights and shares » par le registre finlandais.
+- **Indice TQW — rebalancement du 2026-08-03 (lundi).** Le cron du soir crée automatiquement le
+  rebalancement et fait **entrer QNT** (30 séances franchies le ~17/07) → 10 constituants. Rien à
+  faire à la main ; **vérifier** le lendemain avec `cd scripts && python3 check_index.py` que la
+  continuité est nulle et que les 4 contrôles durs passent.
+- **Indice TQW — rebalancement du 2026-11-02 (lundi).** **Entrée attendue d'IQMX** (21 séances au
+  31/07/2026, donc insuffisant en août ; le seuil de 30 sera franchi mi-août). Vérifier avec
+  `check_index.py` que la section « HORS UNIVERS » l'annonce bien éligible avant l'échéance.
 - **QNT — à chaque cron trimestriel.** La surcharge Up-C (322 M actions) est contredite en
   permanence par yfinance (~31 M, flottant Class A seul) : l'alerte est **normale**. Ne l'aligner
   sur yfinance sous aucun prétexte — ce serait diviser la capitalisation par dix.
@@ -428,14 +435,22 @@ ferme que le jour où 4 trimestres publiés sont recoupables.
       dans le rapport annuel SEALSQ et surcharger `revenue_ttm` (source `annual-report`) le moment venu.
     - **ARQQ** conserve son avertissement quantum washing (recoupement également impossible via yfinance).
 
+13. ✅ **C3 — Indice TQW** (2026-08-01) : indice propriétaire des pure-players, base 100 au
+    01/06/2026, pondération par capi totale plafonnée à 25 %, rebalancement trimestriel, diviseur
+    de continuité. Migration 010 (`index_daily` + `index_weights`), moteur `scripts/index_tqw.py`
+    branché en étape 5 de `ingest.py`, backfill + tableau de contrôle, page `/indice` avec
+    méthodologie publiée (`docs/methodologie-indice-tqw.fr.md`). **Voir la section C3 détaillée
+    dans la Phase Croissance** pour les règles dures et le calendrier des rebalancements.
+
 **Univers sectoriel porté à 13 sociétés le 2026-07-22 : ajout d'IQMX (IQM Quantum Computers) —
 migration 009, `TICKER_FIRST_TRADE`/`SECTORAL_FIRST_TRADE` contre l'historique fantôme RAAQ,
 surcharges SEC actions + CA (EUR), RÈGLE DEVISE durcie, événement C6 de cotation.**
 
-**État actuel (2026-07-01) : V1.5 + S1 (market cap, 12 sociétés sectorielles) + S2 (variations
-multi-horizons) + S-P/S en cours (migration 007 + scripts revenue/P·S écrits, chiffres validés,
-affichage frontend en attente de feu vert). Date d'inception portefeuilles : `2026-06-01`. Historique
-sectoriel backfillé depuis `2025-06-01`.**
+**État actuel (2026-08-01) : V1.5 + S1 (market cap, 13 sociétés sectorielles) + S2 (variations
+multi-horizons) + S-P/S + C1 (Umami) + C2 (fiches sociétés) + C6 (base d'événements, en
+alimentation) + **C3 (Indice TQW — migration 010, moteur, page `/indice`, méthodologie publiée)**.
+Date d'inception portefeuilles ET de l'indice : `2026-06-01`. Historique sectoriel backfillé
+depuis `2025-06-01`.**
 
 **Checklist de mise en service V1.5 (à faire manuellement) :**
 1. Appliquer la migration `supabase/migrations/003_v1_5_personal_portfolio.sql` dans le dashboard Supabase.
@@ -648,6 +663,11 @@ justification commerciale de toutes les briques suivantes — c'est le prérequi
   - `clic-detail-portefeuille` — clic sur une carte portefeuille « Voir le détail »
     (`src/components/PortfolioCard.tsx`), avec propriété `data-umami-event-portefeuille`
     portant l'id du profil (defensif/dynamique/agressif/personnel).
+  - `clic-fiche-societe` — accès à une fiche société, propriété `data-umami-event-ticker`.
+  - `clic-youtube-fiche` — lien vidéo en bas de fiche société, propriété `-ticker`.
+  - `clic-source-evenement` — lien vers la source primaire d'un événement (C6).
+  - `clic-indice` — accès à l'Indice TQW : lien nav du header ET bandeau d'accueil
+    (`SiteHeader.tsx`, `IndexHomeBanner.tsx`). Mesure l'attrait de l'IP propriétaire (C3).
 - **RÈGLE DE CESSION (dure)** : **exporter les données Umami avant tout changement d'outil
   d'analytics**. La continuité de la courbe d'audience est un **actif du dossier de cession**
   (thèse d'acquisition — audience mesurée et possédée). Une rupture d'historique détruit
@@ -737,17 +757,96 @@ intégrations mi-vidéo** (§10) — le lien qu'on pose sous une vidéo pointe v
 **Dépendances :** S1 (`shares_outstanding`) pour le point 1 ; C2 (fiches sociétés) comme support
 d'affichage ; API EDGAR (SEC) + curation manuelle pour le backfill historique du point 2.
 
-### C3 — Indice Quantique propriétaire (« Indice IQ »)
-
-**Ce qui est construit :** un indice sectoriel propriétaire avec **méthodologie publiée** — univers,
-pondération (par capi flottante ou totale — **à trancher**), règles d'inclusion / exclusion,
-rebalancement trimestriel, date d'inception documentée. Calcul **quotidien dans l'ingestion**
-(jamais dans le front), page dédiée avec courbe. **Document de méthodologie en PDF téléchargeable.**
+### C3 — Indice TQW (indice propriétaire) — ✅ RÉALISÉE (2026-08-01)
 
 **Pourquoi :** c'est la **propriété intellectuelle licenciable** du projet — modèle MarketVector.
 L'indice, sa méthodologie et son historique constituent un actif cessible indépendamment du site.
+Nom définitif : **Indice TQW** (le nom de travail « Indice IQ » est abandonné).
 
-**Dépendances :** S1 (pondération par capi) + historique `price_daily`. Calcul côté cron uniquement.
+**Méthodologie (document publié : `docs/methodologie-indice-tqw.fr.md`, SOURCE UNIQUE) :**
+- **Base 100 au 2026-06-01** (même date que l'inception des portefeuilles).
+- **Univers** = `asset.category = 'pure_player'` — défini EN BASE, jamais par une liste en dur.
+  C'est la traduction mécanique de la règle « société cotée sur une place majeure dont l'activité
+  principale est le quantique ». Exclus par leur catégorie : GOOGL/IBM (`geant`), NVDA
+  (`infrastructure`), QNTM.L/QQQ (`etf`).
+- **Entrée** : au 1er rebalancement suivant **30 séances cotées** révolues (règle
+  anti-données-fantômes — historiques de SPAC servis par yfinance, cas IQMX/RAAQ).
+- **Sortie** : radiation, acquisition, ou activité principale qui cesse d'être le quantique.
+- **Pondération par capitalisation TOTALE**, non flottante. **Doctrine du Wall** : QNT est
+  pondérée en **pleinement dilué** (Class A + Class B Honeywell, 322 M actions) — le flottant seul
+  diviserait sa capitalisation par dix. Note Up-C affichée en bas de tableau.
+- **Plafond de 25 % par valeur**, par waterfall itératif (un écrêtage peut en provoquer un second).
+- **Rebalancement trimestriel** : 1re séance cotée à partir du 1er février / mai / août / novembre,
+  aligné sur le cron des fondamentaux (les actions viennent d'être rafraîchies).
+- **Diviseur** : ajusté à chaque rebalancement pour une continuité parfaite (valeur du jour avec
+  les anciens paramètres → nouvelle composition → diviseur qui redonne exactement cette valeur).
+  Vérifié : écart de continuité **0,000000** à la simulation d'entrée de QNT.
+
+**RÈGLES DURES — ne jamais « re-simplifier » :**
+- **Le plafond ne s'applique QU'AU REBALANCEMENT.** Entre deux rebalancements les poids **dérivent
+  librement** avec les cours et peuvent dépasser 25 %. C'est **voulu** : un indice qui réécrête en
+  continu est un portefeuille géré, pas un indice. La page affiche les DEUX colonnes (poids au
+  rebalancement / poids courant) côte à côte — l'écart doit être lisible, jamais dissimulé.
+- **NON-RÉTROACTIVITÉ.** Une valeur publiée n'est **jamais** recalculée. Un split réécrit
+  `adj_close` rétroactivement et une surcharge SEC peut être rétro-datée ; ni l'un ni l'autre ne
+  doit altérer la série publiée. Les scripts n'écrivent que les dates manquantes ;
+  `check_index.py` rejoue la chaîne et **signale** toute dérive au lieu de l'écraser.
+- **Univers MÉCANIQUE, jamais éditorial.** ARQQ figure dans l'indice parce qu'elle satisfait les
+  critères formels ; son avertissement *quantum washing* (†) reste affiché mais n'influence **pas**
+  la composition. Ne jamais laisser une opinion décider d'un chiffre.
+- **Calcul dans l'ingestion, jamais dans le front.** `/indice` LIT `index_daily`. Seuls les **poids
+  courants** sont dérivés à la lecture (paramètres figés × cours du jour), jamais stockés.
+
+**Implémentation :**
+- **Migration 010** (`supabase/migrations/010_index_tqw.sql`) : `index_daily` (date, value, divisor)
+  + `index_weights` (composition figée par rebalancement : shares, price, weight_raw,
+  weight_capped, cap_factor, shares_source). **Dérogation raisonnée** au principe « ne jamais
+  stocker le calculable » : une valeur d'indice dépend d'une chaîne de décisions datées, elle n'est
+  pas dérivable d'un prix — même nature que `shares_outstanding` ou `sector_event`.
+  `price`/`weight_*` sont le **dossier d'audit** du rebalancement, pas un cache.
+- `scripts/index_tqw.py` — moteur **isolé** (comme `market_data.py` / `guards.py`) : toute la
+  méthodologie y vit. Garde-fous : cours reporté au-delà de 5 séances → `emit_error` + arrêt
+  (jamais de valeur partielle) ; constituant sans actions connues → exclu + alerte ; lectures
+  paginées `.range()` (plafond PostgREST 1000 lignes).
+- `scripts/ingest.py` — **étape 5** `_update_index`, enveloppée en `try/except` comme
+  `_log_market_caps` : l'indice ne peut jamais faire échouer l'ingestion des portefeuilles.
+- `scripts/backfill_index.py` — reconstruction depuis l'inception (`--rebuild` purge délibérée).
+- `scripts/check_index.py` — tableau de contrôle **lecture seule**, 4 contrôles durs : inception
+  = 100,000000 · Σ poids = 100 % · aucun poids > 25 % au rebalancement · recalcul ≡ série publiée.
+- Front : `fetchIndexData` / `fetchIndexSummary` (`api.ts`, dégradation gracieuse si migration
+  absente), `IndexChart(Impl)`, `IndexConstituentsTable`, `IndexHomeBanner`, `/indice` (ISR 24 h).
+  Méthodologie rendue depuis `docs/*.fr.md` via `react-markdown` + `remark-gfm` — **source unique,
+  zéro dérive**. `outputFileTracingIncludes` dans `next.config.ts` embarque `docs/` côté serverless.
+- SEO : title absolu « Indice TQW — l'indice des pure-players du quantique coté », canonical, OG,
+  sitemap (priorité 0.9), `/indice` ajouté à la purge par défaut de `/api/revalidate`.
+- **Événement Umami `clic-indice`** — lien nav du header + bandeau d'accueil (cf. C1).
+
+**Calendrier des rebalancements (à surveiller) :**
+
+| Date | Événement |
+|---|---|
+| 2026-06-01 | Lancement — **9 constituants**, base 100, diviseur 3,47223e+08. Écrêtées : IONQ (47,94 % brut → 25 %), QBTS (19,87 % → 25 %) |
+| **2026-08-03** | Entrée de **QNT** (30 séances franchies le ~17/07) → 10 constituants. Le 1er août est un samedi |
+| **2026-11-02** | Entrée attendue d'**IQMX** (21 séances au 31/07, insuffisant en août) |
+
+⚠ **QNT n'était PAS au lancement** : son IPO (04/06/2026) est postérieure de 3 jours à la date de
+base. Aucune exception n'a été ajoutée — la règle des 30 séances produit ce résultat d'elle-même.
+
+**Contrôle croisé au 2026-07-31 (à re-vérifier à chaque évolution de méthodologie) :**
+Indice TQW −40,79 % · VanEck QNTM.L −18,61 % · Nasdaq-100 QQQ −7,37 % depuis le 01/06.
+L'écart de 22 points est **structurel, pas un artefact** : sur les mêmes constituants, la capi non
+plafonnée donne −42,79 % et l'équipondérée −30,76 % — le plafond amortit de 2 points, il ne crée
+pas la baisse. L'indice est **structurellement plus volatil** que tout ETF thématique parce qu'il
+ne contient aucune grande capitalisation pour amortir. C'est sa raison d'être : aucun instrument
+existant ne mesure les pure-players seuls.
+Sous-produit éditorial pour **S4** (« exposition déclarée vs réelle ») : une décomposition à deux
+facteurs prête au VanEck un comportement de ~34 % pure-player — **inférence tirée des cours**, à
+confronter au prospectus avant toute publication.
+
+**Dépendances :** S1 (`shares_outstanding`) + historique `price_daily`. Aucune source externe nouvelle.
+
+**Reporté :** le **PDF téléchargeable** de méthodologie. Le `.md` versionné en git + la page rendue
+couvrent le besoin ; le PDF sera généré si une diffusion hors site le justifie.
 
 ### C4 — Images OG auto-générées
 

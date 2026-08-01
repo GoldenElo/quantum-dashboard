@@ -31,11 +31,12 @@ function handle(req: NextRequest) {
     return NextResponse.json({ ok: true, revalidated: [path] });
   }
 
-  // Par défaut : les fiches sociétés (toute la route dynamique) + l'accueil.
+  // Par défaut : les fiches sociétés (toute la route dynamique) + l'accueil + l'indice.
   // 'page' cible le segment de route, donc les 13 fiches d'un coup.
   revalidatePath('/societe/[ticker]', 'page');
   revalidatePath('/');
-  return NextResponse.json({ ok: true, revalidated: ['/societe/[ticker]', '/'] });
+  revalidatePath('/indice');
+  return NextResponse.json({ ok: true, revalidated: ['/societe/[ticker]', '/', '/indice'] });
 }
 
 export const POST = handle;

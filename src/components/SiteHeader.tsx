@@ -12,9 +12,16 @@ export default function SiteHeader() {
           <span className="site-header-editor">{t.header.editeur}</span>
         </a>
 
-        {/* Slot de navigation — V2 : indices sectoriels / V3 : vue secteur */}
+        {/* Slot de navigation — V3 : vue secteur */}
         <nav className="site-header-nav" aria-label="Navigation principale">
           <a href="/#heatmap" className="site-header-navlink">HeatMap</a>
+          <a
+            href="/indice"
+            className="site-header-navlink"
+            data-umami-event="clic-indice"
+          >
+            {t.indice.navLabel}
+          </a>
         </nav>
 
         {/* Actions — droite */}

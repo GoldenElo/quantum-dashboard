@@ -16,6 +16,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
+from index_tqw import compute_index
 from market_data import fetch_ohlcv, last_close_date
 
 load_dotenv(dotenv_path="../.env.local")
@@ -303,6 +304,36 @@ def _log_market_caps(db: Client, close_date: date) -> None:
         logger.warning("Market caps non calculées (shares_outstanding absent ?) : %s", exc)
 
 
+# ─── Indice TQW (C3) ─────────────────────────────────────────────────────────
+
+def _update_index(db: Client, close_date: date) -> None:
+    """
+    Met à jour l'Indice TQW jusqu'à close_date (moteur : index_tqw.py).
+
+    Enveloppé comme _log_market_caps : si la migration 010 n'est pas appliquée ou
+    si l'indice échoue, l'ingestion des portefeuilles NE DOIT PAS échouer. L'indice
+    est une couche additive — il ne peut pas mettre en péril la chaîne existante.
+    """
+    try:
+        result = compute_index(db, close_date)
+        for reb in result["rebalances"]:
+            if reb["new"]:
+                logger.info(
+                    "─── Rebalancement de l'indice au %s : %d constituants (%s) ───",
+                    reb["date"], reb["constituents"], ", ".join(reb["tickers"]),
+                )
+                logger.info("    écrêtées à 25 %% : %s", ", ".join(reb["capped"]) or "aucune")
+        if result["written"]:
+            logger.info(
+                "Indice TQW : %d valeur(s) ajoutée(s), dernière = %.4f",
+                result["written"], result["last_value"],
+            )
+        else:
+            logger.info("Indice TQW : série déjà à jour (%.4f).", result["last_value"])
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Indice TQW non calculé (migration 010 appliquée ?) : %s", exc)
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -350,7 +381,10 @@ def main() -> None:
     logger.info("Upsert de %d lignes dans snapshot_daily…", len(snapshot_rows))
     _upsert_batched(db, "snapshot_daily", snapshot_rows)
 
-    # 5. Market caps (log uniquement — shares × adj_close, rien stocké)
+    # 5. Indice TQW (C3) — calculé ici, jamais dans le front
+    _update_index(db, close_date)
+
+    # 6. Market caps (log uniquement — shares × adj_close, rien stocké)
     _log_market_caps(db, close_date)
 
     logger.info("=== Ingestion terminée. ===")

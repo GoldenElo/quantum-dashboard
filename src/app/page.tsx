@@ -1,9 +1,10 @@
-import { fetchHomepageData, fetchMarketCapsData } from '@/lib/api';
+import { fetchHomepageData, fetchMarketCapsData, fetchIndexSummary } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import PortfolioCard from '@/components/PortfolioCard';
 import ComparativeChart from '@/components/ComparativeChart';
 import MarketCapTable from '@/components/MarketCapTable';
 import SectorTreemap from '@/components/SectorTreemap';
+import IndexHomeBanner from '@/components/IndexHomeBanner';
 import { t } from '@/i18n/t';
 import type { SeriesConfig } from '@/components/ComparativeChart';
 
@@ -19,9 +20,10 @@ const COMPARATIVE_SERIES: SeriesConfig[] = [
 ];
 
 export default async function HomePage() {
-  const [{ summaries, chartData }, marketCapData] = await Promise.all([
+  const [{ summaries, chartData }, marketCapData, indexSummary] = await Promise.all([
     fetchHomepageData(),
     fetchMarketCapsData(),
+    fetchIndexSummary(),
   ]);
   const inceptionDate = summaries[0]?.inception_date ?? '';
   // Dernière clôture ingérée = date du snapshot le plus récent (dates ISO → tri lexical = chrono).
@@ -61,6 +63,10 @@ export default async function HomePage() {
           Base 100 depuis le {formatDate(inceptionDate)} · Benchmarks en tirets : VanEck Quantum Computing UCITS ETF (QNTM.L) · Nasdaq-100 (QQQ)
         </p>
       </section>
+
+      {/* Indice TQW (C3) — bandeau compact entre les portefeuilles et la HeatMap.
+          Absent tant qu'aucune valeur n'est calculée (migration 010 / backfill). */}
+      {indexSummary && <IndexHomeBanner summary={indexSummary} />}
 
       {/* HeatMap — treemap sectorielle (ancre de navigation depuis le header) */}
       <section className="section mur-section" id="heatmap" aria-label={t.mur.aria.region}>

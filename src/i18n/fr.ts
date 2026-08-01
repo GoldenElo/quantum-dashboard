@@ -184,6 +184,96 @@ export const fr = {
     ficheAria: 'Fiche société',
     lienFicheAria: 'Voir la fiche',
   },
+  // Indice TQW (C3) — page /indice + carte d'accueil.
+  // Le DOCUMENT de méthodologie n'est pas ici : il vit dans
+  // docs/methodologie-indice-tqw.fr.md et est rendu tel quel (source unique,
+  // aucune duplication possible). Seuls les libellés d'interface sont ici.
+  indice: {
+    nom: 'Indice TQW',
+    // SEO — title.absolute (court-circuite le titleTemplate du layout).
+    metaTitle: 'Indice TQW — l’indice des pure-players du quantique coté',
+    soustitre:
+      'L’indice propriétaire de The Quantum Wall — les pure-players du quantique coté, ' +
+      'pondérés par capitalisation, plafonnés à 25 % par valeur, base 100 au 1er juin 2026.',
+    retour: '← Accueil',
+    chiffres: {
+      valeur: 'Valeur de l’indice',
+      jour: 'Var. jour',
+      semaine: 'Var. semaine',
+      mois: 'Var. mois',
+      depuisInception: 'Depuis l’inception',
+      constituants: 'Constituants',
+    },
+    // Graphique.
+    chart: {
+      titre: 'Performance — base 100',
+      note:
+        'Base 100 au 1er juin 2026 · Références en tirets : VanEck Quantum Computing UCITS ETF ' +
+        '(QNTM.L) · Nasdaq-100 (QQQ). Les références servent de repère de marché — elles ne ' +
+        'font pas partie de l’indice.',
+      insuffisant: 'Historique insuffisant pour tracer une courbe.',
+      series: {
+        indice: 'Indice TQW',
+        benchmark: 'VanEck UCITS',
+        nasdaq100: 'Nasdaq-100',
+      },
+    },
+    // Tableau des constituants — les DEUX colonnes de poids sont distinguées.
+    constituants: {
+      titre: 'Constituants et pondérations',
+      colonnes: {
+        societe: 'Société',
+        ticker: 'Ticker',
+        cours: 'Cours',
+        capitalisation: 'Capitalisation',
+        poidsRebalancement: 'Poids au rebalancement',
+        poidsCourant: 'Poids courant',
+        derive: 'Dérive',
+      },
+      // Explication de la distinction — affichée sous le tableau, pas en infobulle :
+      // c'est la clé de lecture du tableau, elle doit être lisible sans interaction.
+      explication:
+        'Le poids au rebalancement est celui figé au {date}, plafond de 25 % appliqué. ' +
+        'Le poids courant est celui qui résulte de l’évolution des cours depuis. ' +
+        'L’écart entre les deux est normal : le plafond ne s’applique qu’au rebalancement, ' +
+        'jamais en continu — un indice enregistre le marché, il ne le corrige pas.',
+      plafonneeMarker: '▪',
+      plafonneeTooltip: 'Écrêtée au plafond de 25 % lors du rebalancement.',
+      derivePlafondMarker: '⚑',
+      derivePlafondTooltip:
+        'A dérivé au-dessus du plafond de 25 % depuis le rebalancement — normal entre deux ' +
+        'rebalancements, sera réécrêtée au suivant.',
+      total: 'Total',
+      sourceActionsPrefix: 'Actions :',
+    },
+    // Méthodologie (document rendu).
+    methodologie: {
+      titre: 'Méthodologie',
+      indisponible: 'Document de méthodologie momentanément indisponible.',
+    },
+    // Carte compacte sur l'accueil.
+    carte: {
+      titre: 'Indice TQW',
+      accroche: 'L’indice des pure-players du quantique coté',
+      lien: 'Voir l’indice',
+      lienAria: 'Voir la page de l’Indice TQW',
+      constituantsSuffixe: 'valeurs',
+      depuisInception: 'depuis le 1er juin 2026',
+    },
+    navLabel: 'Indice',
+    horodatagePrefix: 'Données du',
+    horodatageSuffix: ', clôture US',
+    disclaimer:
+      'Indice informatif, non investissable — ni conseil ni recommandation d’investissement. ' +
+      'Aucun produit financier ne le réplique. Données de clôture à J‑1, sans garantie d’exactitude.',
+    indisponible:
+      'L’indice n’est pas encore disponible. Il sera publié dès le premier calcul quotidien.',
+    aria: {
+      page: 'Indice TQW — indice des pure-players du quantique coté',
+      chiffres: 'Chiffres clés de l’indice',
+      carte: 'Indice TQW — valeur du jour',
+    },
+  },
   // Base d'événements sectoriels (C6) — frise sur les fiches sociétés.
   evenements: {
     titre: 'Événements',
