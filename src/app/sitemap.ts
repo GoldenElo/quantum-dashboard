@@ -4,7 +4,7 @@ import { SITE_URL } from '@/lib/site';
 
 export const revalidate = 86400;
 
-// Accueil + /indice + 13 fiches sociétés + 3 portefeuilles fictifs (pages publiques SEO).
+// Accueil + /indice + pages ETF + 13 fiches sociétés + 3 portefeuilles fictifs (pages publiques SEO).
 // /portefeuille/personnel volontairement exclu (données perso, pas une cible SEO).
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const latest = await fetchLatestCloseDate();
@@ -25,6 +25,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.9,
   };
 
+  // Pages éditoriales ETF — contenu statique (fichier de données + document
+  // markdown versionnés) : lastModified ne suit pas les clôtures de marché.
+  const editorial: MetadataRoute.Sitemap = [
+    { url: `${SITE_URL}/etf-quantiques`, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${SITE_URL}/grille-etf`, changeFrequency: 'monthly', priority: 0.8 },
+  ];
+
   const companies: MetadataRoute.Sitemap = listCompanyTickers().map(ticker => ({
     url: `${SITE_URL}/societe/${ticker.toLowerCase()}`,
     lastModified,
@@ -39,5 +46,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [home, indice, ...companies, ...portfolios];
+  return [home, indice, ...editorial, ...companies, ...portfolios];
 }

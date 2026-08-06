@@ -118,6 +118,17 @@ export default async function IndicePage() {
               <IndexChart data={data.series} />
             </div>
             <p className="chart-note">{t.indice.chart.note}</p>
+            {/* Complément naturel de la comparaison indice vs ETF affichée ci-dessus. */}
+            <p className="chart-note">
+              <a
+                href="/etf-quantiques"
+                className="indice-etf-link"
+                data-umami-event="clic-etf"
+                data-umami-event-source="indice"
+              >
+                {t.etf.versArticleLienDepuisIndice}
+              </a>
+            </p>
           </section>
 
           <IndexConstituentsTable

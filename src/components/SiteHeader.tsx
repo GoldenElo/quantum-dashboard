@@ -22,6 +22,14 @@ export default function SiteHeader() {
           >
             {t.indice.navLabel}
           </a>
+          <a
+            href="/etf-quantiques"
+            className="site-header-navlink"
+            data-umami-event="clic-etf"
+            data-umami-event-source="header"
+          >
+            {t.etf.navLabel}
+          </a>
         </nav>
 
         {/* Actions — droite */}
