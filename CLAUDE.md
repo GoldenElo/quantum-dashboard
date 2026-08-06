@@ -249,7 +249,10 @@ Les quantités sont calculées une seule fois par le script de seed :
 | INFQ | Infleqtion | pure-player | — | — | 10 % |
 
 Benchmark de comparaison affiché sur tous les graphiques : **QNTM.L** — VanEck Quantum Computing UCITS ETF
-(LSE, devise USD, ticker yfinance validé, ISIN IE000S5XPDL3 env.). Remplace QTUM depuis la migration 002.
+(LSE, devise USD, ticker yfinance validé, **ISIN IE0007Y8Y157** — confirmé sur le KIID officiel VanEck
+le 2026-08-06). Remplace QTUM depuis la migration 002. ⚠ L'ISIN `IE000S5XPDL3`, porté ici jusqu'au
+2026-08-06 avec la mention « env. », était **erroné** : ne pas le réintroduire. Un identifiant n'est
+jamais approximatif — soit il est confirmé sur source primaire, soit il n'est pas écrit.
 Chaque colonne doit sommer à 100 % — vérifier par un test.
 
 **Étalon de marché** (graphique comparatif accueil uniquement) : **QQQ** — Invesco Nasdaq-100 ETF
@@ -935,6 +938,16 @@ Ces dettes ne sont pas optionnelles : elles conditionnent la **cessibilité** de
 - **(c) Exportabilité.** Schéma documenté, dump reproductible : **l'actif vendable est la base
   de données + la couche de curation, pas le front**. Toute décision de schéma doit préserver
   un export propre et autonome.
+- **(d) Migration `<a>` → `next/link` — PASSE DÉDIÉE, jamais au fil de l'eau.** Toute la navigation
+  interne utilise des `<a href="…">` : `npm run lint` échoue en permanence sur
+  `@next/next/no-html-link-for-pages` (9 occurrences au 2026-08-06 — header, `/indice`,
+  `/etf-quantiques`, `/grille-etf`, fiches sociétés, pages portefeuille). Conséquences : navigation
+  client non préchargée (rechargement complet à chaque clic, pénalisant sur mobile) et **un lint
+  rouge de référence, qui masque les vraies régressions** au moment d'une revue.
+  **Règle en attendant : rester cohérent avec le repo** — une nouvelle page écrit des `<a>` comme
+  les autres. Mélanger les deux conventions coûterait plus cher que la dette elle-même. La bascule
+  se fait **en une seule passe sur tous les fichiers**, lint remis à zéro dans le même commit,
+  sans rien changer d'autre.
 
 ---
 
