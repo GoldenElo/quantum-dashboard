@@ -381,7 +381,7 @@ export const fr = {
     retour: '← Accueil',
     indisponible: 'Article momentanément indisponible.',
     // Bouton de téléchargement — libellé imposé, identique sur les deux pages.
-    pdfLabel: 'Télécharger la grille en PDF — gratuit, sans inscription',
+    pdfLabel: 'Télécharger la grille en PDF — offert, sans inscription',
     pdfHint: '1 page · à garder sous la main au moment de comparer',
     versTableauTitre: 'Le tableau comparatif',
     versTableauTexte:

@@ -8,11 +8,11 @@ export const SITE_URL = 'https://thequantumwall.com';
 export const YOUTUBE_URL = 'https://www.youtube.com/@InvestisseuseQuantique';
 export const X_URL = 'https://x.com/InvestQuantique';
 
-// ⚠ PLACEHOLDER — vidéo « ETF quantiques : la méthode ».
-// La vidéo n'est pas encore publiée : ce lien pointe pour l'instant sur la chaîne.
-// UNE SEULE LIGNE À REMPLACER le jour de la publication (URL de la vidéo) — les
-// pages /etf-quantiques et /grille-etf la consomment toutes les deux d'ici.
-export const VIDEO_ETF_URL = YOUTUBE_URL;
+// Vidéo « ETF quantiques : la méthode » — publiée le 2026-08-07.
+// Cible des liens vidéo de /etf-quantiques (appel à signalement d'un fonds
+// manquant) et /grille-etf. Les deux pages la consomment d'ici : une seule
+// ligne à changer si la vidéo est remplacée ou re-uploadée.
+export const VIDEO_ETF_URL = 'https://www.youtube.com/watch?v=j8so3Qube-I';
 
 // Grille des 5 critères en PDF — servi statiquement depuis public/.
 // Le fichier est un artefact éditorial versionné, pas un généré : il se remplace
