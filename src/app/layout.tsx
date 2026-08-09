@@ -42,7 +42,10 @@ export const metadata: Metadata = {
     type: "website",
   },
   twitter: {
-    card: "summary",
+    // "summary_large_image" et non "summary" : les cartes OG générées (C4) sont en
+    // 1200×630 et ne produisent l'effet mur qu'affichées en grand. Avec "summary",
+    // X les réduirait à une vignette carrée — la brique perdrait sa raison d'être.
+    card: "summary_large_image",
     title: t.meta.title,
     description: t.meta.description,
   },

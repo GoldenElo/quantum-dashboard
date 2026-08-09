@@ -9,6 +9,13 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/indice": ["./docs/**"],
     "/grille-etf": ["./docs/**"],
+    // Images OG (C4) : la police de titrage est embarquée en fichier et lue avec
+    // fs à la génération. Sans ce tracing, le .ttf n'est pas dans le bundle
+    // serverless Netlify et la revalidation ISR des cartes échouerait — même
+    // raison que docs/ pour /indice.
+    "/opengraph-image": ["./src/assets/fonts/**"],
+    "/societe/[ticker]/opengraph-image": ["./src/assets/fonts/**"],
+    "/indice/opengraph-image": ["./src/assets/fonts/**"],
   },
 };
 

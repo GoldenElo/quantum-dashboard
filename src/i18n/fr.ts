@@ -421,6 +421,57 @@ export const fr = {
       autre: 'Autre',
     } as Record<string, string>,
   },
+  // Images Open Graph auto-générées (C4) — cartes de partage social.
+  // Contrainte de rédaction : LIBELLÉS COURTS. La carte est lue à ~300 px de large
+  // dans un fil X ; une phrase y devient une tache grise. Les chiffres portent le
+  // message, ces libellés ne font que les nommer.
+  og: {
+    wordmark: 'The Quantum Wall',
+    editeur: 'L’Investisseuse Quantique',
+    domaine: 'thequantumwall.com',
+    // Horodatage — rendu sur les TROIS templates, jamais omis.
+    donneesDu: 'Données du',
+    clotureUs: ', clôture US',
+    // Template accueil — mur de barres proportionnelles.
+    accueil: {
+      titre: 'Le mur du quantique coté',
+      totalLabel: 'Capitalisation des pure-players',
+      barresLegende: 'Taille = capitalisation · couleur = variation du jour',
+      // Suffixe quand le mur est tronqué pour rester lisible en miniature.
+      reste: (n: number) => `+ ${n} autres pure-players`,
+      alt: 'The Quantum Wall — capitalisations des pure-players du quantique coté',
+    },
+    // Template fiche société.
+    societe: {
+      capitalisation: 'Capitalisation',
+      ps: 'P/S',
+      jour: 'Jour',
+      semaine: 'Semaine',
+      mois: 'Mois',
+      // Marqueur repris du tableau : ratio non ferme (CA partiel ou non recoupé).
+      psEstime: 'estimation',
+      // Alt volontairement générique : Next n'accepte qu'un `alt` statique par route
+      // d'image. Le rendre dynamique imposerait `generateImageMetadata`, qui déplace
+      // l'URL vers /opengraph-image/[id] — trop cher pour une ligne d'alt.
+      alt: 'Fiche société — capitalisation et valorisation sur The Quantum Wall',
+    },
+    // Template indice TQW.
+    indice: {
+      nom: 'Indice TQW',
+      accroche: 'L’indice des pure-players du quantique coté',
+      valeurLabel: 'Valeur',
+      depuisInception: 'Depuis l’inception',
+      constituants: 'Constituants',
+      base: 'Base 100 au 1er juin 2026',
+      alt: 'Indice TQW — l’indice propriétaire des pure-players du quantique coté',
+    },
+    // Rendu quand la base ne répond pas : la carte reste une carte de marque
+    // valide (jamais un 500 ni une image vide qui casserait l'aperçu du partage).
+    fallback: {
+      accroche: 'Le tableau de bord du quantique coté',
+      indisponible: 'Chiffres momentanément indisponibles',
+    },
+  },
 } as const
 
 // Notes de bas de tableau par ticker — marqueur exposant + texte de note.

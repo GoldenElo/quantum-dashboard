@@ -33,10 +33,22 @@ function handle(req: NextRequest) {
 
   // Par défaut : les fiches sociétés (toute la route dynamique) + l'accueil + l'indice.
   // 'page' cible le segment de route, donc les 13 fiches d'un coup.
+  const paths = ['/societe/[ticker]', '/', '/indice'];
   revalidatePath('/societe/[ticker]', 'page');
   revalidatePath('/');
   revalidatePath('/indice');
-  return NextResponse.json({ ok: true, revalidated: ['/societe/[ticker]', '/', '/indice'] });
+
+  // Les images OG (C4) sont des entrées de cache DISTINCTES de leurs pages : purger
+  // /indice ne rafraîchit pas /indice/opengraph-image. Sans ces trois lignes, une
+  // correction de donnée apparaîtrait sur le site mais la carte partagée sur X
+  // continuerait d'afficher l'ancien chiffre jusqu'à 24 h — l'écart le plus visible
+  // possible, puisque la carte circule hors du site.
+  const ogPaths = ['/opengraph-image', '/indice/opengraph-image', '/societe/[ticker]/opengraph-image'];
+  revalidatePath('/opengraph-image');
+  revalidatePath('/indice/opengraph-image');
+  revalidatePath('/societe/[ticker]/opengraph-image', 'page');
+
+  return NextResponse.json({ ok: true, revalidated: [...paths, ...ogPaths] });
 }
 
 export const POST = handle;

@@ -851,14 +851,78 @@ confronter au prospectus avant toute publication.
 **Reporté :** le **PDF téléchargeable** de méthodologie. Le `.md` versionné en git + la page rendue
 couvrent le besoin ; le PDF sera généré si une diffusion hors site le justifie.
 
-### C4 — Images OG auto-générées
-
-**Ce qui est construit :** image de partage (Open Graph) **générée quotidiennement depuis la treemap**
-(le Mur du jour), pour que tout lien partagé sur X montre **le Mur vivant** plutôt qu'une carte statique.
+### C4 — Images OG auto-générées — 🚧 CODÉE (2026-08-09), PAS ENCORE DÉPLOYÉE
 
 **Pourquoi :** boucle virale gratuite — chaque partage social affiche l'état du secteur du jour.
 
-**Dépendances :** S3 (treemap du Mur) pour la source visuelle.
+**Ce qui est construit (réel) :** **trois** templates OG en 1200×630, générés par `next/og`
+(`ImageResponse`) via la convention de fichier `opengraph-image.tsx`, en **runtime Node** et
+**revalidation 24 h** (alignée sur les pages) :
+- `src/app/opengraph-image.tsx` — accueil, **le mur** ;
+- `src/app/societe/[ticker]/opengraph-image.tsx` — les 13 fiches ;
+- `src/app/indice/opengraph-image.tsx` — Indice TQW.
+Socle partagé dans `src/lib/og.tsx` (cadre de marque, palette, police, helpers) ; libellés sous
+`t.og.*` (`src/i18n/fr.ts`), aucune string en dur.
+
+**⚠️ ÉCART ASSUMÉ vs le plan initial — barres, pas treemap.** L'accueil rend des **barres
+horizontales proportionnelles** à la capitalisation, colorées par la variation du jour, et non la
+treemap du Mur. Raison : une treemap réduite à ~300 px de large (taille réelle d'une carte dans un
+fil X) devient une mosaïque illisible, alors qu'une pile de barres alignées donne l'effet
+« mur rouge/vert » d'un coup d'œil en gardant les tickers déchiffrables. **L'effet mur prime sur la
+fidélité de la treemap** ; `/mur` reste la vue exacte. Conséquence : **C4 ne dépend plus de S3.**
+
+**RÈGLES DURES — apprises au montage, ne pas « re-simplifier » :**
+- **Lisibilité en miniature d'abord.** Rien sous ~19 px à l'échelle 1200×630. Le mur est **borné à
+  8 barres** (`MAX_BARS`) : c'est le plancher pour que les tickers restent lisibles réduits. Le
+  panel en compte 11 → **la troncature est ANNONCÉE** (« + 3 autres pure-players »), jamais
+  silencieuse.
+- **Date des données sur chaque image** (`OgShell`). Une carte partagée sans date est un chiffre
+  sans contexte qui vieillit en silence.
+- **Les notes éditoriales suivent sur la carte.** Le marqueur du ticker (`TICKER_NOTES` : Up-C QNT,
+  quantum washing ARQQ †, cotation récente IQMX §) est rendu sur la fiche OG. Une carte circule
+  **plus loin que la page** : y afficher une capitalisation sans son avertissement contredirait la
+  règle de la maison.
+- **Police embarquée EN FICHIER** (`src/assets/fonts/IBMPlexSans-SemiBold.ttf`, OFL 1.1, provenance
+  et licence dans le README du dossier), jamais récupérée sur le réseau à la génération : un
+  partage ne doit pas dépendre de la disponibilité de Google Fonts au passage d'un crawler.
+  **`satori` ne lit ni woff2 ni EOT.** Piège vécu : l'API CSS legacy de Google Fonts sert de l'**EOT**
+  avec un User-Agent ancien — `file` annonce quand même « IBM Plex Sans SemiBold » et la génération
+  échoue. Vérifier les octets de tête : `xxd -p -l4 fichier.ttf` doit donner `00010000`.
+- **`outputFileTracingIncludes` pour les trois routes** (`next.config.ts`) — sans quoi le `.ttf`
+  n'est pas dans le bundle serverless Netlify (même raison que `docs/` pour `/indice`).
+- **Casse des params identique à la page.** Les URLs de fiches sont en **minuscules** : un
+  `generateStaticParams` qui rend `IONQ` prerend une image à une URL que la page ne référence
+  jamais, et la carte est regénérée à la demande à chaque partage. Bug attrapé au build.
+- **Une image OG est une entrée de cache DISTINCTE de sa page.** Purger `/indice` ne rafraîchit pas
+  `/indice/opengraph-image` : les trois routes sont ajoutées à la purge par défaut de
+  `/api/revalidate`. Sans ça, une correction de donnée s'affiche sur le site pendant que X montre
+  encore l'ancien chiffre — l'écart le plus visible possible.
+- **`twitter.card = 'summary_large_image'`** (`layout.tsx`, était `summary`). Avec `summary`, X
+  réduit la carte à une vignette carrée et la brique perd sa raison d'être. **Effet sitewide**, pas
+  seulement sur les trois routes.
+- **Dégradation gracieuse.** Base injoignable ou migration absente → carte de **marque** valide
+  (wordmark + « chiffres momentanément indisponibles »), jamais un 500 ni une image vide qui
+  casserait l'aperçu du partage.
+
+**Vérification (2026-08-09) :** trois rendus contrôlés visuellement, dont deux cas limites — ARQQ
+(note longue sur une ligne) et HQ (P/S `n.s.`, données pauvres). `tsc` propre ; `npm run lint`
+inchangé (les 9 `<a>` de la dette (d), aucune erreur nouvelle) ; `npm run build` exit 0 avec les
+13 fiches OG prerendues et le `.ttf` tracé dans les trois manifestes `.nft.json`.
+
+**⚠️ ÉTAT : non déployé.** Une route OG **n'existe pas en prod tant que le commit n'est pas poussé**
+— la convention de fichier ne crée rien à l'exécution. Symptôme d'un oubli de push : `404` sur
+`/opengraph-image` **et balise `og:image` absente du HTML de prod**. Diagnostic en deux commandes,
+avant tout soupçon porté au runtime Netlify :
+```bash
+git rev-list --left-right --count origin/main...HEAD      # 0 0 = rien à déployer d'inédit
+curl -s https://thequantumwall.com/ | grep -o 'og:image[^>]*'   # vide = code absent du build
+```
+Si `og:image` est **présente** mais l'URL en 404, alors seulement chercher côté adaptateur Netlify
+(les *metadata routes* de Next ont des cas connus) — et le contournement est une route explicite
+`/api/og/...` rendant le même `ImageResponse`, indépendante de la convention de fichier.
+
+**Dépendances :** S1 (market cap) + S2 (variations) + C3 (indice). **Plus S3** depuis l'abandon de
+la treemap comme source visuelle.
 
 ### C5 — Newsletter hebdomadaire auto-générée
 
