@@ -290,6 +290,20 @@ flottant Class A → market cap massivement sous-estimée. Après vérification 
 surcharger manuellement dans `shares_outstanding` avec `source = 'SEC S-1 2026-06'` et le total Class A+B.
 Le script `fetch_shares.py` affiche une alerte explicite et le SQL de surcharge à chaque exécution.
 
+**⚠ BASE DE MESURE (dure, fixée le 2026-08-11) — actions ÉCONOMIQUES outstanding, PAS fully-diluted.**
+La market cap QNT se calcule sur les **actions économiques en circulation** (Class A + Common Units,
+soit Class A + Class B, les Class B étant non-économiques et miroir 1:1 des Common Units de
+Quantinuum Holdings) — **PAS sur le fully-diluted**. Le chiffre de **322 M** du 424B4 incluait la
+**dilution potentielle** (instruments non encore convertis) : **ne pas y revenir.**
+Valeur courante : **262 906 073 actions au 30/06/2026** (Class A 36 134 196 + Class B 226 771 877),
+premier chiffre publié par la société — résultats Q2 2026 / 8-K du 11/08/2026,
+`source = 'SEC 8-K 2026-08-11 (…)'`,
+[communiqué](https://ir.quantinuum.com/news-releases/news-release-details/quantinuum-reports-second-quarter-2026-results).
+La ligne 424B4 du 05/06 à 322 M **reste en base** (historique jamais supprimé, utile à la courbe de
+capitalisation et à C7) ; elle est simplement **supersédée** par l'`as_of_date` plus récente.
+Corollaire : l'écart yfinance ↔ surcharge passe de ~-90 % à **~-86 %** (flottant Class A ≈ 14 %) —
+l'alerte « contredit surcharge » reste **normale et permanente**, ne jamais l'aligner sur yfinance.
+
 **Note ARQQ — quantum washing :**
 Arqit Quantum (ARQQ, Nasdaq NCM) est un cas documenté de quantum washing — la chaîne lui consacre
 un épisode d'analyse. À NE PAS afficher comme équivalent aux autres pure-players sans la note

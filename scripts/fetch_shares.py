@@ -58,10 +58,33 @@ _MANUAL_OVERRIDES: list[dict] = [
         "ticker":     "QNT",
         "as_of_date": "2026-06-05",
         "shares":     322_000_000,
+        # ⚠ SURCHARGE HISTORIQUE — SUPERSÉDÉE par la ligne du 2026-06-30 ci-dessous.
+        # Conservée volontairement (jamais supprimée) : elle documente la seule mesure
+        # disponible entre l'IPO du 04/06 et la première publication trimestrielle, et
+        # nourrit l'historique d'actions (courbe de capitalisation des fiches, C7).
         # Source : prospectus 424B4 SEC, 04/06/2026.
         # Structure Up-C : Class A cotée ~32,86 M ≈ 10,2 % de l'intérêt économique total.
-        # Valeur pleinement diluée = 32,86 M / 10,2 % ≈ 322 M actions (Class A + Common Units B).
+        # Valeur pleinement diluée = 32,86 M / 10,2 % ≈ 322 M actions — elle INCLUT la
+        # dilution potentielle (instruments non encore convertis), ce n'est pas un
+        # nombre d'actions économiques en circulation. Ne pas y revenir.
         "source":     "SEC 424B4 2026-06-04 (fully-diluted, Up-C structure)",
+    },
+    {
+        "ticker":     "QNT",
+        "as_of_date": "2026-06-30",
+        "shares":     262_906_073,
+        # SURCHARGE COURANTE — actions ÉCONOMIQUES en circulation au 30/06/2026,
+        # premier chiffre publié par la société (résultats Q2 2026 + 8-K du 11/08/2026).
+        #   Class A outstanding : 36 134 196
+        #   Class B outstanding : 226 771 877 (non-économiques, miroir 1:1 des
+        #                                      Common Units de Quantinuum Holdings)
+        #   Total économique    : 262 906 073
+        # Le total Class A + Class B est bien la mesure économique : chaque Class B
+        # reflète une Common Unit échangeable 1:1 contre une Class A. On ne compte
+        # donc aucune action deux fois, et on n'inclut PAS la dilution potentielle.
+        # Remplace les 322 M du 424B4 (fully-diluted) — voir la ligne ci-dessus.
+        # https://ir.quantinuum.com/news-releases/news-release-details/quantinuum-reports-second-quarter-2026-results
+        "source":     "SEC 8-K 2026-08-11 (Q2 2026 — Class A + Class B outstanding au 30/06/2026)",
     },
     {
         "ticker":     "IQMX",
@@ -76,12 +99,33 @@ _MANUAL_OVERRIDES: list[dict] = [
         "source":     "SEC 6-K 2026-07-16 (total actions et votes, registre finlandais)",
     },
 ]
-_OVERRIDE_MAP: dict[str, dict] = {o["ticker"]: o for o in _MANUAL_OVERRIDES}
+def _latest_overrides(overrides: list[dict]) -> dict[str, dict]:
+    """
+    Surcharge COURANTE par ticker = celle dont l'as_of_date est la plus récente.
+
+    Un ticker peut porter PLUSIEURS surcharges (historique conservé — QNT a le 424B4
+    du 05/06 puis le 8-K du 30/06). La lecture côté API prend la ligne la plus récente
+    (ORDER BY as_of_date DESC) : c'est donc elle, et elle seule, que _drop_superseding_yf
+    doit protéger et que le tableau de contrôle doit afficher. Un simple
+    `{o["ticker"]: o for o in …}` retiendrait la dernière de la liste — un ordre de
+    déclaration, pas une date. Un jour où l'on insère une surcharge ancienne en fin de
+    liste, le garde-fou protégerait la mauvaise ligne en silence.
+    """
+    latest: dict[str, dict] = {}
+    for o in overrides:
+        cur = latest.get(o["ticker"])
+        if cur is None or o["as_of_date"] > cur["as_of_date"]:
+            latest[o["ticker"]] = o
+    return latest
+
+
+_OVERRIDE_MAP: dict[str, dict] = _latest_overrides(_MANUAL_OVERRIDES)
 
 # Notes d'affichage par ticker — décrivent pourquoi la valeur diffère de yfinance.
 # À réutiliser lors de l'implémentation du tableau frontend (S1 Étape C).
 _DISPLAY_NOTES: dict[str, str] = {
-    "QNT": "market cap pleinement diluée — structure Up-C, flottant Class A ≈ 10 %",
+    "QNT": "actions économiques outstanding (Class A + Class B) — structure Up-C, "
+           "flottant Class A ≈ 14 %. PAS le fully-diluted du 424B4.",
     "IQMX": "total actions et votes (registre finlandais) — yfinance sous-estime de ~20 %",
 }
 
