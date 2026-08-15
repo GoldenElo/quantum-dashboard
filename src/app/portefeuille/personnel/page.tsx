@@ -189,7 +189,7 @@ export default async function PersonnelPage() {
           <DetailChart
             data={publicData.chartData}
             portfolioLabel="Mon portefeuille"
-            portfolioColor="#FF9830"
+            portfolioKey="personnel"
           />
         </div>
         <p className="chart-note">

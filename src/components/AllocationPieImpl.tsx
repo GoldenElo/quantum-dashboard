@@ -1,16 +1,17 @@
 'use client';
 
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-
-const TICKER_COLORS: Record<string, string> = {
-  GOOGL: '#1d4ed8', IBM: '#4338ca', NVDA: '#059669',
-  IONQ: '#0891b2', QBTS: '#be185d', LAES: '#d97706', INFQ: '#7c3aed',
-};
+import { CHART_CHROME, PIE_COLORS, PIE_FALLBACK } from '@/lib/theme';
+import { useThemeMode } from '@/lib/useThemeMode';
 
 type Slice = { ticker: string; name: string; weight: number };
 const pctLabel = (v: number) => `${(v * 100).toFixed(1)} %`;
 
 function SinglePie({ data, title }: { data: Slice[]; title: string }) {
+  const mode = useThemeMode();
+  const chrome = CHART_CHROME[mode];
+  const tickerColors = PIE_COLORS[mode];
+
   return (
     <div className="pie-wrap">
       <p className="pie-title">{title}</p>
@@ -28,12 +29,13 @@ function SinglePie({ data, title }: { data: Slice[]; title: string }) {
               labelLine={false}
             >
               {data.map(e => (
-                <Cell key={e.ticker} fill={TICKER_COLORS[e.ticker] ?? '#6b7280'} />
+                <Cell key={e.ticker} fill={tickerColors[e.ticker] ?? PIE_FALLBACK[mode]} />
               ))}
             </Pie>
             <Tooltip
-              contentStyle={{ background: '#ffffff', border: '1px solid #e6e9ee', borderRadius: 6, fontSize: 12 }}
-              labelStyle={{ color: '#0c1d38' }}
+              contentStyle={{ background: chrome.tooltipBg, border: `1px solid ${chrome.tooltipBorder}`, borderRadius: 6, fontSize: 12 }}
+              labelStyle={{ color: chrome.tooltipLabel }}
+              itemStyle={{ color: chrome.tooltipLabel }}
               formatter={(value, name) => {
                 const v = typeof value === 'number' ? value : 0;
                 const slice = data.find(d => d.ticker === String(name));
@@ -44,7 +46,7 @@ function SinglePie({ data, title }: { data: Slice[]; title: string }) {
               wrapperStyle={{ paddingTop: '12px' }}
               formatter={(value: string) => {
                 const s = data.find(d => d.ticker === value);
-                return <span style={{ color: '#5a6b82', fontSize: 11 }}>{s?.name ?? value}</span>;
+                return <span style={{ color: chrome.legend, fontSize: 11 }}>{s?.name ?? value}</span>;
               }}
             />
           </PieChart>

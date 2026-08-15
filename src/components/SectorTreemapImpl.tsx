@@ -5,6 +5,8 @@ import { hierarchy, treemap, treemapSquarify } from 'd3-hierarchy';
 import type { MarketCapRow } from '@/lib/api';
 import { formatMarketCap, formatPct } from '@/lib/format';
 import { t, TICKER_NOTES } from '@/i18n/t';
+import { TREEMAP, rgbOf, type TreemapPalette } from '@/lib/theme';
+import { useThemeMode } from '@/lib/useThemeMode';
 
 type View = 'pure_players' | 'secteur_complet';
 type Horizon = 'jour' | 'semaine' | 'mois';
@@ -28,13 +30,15 @@ const CHANGE_KEY: Record<Horizon, keyof MarketCapRow> = {
 // pure-players restent identifiables. Sans effet en vue pure-players.
 const MIN_TILE_VALUE_FRACTION = 0.006;
 
-// Charte CLAIRE — endpoints de l'échelle divergente + neutres.
-const C_NEG = [220, 38, 38];    // #dc2626  --negative
-const C_POS = [21, 128, 61];    // #15803d  --positive
-const C_NEUTRAL = [238, 241, 245]; // #eef1f5 ≈ --bg-panel (stable)
-const C_NULL = '#dde3ea';       // variation non calculable
-const TEXT_DARK = '#0c1d38';    // --text (navy)
-const TEXT_LIGHT = '#ffffff';
+// Palette de l'échelle divergente : src/lib/theme.ts (clair ET sombre).
+// En mode sombre les extrémités sont profondes, pas vives — voir la règle
+// documentée à côté de TREEMAP : des extrémités vives créent une zone médiane
+// illisible quel que soit le texte.
+
+// Seuil de bascule texte clair / texte foncé sur une tuile (luminance approchée).
+// 0,52 et non 0,6 : à 0,6 la bascule arrivait trop tard et la zone médiane de la
+// rampe tombait à 2,7:1 en mode clair. Mesuré : 3,4:1 au pire désormais.
+const TEXT_FLIP_LUMINANCE = 0.52;
 
 // Note HQ propre au Mur — volontairement hors du TICKER_NOTES partagé (ne pas
 // altérer le tableau des capitalisations). Fusionnée en lecture seule ici.
@@ -43,33 +47,33 @@ const NOTES: Record<string, { marker: string; text: string }> = {
   HQ: t.mur.hqNote,
 };
 
-function mix(a: number[], b: number[], f: number): string {
+function mix(a: readonly number[], b: readonly number[], f: number): string {
   const r = Math.round(a[0] + (b[0] - a[0]) * f);
   const g = Math.round(a[1] + (b[1] - a[1]) * f);
   const bl = Math.round(a[2] + (b[2] - a[2]) * f);
   return `rgb(${r}, ${g}, ${bl})`;
 }
 
-function fillForChange(change: number | null, sat: number): string {
-  if (change == null) return C_NULL;
+function fillForChange(change: number | null, sat: number, p: TreemapPalette): string {
+  if (change == null) return p.nul;
   const c = Math.max(-1, Math.min(1, change / sat));
-  if (c === 0) return `rgb(${C_NEUTRAL.join(', ')})`;
-  return c < 0 ? mix(C_NEUTRAL, C_NEG, -c) : mix(C_NEUTRAL, C_POS, c);
+  if (c === 0) return rgbOf(p.neutral);
+  return c < 0 ? mix(p.neutral, p.neg, -c) : mix(p.neutral, p.pos, c);
 }
 
 // Luminance relative approx. → choisit un texte lisible (WCAG) sur le fond de tuile.
-function textColorFor(change: number | null, sat: number): string {
-  if (change == null) return TEXT_DARK;
+function textColorFor(change: number | null, sat: number, p: TreemapPalette): string {
+  if (change == null) return p.textOnNul;
   const c = Math.max(-1, Math.min(1, change / sat));
-  const end = c < 0 ? C_NEG : C_POS;
+  const end = c < 0 ? p.neg : p.pos;
   const f = Math.abs(c);
   const rgb = [
-    C_NEUTRAL[0] + (end[0] - C_NEUTRAL[0]) * f,
-    C_NEUTRAL[1] + (end[1] - C_NEUTRAL[1]) * f,
-    C_NEUTRAL[2] + (end[2] - C_NEUTRAL[2]) * f,
+    p.neutral[0] + (end[0] - p.neutral[0]) * f,
+    p.neutral[1] + (end[1] - p.neutral[1]) * f,
+    p.neutral[2] + (end[2] - p.neutral[2]) * f,
   ];
   const lum = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
-  return lum > 0.6 ? TEXT_DARK : TEXT_LIGHT;
+  return lum > TEXT_FLIP_LUMINANCE ? p.textDark : p.textLight;
 }
 
 function markersFor(row: MarketCapRow): string[] {
@@ -86,6 +90,7 @@ type Leaf = {
 };
 
 export default function SectorTreemapImpl({ rows }: { rows: MarketCapRow[] }) {
+  const palette = TREEMAP[useThemeMode()];
   const [view, setView] = useState<View>('pure_players');
   const [horizon, setHorizon] = useState<Horizon>('jour');
   const [width, setWidth] = useState(0);
@@ -209,8 +214,8 @@ export default function SectorTreemapImpl({ rows }: { rows: MarketCapRow[] }) {
             {leaves.map(leaf => {
               const w = leaf.x1 - leaf.x0;
               const h = leaf.y1 - leaf.y0;
-              const fill = fillForChange(leaf.change, sat);
-              const color = textColorFor(leaf.change, sat);
+              const fill = fillForChange(leaf.change, sat, palette);
+              const color = textColorFor(leaf.change, sat, palette);
               const marks = markersFor(leaf.row);
               const perfText = leaf.change == null ? t.mur.nonCalculable : formatPct(leaf.change);
               const titleText =
@@ -234,7 +239,7 @@ export default function SectorTreemapImpl({ rows }: { rows: MarketCapRow[] }) {
                 >
                   <g transform={`translate(${leaf.x0}, ${leaf.y0})`}>
                   <title>{titleText}</title>
-                  <rect width={w} height={h} rx={2} fill={fill} stroke="#ffffff" strokeWidth={1} />
+                  <rect width={w} height={h} rx={2} fill={fill} stroke={palette.stroke} strokeWidth={1} />
                   {full && (
                     <>
                       <text x={8} y={19} className="mur-tile-ticker" fill={color}>
@@ -277,11 +282,19 @@ export default function SectorTreemapImpl({ rows }: { rows: MarketCapRow[] }) {
       <div className="mur-legend">
         <div className="mur-legend-scale">
           <span className="mur-legend-label">{t.mur.legende.baisse}</span>
-          <span className="mur-legend-bar" aria-hidden="true" />
+          {/* Dégradé peint depuis la palette réelle des tuiles — la légende ne
+              peut pas mentir sur les couleurs qu'elle est censée expliquer. */}
+          <span
+            className="mur-legend-bar"
+            aria-hidden="true"
+            style={{
+              background: `linear-gradient(to right, ${rgbOf(palette.neg)}, ${rgbOf(palette.neutral)}, ${rgbOf(palette.pos)})`,
+            }}
+          />
           <span className="mur-legend-label">{t.mur.legende.hausse}</span>
         </div>
         <div className="mur-legend-null">
-          <span className="mur-legend-swatch" aria-hidden="true" />
+          <span className="mur-legend-swatch" aria-hidden="true" style={{ background: palette.nul }} />
           {t.mur.legende.nonCalculableItem}
         </div>
       </div>

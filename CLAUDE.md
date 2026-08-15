@@ -483,7 +483,15 @@ calcul de volatilité vérifié contre un cas connu.
 
 ## Charte graphique (tokens CSS)
 
-Style fond clair / presse financière — migré depuis l'ancienne charte bleu électrique (Grafana sombre) suite à l'évolution de l'identité de la chaîne.
+Style fond clair / presse financière — migré depuis l'ancienne charte bleu électrique (Grafana sombre) suite à l'évolution de l'identité de la chaîne. **Déclinaison sombre depuis D3 (2026-08-15) — voir « Mode sombre » ci-dessous.**
+
+> **⚠ SOURCE UNIQUE — `src/lib/theme.ts`, jamais `globals.css`.** Depuis D3, `globals.css`
+> ne contient **aucune valeur de couleur** : le bloc `:root { --token: … }` est **généré**
+> par `buildThemeCss()` et injecté par le layout. Raison : les graphiques (Recharts, treemap
+> SVG) reçoivent leurs couleurs en props JavaScript et ne savent pas lire `var(--token)` —
+> deux jeux de valeurs tenus à la main auraient divergé. Pour changer une couleur : éditer
+> `theme.ts`. Dans le CSS on n'écrit que `var(--token)` et `color-mix(… var(--token) …)`,
+> pour que toute teinte dérivée reste juste dans les deux modes.
 
 | Token CSS | Valeur | Usage |
 |---|---|---|
@@ -499,8 +507,17 @@ Style fond clair / presse financière — migré depuis l'ancienne charte bleu �
 | `--positive` | `#15803d` | Vert foncé — hausse (WCAG AA 5.1:1 sur blanc) |
 | `--negative` | `#dc2626` | Rouge — baisse (WCAG AA 4.8:1 sur blanc) |
 
+Trois jetons complètent la liste depuis D3, pour les **aplats pleins** (pastilles de nav,
+boutons PDF/connexion, segment actif du Mur) : `--accent-fill`, `--accent-fill-text`,
+`--accent-fill-hover`. Ils existent parce que la relation s'**inverse** entre les modes —
+en clair, texte blanc sur teal foncé ; en sombre, texte sombre sur teal clair. Un
+`color: #ffffff` en dur sur un aplat aurait donné 1,6:1 en mode sombre. `--accent-blue-hover`
+complète de même le survol des liens textuels (le `#0b7d73` en dur était illisible en sombre).
+
 **Règles dures :**
-- Fond blanc — jamais de fond sombre ni de dégradé sur les pages et panneaux.
+- Charte claire = fond blanc, jamais de dégradé sur les pages et panneaux. Le mode sombre
+  (D3) est une **déclinaison de jetons**, pas une seconde charte : aucune règle de composition,
+  d'espacement ou de hiérarchie ne change entre les deux.
 - Tout texte coloré utilise les versions **foncées** : teal `#0d9488`, or `#b8943a`. Ne jamais mettre de texte en teal vif `#34d1c4` (contraste insuffisant sur blanc).
 - Les chiffres de perf sont toujours colorés (`--positive` / `--negative`), jamais gris.
 - `--personal` (`#c2410c`) est **strictement réservé** au portefeuille personnel — jamais utilisé ailleurs.
@@ -518,6 +535,52 @@ Style fond clair / presse financière — migré depuis l'ancienne charte bleu �
 | VanEck UCITS (QNTM.L) | `#5a6b82` | 5.5:1 ✓ AA | Pointillé, 1.5px |
 | Nasdaq-100 (QQQ) | `#8099B3` | 3.5:1 ✓ (non-texte, secondaire) | Pointillé fin, 1.5px — étalon marché accueil uniquement |
 | Portefeuille personnel | `#c2410c` | 5.1:1 ✓ AA | Plein, 2.5px — couleur réservée (`--personal`) |
+
+Les séries ne portent plus leur couleur dans le code appelant : un composant serveur passe une
+**clé** (`SeriesKey`) et la couleur est résolue côté client selon le mode. Corollaire réglé au
+passage : le graphique du portefeuille personnel utilisait `#FF9830`, en contradiction avec le
+`--personal` `#c2410c` de la charte — il passe par la clé `personnel` comme les autres.
+
+### Mode sombre (D3 — 2026-08-15)
+
+« Terminal de marché » : fond bleu-gris profond, **jamais de noir pur** (le noir pur sur écran
+OLED fait baver le texte clair et durcit inutilement le contraste).
+
+| Token | Clair | Sombre | Contraste sombre / `#0e1420` |
+|---|---|---|---|
+| `--bg-page` | `#ffffff` | `#0e1420` | — |
+| `--bg-panel` | `#f5f7fa` | `#161e2e` | — |
+| `--border` | `#e6e9ee` | `#263145` | — |
+| `--text` | `#0c1d38` | `#e8edf5` | 15,7:1 |
+| `--text-muted` | `#5a6b82` | `#93a3ba` | 7,2:1 |
+| `--accent-blue` | `#0d9488` | `#2dd4bf` | 9,9:1 |
+| `--or` | `#b8943a` | `#d9b45c` | 9,3:1 |
+| `--personal` | `#c2410c` | `#fb923c` | 8,1:1 |
+| `--positive` | `#15803d` | `#34d399` | 9,6:1 |
+| `--negative` | `#dc2626` | `#f87171` | 6,7:1 |
+| Séries Défensif / Dynamique / Agressif | `#2563EB` / `#0d9488` / `#7C3AED` | `#60a5fa` / `#2dd4bf` / `#a78bfa` | ≥ 6,1:1 |
+
+**RÈGLES DURES — ne jamais « re-simplifier » :**
+- **La charte claire n'est pas réutilisable telle quelle.** Les tons foncés sont calibrés pour
+  le blanc : `--or` `#b8943a` tombe à 2,3:1 sur `#0e1420`. **Chaque accent est éclairci et son
+  contraste revérifié** — c'est le piège n°1 du lot, pas un détail de finition.
+- **Aucune valeur de couleur en dur, nulle part.** Ni en CSS (`var(--token)` / `color-mix`),
+  ni en JS (`SERIES_COLORS`, `CHART_CHROME`, `PIE_COLORS`, `TREEMAP` dans `theme.ts`). Une
+  couleur écrite en dur est, par construction, fausse dans l'un des deux modes.
+- **Pas de flash blanc.** `THEME_INIT_SCRIPT` et le `<style>` des jetons sont les **premiers
+  enfants de `<body>`** et doivent le rester : descendus plus bas, la page peindrait en blanc
+  avant de basculer. Priorité : choix manuel (`localStorage`) > `prefers-color-scheme`.
+- **Treemap du Mur — extrémités PROFONDES en sombre** (`#a11d1d` / `#166534`), jamais vives.
+  Avec des extrémités vives, la zone médiane de la rampe n'atteint 4,5:1 ni en texte clair ni
+  en texte foncé : un dégradé joli et illisible. Pire point mesuré en sombre : 6,1:1.
+- **Les images OG restent en charte CLAIRE**, dans les deux modes. Elles s'affichent sur les
+  fonds variés des réseaux sociaux, où le blanc est le choix lisible — et une carte partagée
+  n'a pas de « mode » (elle ne connaît pas les préférences de celui qui la voit).
+- **Audit reproductible** : 92 contrôles de contraste (texte, aplats, badges teintés, séries,
+  camemberts, rampe de treemap) — **mode sombre : 0 échec**. Les échecs restants sont tous
+  antérieurs à D3 et propres à la charte claire (`--or` 2,9:1 et teal `#0d9488` 3,7:1 en texte
+  sur blanc, blanc sur aplat teal 3,7:1). À traiter dans une passe « accessibilité charte
+  claire » — **ne pas les corriger au fil de l'eau**, la charte claire est publiée.
 
 ## Données V1.5 — Portefeuille personnel (ne pas implémenter avant la V1.5)
 
@@ -654,8 +717,17 @@ la **sobriété est le moat**. Toute proposition visuelle qui « fait crypto » 
   exigée par la thèse d'acquisition — donc **avant** la mesure (C1).
 - **D2 — Sparklines 7 jours (avec C2).** Mini-courbes 7 jours dans le tableau des capitalisations.
   Réutilise `price_daily` — **aucune nouvelle donnée**. Livré avec les fiches sociétés (C2).
-- **D3 — Mode sombre.** Toggle clair / sombre — l'**infra de variables CSS existe déjà**
-  (tokens de la charte graphique), le coût est faible.
+- **D3 — Mode sombre.** ✅ **RÉALISÉE (2026-08-15).** Toggle clair / sombre dans le header
+  (icône lune/soleil), choix persisté en `localStorage`, `prefers-color-scheme` par défaut —
+  l'OS décide à la première visite, le choix manuel prime ensuite (et se propage entre onglets).
+  Périmètre complet : toutes les pages, tous les composants, **y compris les graphiques
+  Recharts, la treemap du Mur et les tableaux**. Palette sombre et règles dures : voir
+  « Mode sombre (D3) » dans la Charte graphique. Fichiers : `src/lib/theme.ts` (source unique
+  des couleurs, clair + sombre), `src/lib/useThemeMode.ts`, `src/components/ThemeToggle.tsx`.
+  L'**infra de variables CSS préexistante a effectivement porté le lot** — le vrai coût n'était
+  pas là, mais dans les couleurs **codées en dur hors CSS** : Recharts (grilles, axes,
+  infobulles, légendes), rampe de la treemap, couleurs de camembert, et les `#ffffff` posés sur
+  les aplats teal. C'est là que se cachait le « mode sombre à moitié appliqué ».
 - **D4 — Refonte mobile du tableau (bloquant avant toute campagne d'audience).** Colonnes
   essentielles + détail au tap, **remplace le swipe** actuel. **Prérequis dur** : ne lancer
   aucune campagne d'audience (C5, intégrations mi-vidéo) tant que l'expérience mobile du tableau
@@ -685,6 +757,8 @@ justification commerciale de toutes les briques suivantes — c'est le prérequi
   - `clic-source-evenement` — lien vers la source primaire d'un événement (C6).
   - `clic-indice` — accès à l'Indice TQW : lien nav du header ET bandeau d'accueil
     (`SiteHeader.tsx`, `IndexHomeBanner.tsx`). Mesure l'attrait de l'IP propriétaire (C3).
+  - `clic-theme` — bascule clair / sombre (`ThemeToggle.tsx`, D3). Mesure l'usage réel du
+    mode sombre : sans ce chiffre, on ne saura jamais si la brique méritait son coût.
 - **RÈGLE DE CESSION (dure)** : **exporter les données Umami avant tout changement d'outil
   d'analytics**. La continuité de la courbe d'audience est un **actif du dossier de cession**
   (thèse d'acquisition — audience mesurée et possédée). Une rupture d'historique détruit

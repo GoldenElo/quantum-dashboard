@@ -2,11 +2,13 @@
 
 import dynamic from 'next/dynamic';
 import type { ChartPoint } from '@/lib/api';
+import type { SeriesKey } from '@/lib/theme';
 
+// La série porte sa CLÉ, pas sa couleur : la couleur dépend du thème et ne peut
+// donc pas être figée par un composant serveur (D3 — mode sombre).
 export type SeriesConfig = {
-  key: string;
+  key: SeriesKey;
   label: string;
-  color: string;
   dashed?: boolean;
   strokeWidth?: number;
 };

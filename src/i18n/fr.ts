@@ -15,6 +15,13 @@ export const fr = {
     editeur: 'édité par L’Investisseuse Quantique',
     accueilAria: 'The Quantum Wall — accueil',
   },
+  // Bascule clair / sombre (D3). L'aria-label annonce l'ACTION (ce vers quoi on
+  // bascule), pas l'état courant — c'est ce qu'attend un lecteur d'écran.
+  theme: {
+    versSombre: 'Passer en mode sombre',
+    versClair: 'Passer en mode clair',
+    titre: 'Mode clair / sombre',
+  },
   accueil: {
     titre: 'The Quantum Wall',
     // Sous-titre porteur des mots-clés SEO (« tableau de bord du quantique coté »).

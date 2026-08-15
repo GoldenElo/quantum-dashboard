@@ -1,20 +1,32 @@
-/* ── Design tokens ── */
-:root {
-  --bg-page:     #ffffff;
-  --bg-panel:    #f5f7fa;
-  --border:      #e6e9ee;
-  --accent-blue: #0d9488;
-  --cyan:        #34d1c4;
-  --or:          #b8943a;
-  --personal:    #c2410c;
-  --text:        #0c1d38;
-  --text-muted:  #5a6b82;
-  --positive:    #15803d;
-  --negative:    #dc2626;
+/* ── Design tokens ────────────────────────────────────────────────────────────
+   ⚠ AUCUNE VALEUR DE COULEUR DANS CE FICHIER. La charte — claire ET sombre —
+   vit dans `src/lib/theme.ts`, qui est la source unique : les graphiques
+   (Recharts, treemap SVG) reçoivent leurs couleurs en props JavaScript et ne
+   savent pas lire `var(--token)`. Le bloc `:root { --bg-page: … }` est généré
+   par `buildThemeCss()` et injecté par le layout, avec la déclinaison sombre
+   (`@media (prefers-color-scheme: dark)` + `:root[data-theme="dark"]`).
 
+   Pour changer une couleur : éditer `src/lib/theme.ts`, jamais ici.
+   Ici on n'écrit que des `var(--token)` et des `color-mix(… var(--token) …)` —
+   toute teinte dérivée reste ainsi automatiquement juste dans les deux modes.
+   ─────────────────────────────────────────────────────────────────────────── */
+:root {
   --font-heading: 'IBM Plex Sans', Arial, sans-serif;
   --font-body:    'Inter', Arial, sans-serif;
   --font-mono:    'JetBrains Mono', 'Courier New', monospace;
+}
+
+/* La bascule de thème ne doit pas produire un fondu de toute la page (coûteux
+   et clignotant) : seules les surfaces changent, instantanément. */
+body,
+.site-header,
+.chart-container,
+.portfolio-card,
+.stat-box,
+.mur-canvas { transition: background-color 0.15s ease, border-color 0.15s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
 }
 
 /* ── Reset ── */
@@ -118,6 +130,46 @@ button { cursor: pointer; }
 .site-header-yt:hover {
   border-color: var(--accent-blue);
   color: var(--accent-blue);
+}
+
+/* ── Bascule clair / sombre (D3) ──────────────────────────────────────────────
+   Même gabarit que les boutons sociaux, en carré : le contrôle est discret,
+   au bout de la rangée d'actions. Les deux icônes sont dans le DOM, le CSS
+   choisit laquelle s'affiche → correct dès le HTML initial, sans clignotement. */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+/* Clair (y compris sans attribut, si le script d'amorçage a échoué) → lune. */
+.theme-icon-sun { display: none; }
+:root[data-theme='dark'] .theme-icon-moon { display: none; }
+:root[data-theme='dark'] .theme-icon-sun  { display: block; }
+
+/* Repli si le script d'amorçage n'a pas tourné : c'est l'OS qui décide, et
+   l'icône doit rester cohérente avec ce qui est réellement affiché. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .theme-icon-moon { display: none; }
+  :root:not([data-theme]) .theme-icon-sun  { display: block; }
 }
 
 /* Footer YouTube link */
@@ -270,10 +322,12 @@ button { cursor: pointer; }
   text-transform: uppercase;
 }
 
-.badge-defensif  { background: rgba(37,99,235,0.1);  color: #2563EB; }
-.badge-dynamique { background: rgba(13,148,136,0.1); color: #0d9488; }
-.badge-agressif  { background: rgba(124,58,237,0.1); color: #7C3AED; }
-.badge-personnel { background: rgba(194,65,12,0.1);  color: #c2410c; }
+/* Aplats teintés dérivés de la couleur de série (color-mix) : la teinte de fond
+   suit automatiquement la charte du mode courant, sans rgba() figé. */
+.badge-defensif  { background: color-mix(in srgb, var(--serie-defensif) 10%, transparent);  color: var(--serie-defensif); }
+.badge-dynamique { background: color-mix(in srgb, var(--serie-dynamique) 10%, transparent); color: var(--serie-dynamique); }
+.badge-agressif  { background: color-mix(in srgb, var(--serie-agressif) 10%, transparent);  color: var(--serie-agressif); }
+.badge-personnel { background: color-mix(in srgb, var(--personal) 10%, transparent);        color: var(--personal); }
 
 .card-date {
   font-size: 0.72rem;
@@ -349,8 +403,8 @@ button { cursor: pointer; }
 
 /* ── Detail page ── */
 .disclaimer-banner {
-  background: rgba(13,148,136,0.06);
-  border: 1px solid rgba(13,148,136,0.2);
+  background: color-mix(in srgb, var(--accent-blue) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-blue) 20%, transparent);
   border-radius: 6px;
   padding: 0.9rem 1.25rem;
   font-size: 0.8rem;
@@ -466,7 +520,7 @@ button { cursor: pointer; }
 
 .holdings-table tr:last-child td { border-bottom: none; }
 
-.holdings-table tr:hover td { background: rgba(13,148,136,0.04); }
+.holdings-table tr:hover td { background: color-mix(in srgb, var(--accent-blue) 4%, transparent); }
 
 .holdings-table .right { text-align: right; }
 
@@ -511,8 +565,8 @@ button { cursor: pointer; }
 
 /* ── Private data banner (PV latente) ── */
 .private-banner {
-  background: rgba(194,65,12,0.06);
-  border: 1px solid rgba(194,65,12,0.2);
+  background: color-mix(in srgb, var(--personal) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--personal) 20%, transparent);
   border-radius: 6px;
   padding: 1rem 1.25rem;
   display: flex;
@@ -544,7 +598,7 @@ button { cursor: pointer; }
   font-size: 0.72rem;
   color: var(--text-muted);
   font-family: var(--font-mono), monospace;
-  border-top: 1px solid rgba(194,65,12,0.15);
+  border-top: 1px solid color-mix(in srgb, var(--personal) 15%, transparent);
   padding-top: 0.6rem;
   margin-top: 0.2rem;
 }
@@ -570,8 +624,8 @@ button { cursor: pointer; }
 }
 
 .connexion-error {
-  background: rgba(220,38,38,0.08);
-  border: 1px solid rgba(220,38,38,0.25);
+  background: color-mix(in srgb, var(--negative) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--negative) 25%, transparent);
   border-radius: 6px;
   padding: 0.75rem 1rem;
   font-size: 0.82rem;
@@ -611,11 +665,11 @@ button { cursor: pointer; }
 }
 
 .connexion-btn {
-  background: var(--accent-blue);
+  background: var(--accent-fill);
   border: none;
   border-radius: 4px;
   padding: 0.65rem 1rem;
-  color: #fff;
+  color: var(--accent-fill-text);
   font-family: var(--font-body), Arial, sans-serif;
   font-size: 0.9rem;
   font-weight: 500;
@@ -811,7 +865,7 @@ button { cursor: pointer; }
   font-size: 0.62rem;
   padding: 0.1rem 0.38rem;
   border-radius: 3px;
-  background: rgba(13, 148, 136, 0.1);
+  background: color-mix(in srgb, var(--accent-blue) 10%, transparent);
   color: var(--accent-blue);
   font-weight: 500;
   letter-spacing: 0.04em;
@@ -876,15 +930,15 @@ button { cursor: pointer; }
   align-items: center;
   padding: 0.35rem 0.9rem;
   border-radius: 5px;
-  background: var(--accent-blue);
-  color: #ffffff;
+  background: var(--accent-fill);
+  color: var(--accent-fill-text);
   font-size: 0.8rem;
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
   transition: background 0.15s;
 }
-.site-header-navlink:hover { background: #0b7d73; }
+.site-header-navlink:hover { background: var(--accent-fill-hover); }
 
 /* Section Le Mur sur l'accueil — offset d'ancre sous le header sticky (58px) */
 .mur-section { scroll-margin-top: 74px; }
@@ -937,8 +991,8 @@ button { cursor: pointer; }
 .mur-toggle-btn + .mur-toggle-btn { border-left: 1px solid var(--border); }
 .mur-toggle-btn:hover { color: var(--text); }
 .mur-toggle-btn.is-active {
-  background: var(--accent-blue);
-  color: #ffffff;
+  background: var(--accent-fill);
+  color: var(--accent-fill-text);
   font-weight: 600;
 }
 
@@ -984,13 +1038,15 @@ button { cursor: pointer; }
 }
 .mur-legend-scale { display: inline-flex; align-items: center; gap: 0.5rem; }
 .mur-legend-label { font-family: var(--font-mono), monospace; }
+/* Dégradé et pastille : peints en style inline depuis la palette de la treemap
+   (src/lib/theme.ts) — la légende ne peut pas mentir sur les couleurs réelles
+   des tuiles, elle lit exactement la même source qu'elles. */
 .mur-legend-bar {
   display: inline-block;
   width: 140px;
   height: 10px;
   border-radius: 3px;
   border: 1px solid var(--border);
-  background: linear-gradient(to right, #dc2626, #eef1f5, #15803d);
 }
 .mur-legend-null { display: inline-flex; align-items: center; gap: 0.4rem; }
 .mur-legend-swatch {
@@ -999,7 +1055,6 @@ button { cursor: pointer; }
   height: 10px;
   border-radius: 3px;
   border: 1px solid var(--border);
-  background: #dde3ea;
 }
 
 /* Repères (marqueurs présents dans la vue) */
@@ -1189,9 +1244,9 @@ button { cursor: pointer; }
   white-space: nowrap;
 }
 /* Familles de couleur — discrètes, texte foncé, charte claire */
-.evt-badge-or   { background: rgba(184, 148, 58, 0.14); color: var(--or); }
-.evt-badge-teal { background: rgba(13, 148, 136, 0.12); color: var(--accent-blue); }
-.evt-badge-neg  { background: rgba(220, 38, 38, 0.10);  color: var(--negative); }
+.evt-badge-or   { background: color-mix(in srgb, var(--or) 14%, transparent);          color: var(--or); }
+.evt-badge-teal { background: color-mix(in srgb, var(--accent-blue) 12%, transparent); color: var(--accent-blue); }
+.evt-badge-neg  { background: color-mix(in srgb, var(--negative) 10%, transparent);    color: var(--negative); }
 .evt-badge-grey { background: var(--bg-panel); color: var(--text-muted); border: 1px solid var(--border); }
 /* « À venir » — événement prospectif : contour pointillé discret, sans aplat */
 .evt-badge-upcoming {
@@ -1506,7 +1561,7 @@ button { cursor: pointer; }
 
 /* Mise en évidence des fonds comparés dans la vidéo — repère de lecture,
    volontairement discret : pas de couleur d'alerte, pas de badge « recommandé ». */
-.etf-row-focus td { background: rgba(13, 148, 136, 0.05); }
+.etf-row-focus td { background: color-mix(in srgb, var(--accent-blue) 5%, transparent); }
 .etf-row-focus td:first-child { box-shadow: inset 2px 0 0 var(--accent-blue); }
 
 .etf-focus-marker {
@@ -1540,7 +1595,7 @@ button { cursor: pointer; }
 }
 
 .etf-coree[open] > .etf-coree-summary::before { transform: rotate(90deg); }
-.etf-coree-summary:hover { color: #0b7d73; }
+.etf-coree-summary:hover { color: var(--accent-blue-hover); }
 
 .etf-note {
   padding: 0.75rem 0.8rem 0;
@@ -1617,14 +1672,14 @@ button { cursor: pointer; }
   gap: 0.5rem;
   padding: 0.6rem 1rem;
   border-radius: 6px;
-  background: var(--accent-blue);
-  color: #ffffff;
+  background: var(--accent-fill);
+  color: var(--accent-fill-text);
   font-size: 0.86rem;
   font-weight: 600;
   transition: background 0.15s;
 }
 
-.pdf-btn:hover { background: #0b7d73; }
+.pdf-btn:hover { background: var(--accent-fill-hover); }
 .pdf-btn:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 
 .pdf-hint {

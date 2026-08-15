@@ -9,12 +9,6 @@ import AllocationPie from '@/components/AllocationPie';
 
 export const revalidate = 86400;
 
-const PORTFOLIO_COLORS: Record<string, string> = {
-  defensif:  '#2563EB',
-  dynamique: '#0d9488',
-  agressif:  '#7C3AED',
-};
-
 const PORTFOLIO_LABELS: Record<string, string> = {
   defensif:  'Défensif',
   dynamique: 'Dynamique',
@@ -45,7 +39,11 @@ export default async function PortfolioDetailPage({ params }: Props) {
   if (!detail) notFound();
 
   const snap = detail.latestSnapshot;
-  const color = PORTFOLIO_COLORS[id] ?? '#5a6b82';
+  // La couleur de série est résolue côté client selon le thème : la page ne
+  // transmet que la clé (`generateStaticParams` garantit l'un des trois profils).
+  const seriesKey = (id === 'defensif' || id === 'dynamique' || id === 'agressif')
+    ? id
+    : 'benchmark';
   const label = PORTFOLIO_LABELS[id] ?? id;
 
   const currentPie = detail.holdings.map(h => ({
@@ -135,7 +133,7 @@ export default async function PortfolioDetailPage({ params }: Props) {
           <DetailChart
             data={detail.chartData}
             portfolioLabel={label}
-            portfolioColor={color}
+            portfolioKey={seriesKey}
           />
         </div>
         <p className="chart-note">

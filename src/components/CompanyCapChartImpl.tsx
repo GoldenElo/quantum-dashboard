@@ -5,13 +5,18 @@ import {
 } from 'recharts';
 import { formatShortDate, formatMarketCap } from '@/lib/format';
 import { t } from '@/i18n/t';
+import { CHART_CHROME, SERIES_COLORS } from '@/lib/theme';
+import { useThemeMode } from '@/lib/useThemeMode';
 import type { CapPoint } from './CompanyCapChart';
 
 // Courbe de capitalisation d'une société — une seule série (pas de base 100,
-// valeurs absolues en $), charte claire, accent teal foncé.
-const CAP_COLOR = '#0d9488'; // --accent-blue
+// valeurs absolues en $), teal d'accent du mode courant.
 
 export default function CompanyCapChartImpl({ data }: { data: CapPoint[] }) {
+  const mode = useThemeMode();
+  const chrome = CHART_CHROME[mode];
+  const CAP_COLOR = SERIES_COLORS[mode].capitalisation;
+
   if (data.length < 2) {
     return <p className="empty-state">{t.societe.capChart.insuffisant}</p>;
   }
@@ -26,22 +31,23 @@ export default function CompanyCapChartImpl({ data }: { data: CapPoint[] }) {
               <stop offset="100%" stopColor={CAP_COLOR} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e6e9ee" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke={chrome.grid} vertical={false} />
           <XAxis
             dataKey="date"
             tickFormatter={formatShortDate}
-            tick={{ fill: '#5a6b82', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
+            tick={{ fill: chrome.axis, fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
             axisLine={false} tickLine={false} minTickGap={40}
           />
           <YAxis
             tickFormatter={v => formatMarketCap(v as number)}
-            tick={{ fill: '#5a6b82', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
+            tick={{ fill: chrome.axis, fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
             axisLine={false} tickLine={false} width={64}
             domain={['auto', 'auto']}
           />
           <Tooltip
-            contentStyle={{ background: '#ffffff', border: '1px solid #e6e9ee', borderRadius: 6, fontSize: 12 }}
-            labelStyle={{ color: '#0c1d38', marginBottom: 4, fontFamily: 'JetBrains Mono, monospace' }}
+            contentStyle={{ background: chrome.tooltipBg, border: `1px solid ${chrome.tooltipBorder}`, borderRadius: 6, fontSize: 12 }}
+            labelStyle={{ color: chrome.tooltipLabel, marginBottom: 4, fontFamily: 'JetBrains Mono, monospace' }}
+            itemStyle={{ color: chrome.tooltipLabel }}
             labelFormatter={(label) => formatShortDate(String(label))}
             formatter={(value) => [formatMarketCap(typeof value === 'number' ? value : 0), t.societe.capChart.serieLabel]}
           />

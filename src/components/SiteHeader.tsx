@@ -1,3 +1,4 @@
+import ThemeToggle from '@/components/ThemeToggle';
 import { t } from '@/i18n/t';
 import { YOUTUBE_URL, X_URL } from '@/lib/site';
 
@@ -59,6 +60,8 @@ export default function SiteHeader() {
             </svg>
             X
           </a>
+          {/* Bascule clair / sombre (D3) — en bout de rangée, après les liens sociaux */}
+          <ThemeToggle />
         </div>
 
       </div>

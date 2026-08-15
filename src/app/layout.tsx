@@ -5,6 +5,7 @@ import Footer from "@/components/Footer";
 import SiteHeader from "@/components/SiteHeader";
 import { t } from "@/i18n/t";
 import { SITE_URL } from "@/lib/site";
+import { THEME_INIT_SCRIPT, buildThemeCss } from "@/lib/theme";
 import "./globals.css";
 
 const ibmPlexSans = IBM_Plex_Sans({
@@ -55,8 +56,21 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="fr" className={`${ibmPlexSans.variable} ${inter.variable} ${jetbrainsMono.variable}`}>
+    // suppressHydrationWarning : le script d'amorçage du thème pose `data-theme`
+    // sur <html> avant l'hydratation — l'écart avec le HTML serveur est voulu.
+    <html
+      lang="fr"
+      className={`${ibmPlexSans.variable} ${inter.variable} ${jetbrainsMono.variable}`}
+      suppressHydrationWarning
+    >
       <body>
+        {/* D3 — Mode sombre. Ces deux blocs sont les PREMIERS enfants de <body> et
+            doivent le rester : ils sont analysés avant tout contenu visible, donc
+            appliqués avant le premier paint. Descendus plus bas, le mode sombre
+            s'afficherait après un flash blanc — le piège classique. */}
+        <style dangerouslySetInnerHTML={{ __html: buildThemeCss() }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+
         {/* Analytics Umami Cloud — cookieless, sans bannière RGPD. Chargé après l'hydratation. */}
         <Script
           src="https://cloud.umami.is/script.js"
