@@ -1,14 +1,11 @@
 import type { MarketCapData, MarketCapRow } from '@/lib/api';
 import { formatMarketCap, formatDateCompact, formatPct, formatRatio } from '@/lib/format';
 import { t, TICKER_NOTES, TICKER_MODALITIES } from '@/i18n/t';
+import { isStale } from '@/lib/dilution';
 
-// Seuil de détection "données anciennes" : 150 jours ≈ 5 mois (ex. LAES au 31/12/2025)
-const STALE_MS = 1000 * 60 * 60 * 24 * 150;
-
-function isStale(dateStr: string): boolean {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return Date.now() - new Date(y, m - 1, d).getTime() > STALE_MS;
-}
+// Seuil "données anciennes" (150 j ≈ 5 mois, ex. LAES au 31/12/2025) : importé
+// depuis src/lib/dilution.ts, SOURCE UNIQUE partagée avec les fiches et le
+// bloc liquidités C7.
 
 // Cellule de variation : verte/rouge foncé, « — » si null. `alert` ajoute le ⚑
 // (variation exceptionnelle) avec infobulle anti-hype — visible mais discret.

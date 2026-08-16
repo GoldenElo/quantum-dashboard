@@ -169,11 +169,55 @@ export const fr = {
     },
     // Bloc de curation éditoriale — mis en avant (différenciation).
     notesTitre: 'Notes de la rédaction',
-    // Placeholder Dilution (C7 à venir) — structuré, discret. Le placeholder
-    // Événements est remplacé par la frise C6 (voir bloc `evenements` ci-dessous).
+    // Section Dilution (C7). Le placeholder « bientôt » subsiste pour les
+    // sociétés dont EDGAR ne donne rien d'exploitable (XNDU, HQ, IQMX…) : on
+    // affiche l'absence, on ne la comble pas.
     dilution: {
       titre: 'Dilution',
       bientot: 'Historique du nombre d’actions et signaux de dilution — bientôt.',
+      // Historique du nombre d'actions
+      historiqueTitre: 'Nombre d’actions en circulation',
+      annualisee: 'Dilution annualisée',
+      annualiseeDetail: 'sur {annees} an(s) — {debut} → {fin}',
+      recente: 'Rythme récent',
+      recenteDetail: 'annualisé sur {jours} j — depuis le {debut}',
+      multiple: 'Actions × {facteur} sur la période',
+      unSeulReleve: 'Un seul relevé comparable — dilution non calculable depuis la cotation.',
+      rupture:
+        'Série coupée au {date} : le relevé précédent ne mesurait pas le même périmètre ' +
+        '(flottant vs capital total). Les calculs reprennent après la rupture.',
+      // Liquidités et runway
+      liquiditesTitre: 'Liquidités et consommation',
+      liquidites: 'Ressources liquides',
+      liquiditesDetail: 'trésorerie {tresorerie} + placements {placements}',
+      liquiditesDetailSansPlacement: 'trésorerie uniquement — aucun placement déclaré',
+      consommation: 'Consommation',
+      consommationDetail: 'par trimestre — période publiée {debut} → {fin}',
+      runway: 'Autonomie',
+      runwayValeur: '~{trimestres} trimestres au rythme actuel',
+      runwayPlafonne: '> 5 ans au rythme actuel — projection non contraignante',
+      runwayIndisponible: 'Non projetée — dernières données au {date}',
+      donneesAu: 'Données au {date}',
+      donneesAnciennes: '⚠ données datant de plus de 5 mois',
+      sourceDepot: 'Source : {form} déposé le {date} ↗',
+      // Dépôts déclarés
+      depotsTitre: 'Dépôts déclarés',
+      depotsIntro:
+        'Autorisations de placement déposées auprès de la SEC. Un dépôt autorise une ' +
+        'émission future sans l’imposer : c’est un fait, pas une prévision.',
+      // Note de méthode
+      methodeTitre: 'Méthode',
+      methode:
+        'Nombre d’actions issu des dépôts annuels SEC (10-K, 20-F, 40-F), ajusté des ' +
+        'regroupements et divisions : à date de clôture égale, c’est la valeur du dépôt le ' +
+        'plus récent qui est retenue, l’émetteur retraitant lui-même ses comparatifs. ' +
+        'Aucun multiplicateur n’est appliqué. Les exercices antérieurs à l’entrée en bourse ' +
+        'sont exclus : ils mesurent une autre entité. Les ressources liquides additionnent ' +
+        'trésorerie, placements courants et placements non courants, et sont recoupées au ' +
+        'communiqué de résultats de la société. L’autonomie rapporte ces ressources à la ' +
+        'consommation de trésorerie d’exploitation de la dernière période publiée — c’est ' +
+        'une division, pas une prévision : elle suppose un rythme constant et ignore tout ' +
+        'financement à venir.',
     },
     // Ligne d'acquisition vers la chaîne (conversion du trafic froid).
     // Deux formulations selon la cible (voir TICKER_VIDEO_URL) : vidéo dédiée à

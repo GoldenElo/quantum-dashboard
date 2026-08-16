@@ -162,6 +162,29 @@ EVENTS = [
         "source_url": "https://www.businesswire.com/portal/site/home/search/?searchType=news&searchTerm=Horizon+Quantum",
         "source_label": "Communiqué officiel — Horizon Quantum (Businesswire)",
     },
+    {
+        "ticker": "QUBT",
+        "event_date": "2026-08-10",
+        "type": "resultats",
+        "title": "Résultats T2 2026",
+        "description": (
+            "Chiffre d'affaires trimestriel de 5,6 M$ contre 61 k$ un an plus tôt, perte "
+            "nette de 11,8 M$. La société clôt le trimestre sur 1,3 Md$ de trésorerie, "
+            "équivalents et placements — contre environ 1,5 Md$ fin 2025, l'écart "
+            "correspondant aux ~180 M$ décaissés pour les acquisitions de Luminar "
+            "Semiconductor, NuCrypt et NHanced Semiconductors."
+        ),
+        # ⚠ CORRECTION DE SAISIE (2026-08-16). Une note antérieure retenait ~954 M$ de
+        # liquidités. Ce chiffre est trésorerie + placements COURANTS seuls
+        # (189,150 + 765,020 = 954,170 k$) : il omet les 369,3 M$ de placements NON
+        # COURANTS, qui sont pourtant des titres AFS négociables — la somme des deux
+        # seaux égale au dollar près le portefeuille AFS total publié (1 134 304 k$).
+        # La société écrit « Ends quarter with $1.3 billion in cash, cash equivalents
+        # and investments ». Le périmètre partiel est le MÊME défaut que celui corrigé
+        # dans edgar.py le même jour ; il est ici corrigé à la source.
+        "source_url": "https://www.sec.gov/Archives/edgar/data/1758009/000121390026087267/ea030143301ex99-1.htm",
+        "source_label": "Communiqué de résultats T2 2026 — 8-K ex. 99.1 (SEC EDGAR)",
+    },
 ]
 
 

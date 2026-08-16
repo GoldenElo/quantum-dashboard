@@ -46,3 +46,6 @@ scripts/.venv/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Cache disque EDGAR (companyfacts ~1 Mo/société) — regénérable, jamais versionné
+scripts/.edgar_cache/

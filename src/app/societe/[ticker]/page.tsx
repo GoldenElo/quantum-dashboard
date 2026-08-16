@@ -4,19 +4,18 @@ import { fetchCompanyData, listCompanyTickers, type CompanyData } from '@/lib/ap
 import { formatMarketCap, formatPct, formatDate, formatDateCompact, formatRatio } from '@/lib/format';
 import { t, TICKER_NOTES, TICKER_MODALITIES, TICKER_VIDEO_URL, VIDEO_PLAYLIST_URL } from '@/i18n/t';
 import { SITE_URL } from '@/lib/site';
+import { isStale } from '@/lib/dilution';
 import CompanyCapChart from '@/components/CompanyCapChart';
 import EventTimeline from '@/components/EventTimeline';
+import DilutionSection from '@/components/DilutionSection';
 
 export const revalidate = 86400;
 // Seules les 12 fiches existent — tout autre ticker renvoie un 404 propre.
 export const dynamicParams = false;
 
-const STALE_MS = 1000 * 60 * 60 * 24 * 150; // ≈ 5 mois (miroir du tableau des caps)
-function isStale(dateStr: string | null): boolean {
-  if (!dateStr) return false;
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return Date.now() - new Date(y, m - 1, d).getTime() > STALE_MS;
-}
+// isStale vit désormais dans src/lib/dilution.ts — SOURCE UNIQUE du seuil de
+// 150 j. Cette page et le tableau des caps en portaient chacun une copie ; une
+// troisième pour les liquidités (C7) aurait garanti la divergence.
 
 // Notes éditoriales applicables à un ticker (curation différenciante).
 // TICKER_NOTES (Up-C QNT, quantum washing ARQQ) + note HQ propre au Mur.
@@ -102,6 +101,10 @@ export default async function CompanyPage({ params }: Props) {
   const notes = editorialNotes(data.ticker);
   const ps = psDisplay(data);
   const stale = isStale(data.shares_date);
+  // La section Dilution garde l'habillage « placeholder » tant qu'elle n'a rien
+  // à montrer — miroir de la condition de repli du composant.
+  const hasDilution =
+    data.sharesHistory.length > 0 || data.financials != null || data.filings.length > 0;
   // IPO récente : historique présent mais pas d'offset annuel calculable.
   const depuisCotation = data.hasHistory && data.change_1y == null;
   // Ligne d'acquisition : vidéo dédiée à la société, ou playlist générale à défaut.
@@ -203,10 +206,12 @@ export default async function CompanyPage({ params }: Props) {
           : <p className="company-soon">{t.evenements.bientot}</p>}
       </section>
 
-      {/* Placeholder Dilution (C7 à venir) — structuré, discret */}
-      <section className="section company-placeholder" aria-label={t.societe.dilution.titre}>
+      {/* Dilution (C7) — historique des actions ajusté, liquidités datées,
+          dépôts déclarés. Le composant retombe seul sur le placeholder « bientôt »
+          quand EDGAR ne donne rien d'exploitable pour la société. */}
+      <section className={`section${hasDilution ? '' : ' company-placeholder'}`} aria-label={t.societe.dilution.titre}>
         <h2 className="section-title">{t.societe.dilution.titre}</h2>
-        <p className="company-soon">{t.societe.dilution.bientot}</p>
+        <DilutionSection data={data} />
       </section>
 
       {/* Ligne d'acquisition vers la chaîne — conversion du trafic froid.

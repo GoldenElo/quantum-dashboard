@@ -184,6 +184,43 @@ export type CompanyData = {
   // Événements sectoriels du ticker (C6), du plus récent au plus ancien. [] si aucun
   // ou si la table sector_event n'existe pas encore (migration 008 non appliquée).
   events: SectorEvent[];
+  // ─── C7 ───
+  // Historique du nombre d'actions (ASC), déjà AJUSTÉ des splits en base : les
+  // valeurs viennent du comparatif retraité par l'émetteur lui-même. Ne JAMAIS
+  // appliquer de multiplicateur par-dessus — ce serait ajuster deux fois.
+  sharesHistory: { date: string; shares: number; source: string }[];
+  // Liquidités et consommation (migration 013). null si la table n'existe pas
+  // encore, ou si le recoupement au communiqué a bloqué l'écriture du ticker.
+  financials: CompanyFinancials | null;
+  // Dépôts déclarés (shelf / prospectus), du plus récent au plus ancien.
+  filings: CompanyFiling[];
+};
+
+/**
+ * Ressources liquides TOTALES et consommation, lues dans un dépôt SEC daté.
+ * `liquidity` inclut les placements NON courants : les omettre donnait 27,8 M$
+ * à RGTI au lieu de 541,3 M$, et un runway de 2 trimestres à une société sans
+ * dette qui en a plus de trente.
+ */
+export type CompanyFinancials = {
+  as_of_date: string;
+  cash: number;
+  invest_current: number | null;
+  invest_noncurrent: number | null;
+  liquidity: number;
+  burn_per_quarter: number | null;   // négatif = consommation
+  period_start: string | null;       // période RÉELLE du flux publié
+  period_end: string | null;
+  period_days: number | null;
+  source_form: string;
+  source_filed: string;
+  source_url: string;
+};
+
+export type CompanyFiling = {
+  form: string;
+  filed: string;
+  url: string;
 };
 
 // ─── Types Indice TQW (C3) ────────────────────────────────────────────────────
@@ -998,7 +1035,7 @@ export async function fetchCompanyData(ticker: string): Promise<CompanyData | nu
   const upper = ticker.toUpperCase();
   if (!SECTORAL_TICKERS.includes(upper as (typeof SECTORAL_TICKERS)[number])) return null;
 
-  const [assetRes, sharesRes, revenueRes, priceRes, eventsRes] = await Promise.all([
+  const [assetRes, sharesRes, revenueRes, priceRes, eventsRes, finRes, filingsRes] = await Promise.all([
     supabase.from('asset').select('ticker, name, category').eq('ticker', upper).maybeSingle(),
     // Tout l'historique des actions (ASC) → step-function pour la courbe de capi.
     supabase
@@ -1026,6 +1063,22 @@ export async function fetchCompanyData(ticker: string): Promise<CompanyData | nu
       .select('id, event_date, type, title, description, source_url, source_label')
       .eq('ticker', upper)
       .order('event_date', { ascending: false }),
+    // Liquidités (C7) — table optionnelle (migration 013). Absente ⇒ section
+    // Dilution rendue sans le bloc financier, jamais d'erreur de page.
+    supabase
+      .from('company_financials')
+      // Littéral en une seule chaîne : une concaténation casse l'inférence de
+      // types de supabase-js, qui analyse la sélection à la compilation.
+      .select('as_of_date, cash, invest_current, invest_noncurrent, liquidity, burn_per_quarter, period_start, period_end, period_days, source_form, source_filed, source_url')
+      .eq('ticker', upper)
+      .order('as_of_date', { ascending: false })
+      .limit(1),
+    supabase
+      .from('company_filing')
+      .select('form, filed, url')
+      .eq('ticker', upper)
+      .order('filed', { ascending: false })
+      .limit(5),
   ]);
 
   if (assetRes.error || !assetRes.data) return null;
@@ -1098,6 +1151,35 @@ export async function fetchCompanyData(ticker: string): Promise<CompanyData | nu
         source_label: (e.source_label as string | null) ?? null,
       }));
 
+  // Dégradation gracieuse identique à sector_event : migration 013 non appliquée
+  // ⇒ finRow undefined ⇒ la section Dilution rend l'historique des actions sans
+  // le bloc liquidités. Une fiche rend TOUJOURS.
+  const finRow = (finRes.error ? [] : finRes.data ?? [])[0];
+  const financials: CompanyFinancials | null = finRow
+    ? {
+        as_of_date: finRow.as_of_date as string,
+        cash: Number(finRow.cash),
+        invest_current: finRow.invest_current != null ? Number(finRow.invest_current) : null,
+        invest_noncurrent: finRow.invest_noncurrent != null ? Number(finRow.invest_noncurrent) : null,
+        liquidity: Number(finRow.liquidity),
+        burn_per_quarter: finRow.burn_per_quarter != null ? Number(finRow.burn_per_quarter) : null,
+        period_start: (finRow.period_start as string | null) ?? null,
+        period_end: (finRow.period_end as string | null) ?? null,
+        period_days: finRow.period_days != null ? Number(finRow.period_days) : null,
+        source_form: finRow.source_form as string,
+        source_filed: finRow.source_filed as string,
+        source_url: finRow.source_url as string,
+      }
+    : null;
+
+  const filings: CompanyFiling[] = filingsRes.error
+    ? []
+    : (filingsRes.data ?? []).map(f => ({
+        form: f.form as string,
+        filed: f.filed as string,
+        url: f.url as string,
+      }));
+
   return {
     ticker: asset.ticker,
     name: asset.name,
@@ -1118,6 +1200,9 @@ export async function fetchCompanyData(ticker: string): Promise<CompanyData | nu
     hasHistory,
     capHistory,
     events,
+    sharesHistory,
+    financials,
+    filings,
   };
 }
 

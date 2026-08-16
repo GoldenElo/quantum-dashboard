@@ -848,6 +848,92 @@ intégrations mi-vidéo** (§10) — le lien qu'on pose sous une vidéo pointe v
 **Dépendances :** S1 (`shares_outstanding`) pour le point 1 ; C2 (fiches sociétés) comme support
 d'affichage ; API EDGAR (SEC) + curation manuelle pour le backfill historique du point 2.
 
+#### État réel (2026-08-16) — module livré
+
+- `scripts/edgar.py` — couche d'accès EDGAR **isolée** (même statut que `market_data.py`) :
+  User-Agent nominatif, throttle < 10 req/s, cache disque, 3 tentatives. Briques génériques
+  réutilisables pour **S8** (USAspending, NSF, DARPA). Carte `TICKER_CIK` en dur — un CIK ne
+  change pas, une résolution par ticker casserait le jour où un ticker est réattribué
+  (piège déjà vécu : `IQM` → Franklin Intelligent Machines ETF).
+- `scripts/backfill_shares_history.py` — historique annuel des actions depuis les 10-K/20-F/40-F.
+- `scripts/fetch_financials.py` — liquidités, consommation et dépôts déclarés → migration 013.
+- `scripts/check_dilution.py` — tableau de contrôle **lecture seule** ; `--liquidites` sort le
+  seul tableau des liquidités avec le contrôle croisé (n'ouvre aucune connexion Supabase).
+- Front : `src/lib/dilution.ts` (miroir TS de `check_dilution.py`), `DilutionSection.tsx`
+  (Server Component, mini-graphique en **barres CSS** — aucun JS client), migration 013.
+
+**RÈGLES DURES — apprises en production, ne jamais « re-simplifier » :**
+
+- **Le RUNWAY se calcule sur les ressources liquides TOTALES** — trésorerie + placements
+  courants **+ placements NON courants**. Ces sociétés échelonnent leur portefeuille obligataire
+  au-delà de 12 mois ; ignorer le non-courant donnait à **RGTI 27,8 M$ au lieu de 541,3 M$** et
+  ~2 trimestres d'autonomie à une société **sans dette** qui en a plus de trente, et à **IONQ
+  2 119 M$ au lieu de 2 959 M$**. Une fausse alerte de trésorerie est l'erreur la plus coûteuse
+  du module : plausible, alarmante, et elle survit à la relecture.
+- **UNE SEULE VALEUR PAR SEAU, jamais de somme de synonymes.** Les tags d'un même seau sont des
+  dénominations concurrentes, pas des composantes. QBTS publie `MarketableSecuritiesCurrent`
+  (249,573 M$) **et** `DebtSecuritiesAvailableForSaleExcludingAccruedInterestCurrent`
+  (249,600 M$) : même ligne de bilan, à l'intérêt couru près. Résolution par **ordre de priorité**,
+  premier tag trouvé, tag retenu affiché. Un garde-fou signale toute divergence > 2 % entre tags
+  d'un même seau — la priorité n'est légitime que tant qu'ils s'accordent.
+- **Les noms de tags varient d'un émetteur à l'autre — vérifier TAG PAR TAG.** RGTI n'utilise
+  aucun des trois tags « évidents » : elle balise en `DebtSecuritiesAvailableForSaleExcludingAccruedInterest{Current,Noncurrent}`.
+  Sonde de référence exécutée le 2026-08-16 sur les 13 sociétés, correspondance documentée en
+  tête de `edgar.py`. **Ne jamais présumer d'un jeu de tags universel.**
+- **JAMAIS d'agrégat de portefeuille.** `AvailableForSaleSecuritiesDebtSecurities` (sans suffixe
+  Current/Noncurrent) totalise l'AFS **y compris les titres classés en équivalents de trésorerie**.
+  Chez IONQ il vaut 2 966,9 M$ quand courant + non courant font 1 723,6 M$ : l'ajouter à la
+  trésorerie double-compterait 1,2 G$. Exclu par construction.
+- **CONTRÔLE CROISÉ BLOQUANT au communiqué (±10 %).** Ancres dans `check_dilution._LIQUIDITY_ANCHORS`
+  (SOURCE UNIQUE, importée par `fetch_financials.py`). Au-delà du seuil, la ligne **n'est pas
+  écrite** et le runway n'est pas publié — `emit_error`, sortie en code 1. Au 2026-08-16 :
+  RGTI 541,3 (−0,0 %) · QBTS 550,4 vs 546,2 (+0,8 %, le communiqué s'arrête aux titres courants) ·
+  QNT 2 106,7 vs ≈2 100 (+0,3 %) · IONQ 2 959,3 vs ≈3 000 (−1,4 %) · QUBT 1 323,5 vs ≈1 300 (+1,8 %).
+- **IONQ — ne pas ancrer sur les ~2 Md$ pro forma.** L'acquisition SkyWater a clôturé **après**
+  le 30/06, donc hors bilan du 10-Q. Les deux chiffres sont justes et ne mesurent pas la même
+  date ; le pro forma est affiché en **note**, jamais en ancre.
+- **QUBT — ne jamais revenir à 954 M$.** Ce chiffre, un temps porté par notre saisie C6, est
+  trésorerie + placements **courants seuls** (189,150 + 765,020 = 954,170) : exactement le
+  périmètre partiel corrigé ici. La société écrit « Ends quarter with **$1.3 billion** in cash,
+  cash equivalents and investments ». Recoupement indépendant sur une seconde date : ≈1,5 G$
+  annoncé au 31/12/2025, nos tags donnent 1 520,4 M$. **C6 corrigé à la source** le 2026-08-16
+  (événement `QUBT 2026-08-10`, 8-K ex. 99.1).
+- **DEUX SEUILS DE FRAÎCHEUR, à ne pas confondre.** **150 j** (≈ 5 mois) → on publie **avec ⚠** et
+  la date en évidence : même seuil et même marqueur que les « données anciennes » du tableau S1
+  (doctrine LAES), pour qu'un lecteur n'ait pas deux grilles de lecture. **270 j** (9 mois) → **plus
+  de runway du tout**, le relevé reste affiché avec sa date, sans projection. Cas **ARQQ**, arrêté
+  au 31/03/2025 : ses 6-K intermédiaires ne sont pas balisés en XBRL.
+- **RUNWAY PLAFONNÉ À 20 TRIMESTRES à l'affichage** → « > 5 ans au rythme actuel — projection non
+  contraignante ». « ~112 trimestres » (QUBT) est exact et illisible : personne ne pilote une
+  trésorerie à 28 ans, et le chiffre donne une fausse précision à une projection qui supposerait
+  la consommation constante pendant trois décennies. Le calcul reste entier dans le tableau de
+  contrôle. `runway_label` (Python) et `runwayLabel`/`RUNWAY_CAP_QUARTERS` (TS) sont **miroirs**.
+- **RUPTURE DE BASE DE MESURE — couper, jamais moyenner.** Au-delà de +2 000 %/an entre deux
+  relevés, ce n'est plus de la dilution mais un changement de périmètre. Cas **QNT** : yfinance
+  31,4 M (flottant Class A) puis 424B4 322 M (Up-C) donnait +39 572 938 %/an. La série est coupée
+  à la rupture **et la rupture est affichée** — jamais de coupe silencieuse.
+- **AUCUN SCORE PRÉDICTIF** (règle §10). Les dépôts déclarés sont nommés par leur **forme exacte**
+  (S-3, F-3, 424B5…) et jamais qualifiés d'« ATM » : ce serait une inférence habillée en fait.
+  424B3 (revente par des porteurs existants) est volontairement exclu — ce n'est pas une émission
+  de titres nouveaux. La dilution n'est jamais colorée en vert/rouge : c'est un fait, pas une
+  performance.
+- **`isStale` centralisé dans `src/lib/dilution.ts`.** La page fiche et `MarketCapTable` en
+  portaient chacune une copie du seuil de 150 j ; une troisième pour les liquidités aurait garanti
+  la divergence.
+- **Piège d'outillage — le cache de données de Next masque un backfill.** Après une écriture en
+  base, un `npm run build` sert les réponses mises en cache dans `.next/cache` : les fiches ont
+  affiché **un seul point d'historique** alors que la base en contenait six. `rm -rf .next/cache`
+  avant toute vérification visuelle post-backfill. En production, l'équivalent est la purge via
+  `/api/revalidate`.
+
+**Migrations :** **012** (`share_adjustment` — journal d'audit des splits ; les valeurs de
+`shares_outstanding` sont **déjà** ajustées, ne JAMAIS appliquer `ratio` comme multiplicateur) et
+**013** (`company_financials` + `company_filing`). Dérogation raisonnée au principe « ne jamais
+stocker le calculable » : ces chiffres se **lisent** dans un dépôt daté, ils ne se calculent pas —
+même nature que `shares_outstanding` ou `sector_event`. Le **runway n'est pas stocké** : il se
+recalcule à la lecture, et sa mise en forme (plafond, suppression au-delà de 9 mois) est une
+décision d'affichage.
+
 ### C3 — Indice TQW (indice propriétaire) — ✅ RÉALISÉE (2026-08-01)
 
 **Pourquoi :** c'est la **propriété intellectuelle licenciable** du projet — modèle MarketVector.
