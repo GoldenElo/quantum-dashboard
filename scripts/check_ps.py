@@ -47,7 +47,7 @@ load_dotenv()
 
 SECTORAL_TICKERS = [
     "GOOGL", "IBM", "IONQ", "QBTS", "LAES", "INFQ",
-    "RGTI", "QUBT", "QNT", "XNDU", "ARQQ", "HQ", "IQMX",
+    "RGTI", "QUBT", "QNT", "XNDU", "ARQQ", "HQ", "IQMX", "PSQL",
 ]
 
 # IPO récentes : TTM potentiellement incomplet (< 4 trimestres cotés) ou absent.

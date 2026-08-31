@@ -7,7 +7,7 @@ import {
   ttmDilution,
   RUNWAY_CAP_QUARTERS,
 } from '@/lib/dilution';
-import { formatDateCompact, formatMarketCap } from '@/lib/format';
+import { formatDateCompact, formatMarketCap, formatShares } from '@/lib/format';
 import { t } from '@/i18n/t';
 
 /**
@@ -27,7 +27,6 @@ import { t } from '@/i18n/t';
 const fmtPct = (v: number) =>
   `${v >= 0 ? '+' : '−'}${Math.abs(v * 100).toFixed(1).replace('.', ',')} %`;
 
-const fmtShares = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
 
 function fill(template: string, values: Record<string, string>): string {
   return Object.entries(values).reduce((s, [k, v]) => s.replace(`{${k}}`, v), template);
@@ -74,7 +73,7 @@ export default function DilutionSection({ data }: { data: CompanyData }) {
                     style={{ width: `${Math.max(2, (p.shares / maxShares) * 100)}%` }}
                   />
                 </span>
-                <span className="dil-bar-value mono">{fmtShares(p.shares)}</span>
+                <span className="dil-bar-value mono">{formatShares(p.shares)}</span>
               </li>
             ))}
           </ul>

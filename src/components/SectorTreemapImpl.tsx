@@ -114,21 +114,32 @@ export default function SectorTreemapImpl({ rows }: { rows: MarketCapRow[] }) {
       ? Math.round(width * 1.1)
       : Math.round(Math.min(width * 0.52, 520));
 
-  const viewRows = useMemo(
+  // Une tuile de treemap EST une surface : sans capitalisation, aucune taille ne
+  // peut être choisie sans mentir sur l'ordre de grandeur. Ces sociétés sortent
+  // donc du dessin — mais sont NOMMÉES juste en dessous, jamais escamotées.
+  const sizedRows = useMemo(
     () => (view === 'pure_players' ? rows.filter(r => r.category === 'pure_player') : rows),
     [rows, view],
+  );
+  const viewRows = useMemo(
+    () => sizedRows.filter(r => r.market_cap_usd != null),
+    [sizedRows],
+  );
+  const unsizedRows = useMemo(
+    () => sizedRows.filter(r => r.market_cap_usd == null),
+    [sizedRows],
   );
 
   const leaves = useMemo<Leaf[]>(() => {
     if (width === 0 || height === 0 || viewRows.length === 0) return [];
 
-    const totalCap = viewRows.reduce((s, r) => s + r.market_cap_usd, 0);
+    const totalCap = viewRows.reduce((s, r) => s + (r.market_cap_usd ?? 0), 0);
     // Plancher d'aire uniquement en vue complète (garde-fou anti-écrasement).
     const floor = view === 'secteur_complet' ? totalCap * MIN_TILE_VALUE_FRACTION : 0;
 
     const data = viewRows.map(r => ({
       row: r,
-      layoutValue: Math.max(r.market_cap_usd, floor),
+      layoutValue: Math.max(r.market_cap_usd ?? 0, floor),
     }));
 
     const root = hierarchy<{ children?: typeof data; row?: MarketCapRow; layoutValue?: number }>(
@@ -219,7 +230,7 @@ export default function SectorTreemapImpl({ rows }: { rows: MarketCapRow[] }) {
               const marks = markersFor(leaf.row);
               const perfText = leaf.change == null ? t.mur.nonCalculable : formatPct(leaf.change);
               const titleText =
-                `${leaf.row.ticker} · ${leaf.row.name} — ${formatMarketCap(leaf.row.market_cap_usd)} · ` +
+                `${leaf.row.ticker} · ${leaf.row.name} — ${leaf.row.market_cap_usd != null ? formatMarketCap(leaf.row.market_cap_usd) : '—'} · ` +
                 `${t.mur.horizons[horizon]} ${perfText}` +
                 (marks.length ? ` (${marks.join(' ')})` : '');
 
@@ -250,7 +261,7 @@ export default function SectorTreemapImpl({ rows }: { rows: MarketCapRow[] }) {
                       </text>
                       <text x={8} y={37} className="mur-tile-perf" fill={color}>{perfText}</text>
                       <text x={8} y={53} className="mur-tile-cap" fill={color} opacity={0.85}>
-                        {formatMarketCap(leaf.row.market_cap_usd)}
+                        {leaf.row.market_cap_usd != null ? formatMarketCap(leaf.row.market_cap_usd) : '—'}
                       </text>
                     </>
                   )}
@@ -309,6 +320,15 @@ export default function SectorTreemapImpl({ rows }: { rows: MarketCapRow[] }) {
             </span>
           ))}
         </div>
+      )}
+
+      {/* Sociétés cotées mais non dessinables : absentes du Mur, JAMAIS en silence. */}
+      {unsizedRows.length > 0 && (
+        <p className="mur-floor-note">
+          {unsizedRows.map(r => `${r.name} (${r.ticker})`).join(' · ')}
+          {' — '}
+          {t.secteur.capiIndisponible.court}
+        </p>
       )}
 
       {/* Garde-fou taille minimale — expliqué uniquement en vue complète */}

@@ -31,7 +31,7 @@ load_dotenv()
 # 13 sociétés sectorielles — QNTM.L, QQQ (ETF) et NVDA (infrastructure) exclus.
 # Migration 005 : RGTI, QUBT, QNT | Migration 006 : XNDU, ARQQ, HQ | Migration 009 : IQMX
 TICKERS = ["GOOGL", "IBM", "IONQ", "QBTS", "LAES", "INFQ", "RGTI", "QUBT", "QNT",
-           "XNDU", "ARQQ", "HQ", "IQMX"]
+           "XNDU", "ARQQ", "HQ", "IQMX", "PSQL"]
 
 # Valeurs de référence pour les alertes (sources primaires vérifiées)
 _REF_SHARES: dict[str, tuple[int, str]] = {

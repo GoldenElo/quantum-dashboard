@@ -176,9 +176,16 @@ export default async function CompanyPage({ params }: Props) {
       <section className="section" aria-label={t.societe.capChart.titre}>
         <h2 className="section-title">{t.societe.capChart.titre}</h2>
         <div className="chart-container">
-          <CompanyCapChart data={data.capHistory} />
+          {data.shares == null
+            ? <p className="empty-state">{t.societe.capChart.sansActions}</p>
+            : <CompanyCapChart data={data.capHistory} />}
         </div>
-        <p className="chart-note">{t.societe.capChart.methode}</p>
+        {/* La note de méthode décrit une RECONSTITUTION : ne l'afficher que si
+            une courbe a effectivement été reconstituée. Sous une section vide,
+            elle décrirait un calcul qui n'a pas eu lieu. */}
+        {data.shares != null && data.capHistory.length >= 2 && (
+          <p className="chart-note">{t.societe.capChart.methode}</p>
+        )}
       </section>
 
       {/* Notes de la rédaction — curation différenciante, mise en avant */}

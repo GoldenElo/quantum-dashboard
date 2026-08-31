@@ -121,10 +121,16 @@ export type MarketCapRow = {
   category: string;
   adj_close: number;
   price_date: string;
-  shares: number;
-  shares_date: string;
-  shares_source: string;
-  market_cap_usd: number;
+  // ⚠ NULLABLES depuis PSQL (2026-08-31). Une société peut être cotée sans qu'aucun
+  // dépôt ne publie encore son décompte d'actions — cas d'une fusion SPAC dont les
+  // rachats ne sont pas divulgués. On l'affiche alors AVEC une capitalisation « — »
+  // et une note de méthode, au lieu de la faire disparaître du tableau : c'est la
+  // règle de la maison (« signale sans masquer »). Auparavant `fetchMarketCapsData`
+  // faisait `continue` sur ces lignes — la société sortait du site EN SILENCE.
+  shares: number | null;
+  shares_date: string | null;
+  shares_source: string | null;
+  market_cap_usd: number | null;
   // Variations multi-horizons (S2), en jours de cotation — null si historique insuffisant
   change_1d: number | null;
   change_1w: number | null;
@@ -146,6 +152,12 @@ export type MarketCapRow = {
 export type MarketCapData = {
   rows: MarketCapRow[];
   pure_player_total_usd: number;
+  /**
+   * Pure-players cotés mais SANS capitalisation connue, donc absents du total
+   * ci-dessus. Jamais vide en silence : l'agrégat annonce ce qu'il n'a pas pu
+   * compter, sinon il se présenterait comme exhaustif alors qu'il ne l'est pas.
+   */
+  pure_player_excluded: string[];
 };
 
 // ─── Type fiche société (C2) ──────────────────────────────────────────────────
@@ -271,7 +283,7 @@ export type IndexSummary = {
 
 const FICTIF_IDS = ['defensif', 'dynamique', 'agressif'] as const;
 const BENCHMARK_TICKER = 'QNTM.L';
-export const SECTORAL_TICKERS = ['GOOGL', 'IBM', 'IONQ', 'QBTS', 'LAES', 'INFQ', 'RGTI', 'QUBT', 'QNT', 'XNDU', 'ARQQ', 'HQ', 'IQMX'] as const;
+export const SECTORAL_TICKERS = ['GOOGL', 'IBM', 'IONQ', 'QBTS', 'LAES', 'INFQ', 'RGTI', 'QUBT', 'QNT', 'XNDU', 'ARQQ', 'HQ', 'IQMX', 'PSQL'] as const;
 
 // Les 12 tickers sectoriels ont chacun une fiche société /societe/[ticker].
 // Source unique pour generateStaticParams + sitemap (aucune fiche hors de cette liste).
@@ -332,9 +344,12 @@ function computeChange(closesAsc: number[], offset: number): number | null {
 // deux niveaux). Le CA est converti en USD via fx_rate (natif → USD) AVANT le ratio.
 // CA de référence : le rapporté (totalRevenue) en priorité, sinon la somme des 4 trim.
 function computePs(
-  marketCapUsd: number,
+  marketCapUsd: number | null,
   rev: { revenue_reported: number | null; revenue_sum_4q: number | null; quarters_used: number; fx_rate: number } | undefined,
 ): { ratio: number | null; status: MarketCapRow['ps_status'] } {
+  // Pas de capitalisation → pas de numérateur → pas de ratio. Un P/S calculé sur
+  // un nombre d'actions supposé serait faux tout en paraissant ferme.
+  if (marketCapUsd == null) return { ratio: null, status: 'none' };
   if (!rev) return { ratio: null, status: 'none' };
   const fx = rev.fx_rate || 1;
   const reportedUsd = rev.revenue_reported != null ? rev.revenue_reported * fx : null;
@@ -796,12 +811,15 @@ export async function fetchMarketCapsData(): Promise<MarketCapData | null> {
   for (const asset of assetsRes.data ?? []) {
     const shares = latestShares.get(asset.ticker);
     const series = closesByTicker.get(asset.ticker) ?? [];
-    if (!shares || series.length === 0) continue;
+    // Seule l'absence TOTALE de cours exclut une société : sans prix il n'y a
+    // strictement rien à dire. Un décompte d'actions manquant, lui, ne la fait
+    // plus disparaître — la ligne est rendue avec capitalisation et P/S « — ».
+    if (series.length === 0) continue;
 
     const closesAsc = series.map(s => s.adj_close);
     const latest = series[series.length - 1];
     const change_1w = computeChange(closesAsc, 5);
-    const market_cap_usd = shares.shares * latest.adj_close;
+    const market_cap_usd = shares ? shares.shares * latest.adj_close : null;
     const ps = computePs(market_cap_usd, latestRevenue.get(asset.ticker));
 
     rows.push({
@@ -810,9 +828,9 @@ export async function fetchMarketCapsData(): Promise<MarketCapData | null> {
       category: asset.category,
       adj_close: latest.adj_close,
       price_date: latest.date,
-      shares: shares.shares,
-      shares_date: shares.date,
-      shares_source: shares.source,
+      shares: shares?.shares ?? null,
+      shares_date: shares?.date ?? null,
+      shares_source: shares?.source ?? null,
       market_cap_usd,
       change_1d: computeChange(closesAsc, 1),
       change_1w,
@@ -824,13 +842,23 @@ export async function fetchMarketCapsData(): Promise<MarketCapData | null> {
     });
   }
 
-  rows.sort((a, b) => b.market_cap_usd - a.market_cap_usd);
+  // Tri par capitalisation décroissante ; les sociétés sans capitalisation connue
+  // ferment la marche (elles ne peuvent pas être classées, pas être classées en tête).
+  rows.sort((a, b) => {
+    if (a.market_cap_usd == null && b.market_cap_usd == null) return a.ticker.localeCompare(b.ticker);
+    if (a.market_cap_usd == null) return 1;
+    if (b.market_cap_usd == null) return -1;
+    return b.market_cap_usd - a.market_cap_usd;
+  });
 
-  const pure_player_total_usd = rows
-    .filter(r => r.category === 'pure_player')
-    .reduce((sum, r) => sum + r.market_cap_usd, 0);
+  const purePlayers = rows.filter(r => r.category === 'pure_player');
+  const pure_player_total_usd = purePlayers
+    .reduce((sum, r) => sum + (r.market_cap_usd ?? 0), 0);
+  const pure_player_excluded = purePlayers
+    .filter(r => r.market_cap_usd == null)
+    .map(r => r.ticker);
 
-  return { rows, pure_player_total_usd };
+  return { rows, pure_player_total_usd, pure_player_excluded };
 }
 
 // ─── Indice TQW (C3) ──────────────────────────────────────────────────────────

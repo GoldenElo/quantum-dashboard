@@ -27,6 +27,7 @@ TICKERS = [
     "RGTI", "QUBT", "QNT",            # suivi sectoriel pur — hors portefeuilles (migration 005)
     "XNDU", "ARQQ", "HQ",             # suivi sectoriel pur — hors portefeuilles (migration 006)
     "IQMX",                           # suivi sectoriel pur — hors portefeuilles (migration 009)
+    "PSQL",                           # suivi sectoriel pur — hors portefeuilles (migration 014)
     "QNTM.L", "QQQ",                   # benchmarks
 ]
 
@@ -38,6 +39,11 @@ TICKER_FIRST_TRADE: dict[str, date] = {
     # IQMX : cotation ADS le 02/07/2026 après fusion SPAC avec RAAQ.
     # ⚠ yfinance sert l'historique du SPAC sous ce ticker — voir backfill_sectoral.py.
     "IQMX": date(2026, 7, 2),
+    # PSQL : fusion SPAC avec Bleichroeder Acquisition Corp. II (closing 27/08/2026),
+    # première cotation de l'action ordinaire le 28/08/2026.
+    # ⚠ yfinance sert sous PSQL les 149 séances du SPAC Bleichroeder depuis le
+    # 28/01/2026 (~9,95 $ = valeur de trust) — ces cours ne sont PAS ceux de Pasqal.
+    "PSQL": date(2026, 8, 28),
 }
 
 BATCH_SIZE = 500

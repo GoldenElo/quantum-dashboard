@@ -129,6 +129,25 @@ EVENTS = [
         "source_label": "Données de marché — The Quantum Wall",
     },
     {
+        "ticker": "PSQL",
+        "event_date": "2026-08-28",
+        "type": "spac",
+        "title": "Première cotation au Nasdaq après fusion SPAC avec Bleichroeder",
+        "description": (
+            "Deuxième société européenne du quantique cotée sur une grande place américaine, "
+            "après IQM. Fusion avec Bleichroeder Acquisition Corp. II approuvée par les "
+            "actionnaires le 25 août 2026 et finalisée le 27 août ; l'action ordinaire cote "
+            "depuis le 28 août sous le symbole PSQL (les warrants, sous PSQLW, ne sont pas "
+            "suivis ici). Clôture du premier jour à 19,11 $, soit +91 % au-dessus du prix "
+            "d'opération de 10,00 $. L'opération valorisait Pasqal environ 2 Md$ et apporte "
+            "environ 360 M$ de trésorerie à la clôture selon le communiqué. Technologie à "
+            "atomes neutres, siège à Palaiseau (France)."
+        ),
+        # Lien profond vers l'exhibit 99.1 du 6-K de closing (communiqué conjoint officiel).
+        "source_url": "https://www.sec.gov/Archives/edgar/data/2119292/000121390026094393/ea030366701ex99-1.htm",
+        "source_label": "Communiqué de closing — 6-K SEC du 27/08/2026",
+    },
+    {
         "ticker": "IQMX",
         "event_date": "2026-07-02",
         "type": "spac",

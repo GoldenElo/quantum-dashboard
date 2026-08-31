@@ -51,7 +51,7 @@ _CONTRADICT_ALERT = 0.15  # yfinance vs surcharge manuelle > 15 % → alerte CI
 
 # 13 sociétés sectorielles — QNTM.L, QQQ (ETF) et NVDA (infrastructure) exclus.
 TICKERS = ["GOOGL", "IBM", "IONQ", "QBTS", "LAES", "INFQ", "RGTI", "QUBT", "QNT",
-           "XNDU", "ARQQ", "HQ", "IQMX"]
+           "XNDU", "ARQQ", "HQ", "IQMX", "PSQL"]
 
 # ─── Surcharges manuelles de CA (priment sur yfinance, sanctuarisées) ─────────
 # Même rôle que _MANUAL_OVERRIDES dans fetch_shares.py : une source primaire datée
@@ -76,6 +76,29 @@ _MANUAL_OVERRIDES: list[dict] = [
         "quarters_used":      0,
         "financial_currency": "EUR",
         "source":             "SEC 6-K 2026-07-01 (exercice clos 31/12/2025, reporting EUR)",
+    },
+    # PSQL : société française (Palaiseau), comptes en EUR sous IFRS/IASB. yfinance ne
+    #        déclare NI devise (financialCurrency = None) NI chiffre d'affaires
+    #        (totalRevenue = None, mostRecentQuarter = None) — la société vient de
+    #        s'introduire par fusion SPAC (28/08/2026) et n'a encore déposé aucun état
+    #        financier propre. Sans cette surcharge, le garde-fou devise refuse la ligne
+    #        (et c'est le comportement voulu).
+    #        CA de l'EXERCICE CLOS au 31/12/2025 : 16,468 M€ — proxy/prospectus 424B3 du
+    #        05/08/2026, MD&A « Total revenue | € | 16,468 » (en milliers), recoupé par
+    #        « Pasqal's revenue was €16.4 million for the year ended December 31, 2025 ».
+    #        Ce n'est PAS un TTM et aucun détail trimestriel n'est publié → quarters_used = 0
+    #        → statut 'unrecouped' côté API → marqueur ‡, jamais un ratio ferme.
+    #        ⚠ Le P/S restera « — » tant qu'aucune ligne shares_outstanding n'existe :
+    #        le décompte d'actions post-fusion n'est publié dans aucun dépôt (voir
+    #        migration 014). Cette surcharge prépare le dénominateur, pas le ratio.
+    {
+        "ticker":             "PSQL",
+        "as_of_date":         "2025-12-31",
+        "revenue_reported":   16_468_000,   # EUR — converti en USD via fx_rate
+        "revenue_sum_4q":     None,         # aucun détail trimestriel → recoupement impossible
+        "quarters_used":      0,
+        "financial_currency": "EUR",
+        "source":             "SEC 424B3 2026-08-05 (exercice clos 31/12/2025, reporting EUR)",
     },
 ]
 

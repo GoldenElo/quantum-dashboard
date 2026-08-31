@@ -1,0 +1,62 @@
+-- Ajout de Pasqal Holding SA à l'univers sectoriel — 14e société.
+-- Couverture yfinance vérifiée le 31/08/2026. ⚠ Couverture PARTIELLEMENT DÉFAILLANTE :
+-- deux pièges documentés ci-dessous, tous deux traités (bornage, refus d'écriture).
+--
+-- PSQL : Pasqal Holding SA — modalité ATOMES NEUTRES, Palaiseau (France).
+--        Nasdaq Global Market depuis le 28/08/2026, après fusion SPAC avec Bleichroeder
+--        Acquisition Corp. II (Nasdaq : BBCQ). Approbation des actionnaires le 25/08/2026,
+--        closing le 27/08/2026, première cotation le 28/08/2026 (6-K du 27/08/2026).
+--        Deuxième société européenne du quantique cotée sur une grande place US, après IQMX.
+--        Titre coté = action ordinaire (ordinary share), par valeur 0,02 € — pas d'ADS,
+--        donc aucune distorsion de ratio sur la capitalisation.
+--        SEC CIK 0002119292. Émetteur privé étranger : dépôts 6-K / 20-F, jamais 10-Q / 10-K.
+--
+-- ⚠ NE JAMAIS ÉCRIRE « IPO ». C'est une fusion SPAC (business combination). Le 6-K de
+--        clôture est explicite. Le libellé « IPO » serait faux sur le fond comme sur la forme.
+--
+-- PIÈGE 1 — HISTORIQUE FANTÔME (identique à IQMX/RAAQ et HQ/dMY Squared). yfinance sert
+--        sous PSQL les 149 séances du SPAC Bleichroeder depuis le 28/01/2026, autour de
+--        9,95 $ = valeur de trust. Ces cours ne sont PAS ceux de Pasqal.
+--        → TICKER_FIRST_TRADE['PSQL'] = SECTORAL_FIRST_TRADE['PSQL'] = 2026-08-28 dans
+--          ingest.py / backfill.py / backfill_sectoral.py / backfill_shares_history.py.
+--          Aucun cours antérieur n'entre en base.
+--
+-- PIÈGE 2 — LE NOMBRE D'ACTIONS yfinance EST UNE HYPOTHÈSE, PAS UN RELEVÉ.
+--        yfinance retourne sharesOutstanding = 209 583 333. Ce chiffre est repris tel quel
+--        du prospectus 424B3 du 05/08/2026, où il désigne EXPLICITEMENT le scénario de
+--        RACHAT MAXIMAL (« assuming a scenario of maximum redemptions ... 209,583,333 »),
+--        le scénario sans rachat étant 238 333 333. Le nombre réel dépend des rachats
+--        effectifs et se situe dans [209 583 333 ; 238 333 333] — amplitude 13,7 %.
+--        AUCUN document déposé ne le publie à ce jour : le 6-K de clôture ne contient aucun
+--        décompte, les 425 des 21/24/25-08 ne publient aucun résultat de rachat, et le XBRL
+--        du CIK ne contient que le namespace 'ffd' (frais de dépôt), aucune donnée financière.
+--        → AUCUNE ligne shares_outstanding n'est écrite pour PSQL. Capitalisation et P/S
+--          affichés « — » avec note de méthode. Écrire 209 583 333 publierait une capi
+--          minorée de jusqu'à 13,7 % en la présentant comme sourcée — la faute QNT à l'envers.
+--        → ÉCHÉANCE DATÉE au CLAUDE.md : le premier 6-K/20-F publiant le capital social
+--          débloque capi, P/S et tuile du Mur. Test de cohérence contre le PRIX D'OPÉRATION
+--          de 10,00 $ (200 M × 10 $ = 2,000 Md$ = la valorisation annoncée), JAMAIS le cours.
+--
+-- DEVISE — société française, comptes en EUR (IFRS/IASB). info['financialCurrency'] est NULL
+--        et totalRevenue est NULL : fetch_revenue.py refuse la ligne (RÈGLE DEVISE durcie).
+--        → CA surchargé manuellement : 16 468 000 EUR, exercice clos au 31/12/2025
+--          (424B3 du 05/08/2026, MD&A « Total revenue € 16,468 » en milliers).
+--          Ce n'est PAS un TTM et aucun détail trimestriel n'est publié → quarters_used = 0
+--          → statut 'unrecouped' → marqueur ‡. Doctrine IQMX à l'identique.
+--
+-- LIQUIDITÉS (C7) — le communiqué de clôture annonce « approximately $360 million of cash
+--        available at closing » (EX-99.1 du 6-K). Aucun bilan déposé, aucun XBRL : le
+--        contrôle croisé bloquant à ±10 % est IMPOSSIBLE. → aucune ligne company_financials,
+--        aucun runway publié. Conforme à la doctrine C7 (pas d'ancre, pas de publication).
+--
+-- INDICE TQW — PSQL n'entre PAS dans l'indice maintenant. Règle des 30 séances cotées :
+--        cotée le 28/08/2026, sa 30e séance tombe vers la mi-octobre → entrée au
+--        rebalancement du 2026-11-02, conjointement avec IQMX (double entrée).
+--
+-- PSQLW (warrants, même émetteur) est HORS PÉRIMÈTRE : on ne suit que l'action.
+--
+-- ON CONFLICT DO NOTHING : idempotent — sans effet si déjà présent.
+
+INSERT INTO asset (ticker, name, category, exchange, currency) VALUES
+  ('PSQL', 'Pasqal', 'pure_player', 'NASDAQ', 'USD')
+ON CONFLICT (ticker) DO NOTHING;

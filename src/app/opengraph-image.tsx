@@ -41,12 +41,17 @@ const MAX_BARS = 8;
 export default async function Image() {
   const data = await fetchMarketCapsData().catch(() => null);
 
+  // Une barre est proportionnelle à une capitalisation : sans capitalisation, pas
+  // de barre possible. Ces sociétés sont exclues du mur ET comptées dans le
+  // « + N autres pure-players », de sorte que la troncature reste annoncée.
   const pureplayers = (data?.rows ?? [])
-    .filter(row => row.category === 'pure_player')
-    .sort((a, b) => b.market_cap_usd - a.market_cap_usd);
+    .filter(row => row.category === 'pure_player' && row.market_cap_usd != null)
+    .sort((a, b) => (b.market_cap_usd ?? 0) - (a.market_cap_usd ?? 0));
+  const unsized = (data?.rows ?? [])
+    .filter(row => row.category === 'pure_player' && row.market_cap_usd == null).length;
 
   const shown = pureplayers.slice(0, MAX_BARS);
-  const hidden = pureplayers.length - shown.length;
+  const hidden = pureplayers.length - shown.length + unsized;
   // Échelle des barres : la plus grosse capitalisation occupe toute la largeur.
   const maxCap = shown[0]?.market_cap_usd ?? 0;
   // Date de la donnée = clôture la plus récente parmi les lignes (dates ISO → tri lexical).
@@ -89,7 +94,7 @@ export default async function Image() {
         {shown.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
             {shown.map(row => {
-              const width = maxCap > 0 ? (row.market_cap_usd / maxCap) * 100 : 0;
+              const width = maxCap > 0 ? ((row.market_cap_usd ?? 0) / maxCap) * 100 : 0;
               const color = changeColor(row.change_1d);
               return (
                 <div
@@ -142,7 +147,7 @@ export default async function Image() {
                       color: OG.text,
                     }}
                   >
-                    {formatMarketCap(row.market_cap_usd)}
+                    {formatMarketCap(row.market_cap_usd ?? 0)}
                   </div>
                   <div
                     style={{

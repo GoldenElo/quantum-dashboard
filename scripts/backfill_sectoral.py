@@ -35,10 +35,10 @@ logger = logging.getLogger(__name__)
 # ~1 an avant l'inception des portefeuilles. DISTINCT de INCEPTION_DATE (2026-06-01).
 SECTORAL_HISTORY_START = date(2025, 6, 1)
 
-# Les 13 sociétés de l'univers sectoriel — SANS NVDA (infra) ni benchmarks (QNTM.L, QQQ).
+# Les 14 sociétés de l'univers sectoriel — SANS NVDA (infra) ni benchmarks (QNTM.L, QQQ).
 SECTORAL_TICKERS = [
     "GOOGL", "IBM", "IONQ", "QBTS", "LAES", "INFQ",
-    "RGTI", "QUBT", "QNT", "XNDU", "ARQQ", "HQ", "IQMX",
+    "RGTI", "QUBT", "QNT", "XNDU", "ARQQ", "HQ", "IQMX", "PSQL",
 ]
 
 # ─── Garde-fou historique fantôme (sociétés issues d'une fusion SPAC) ─────────
@@ -55,6 +55,10 @@ SECTORAL_TICKERS = [
 #        cotation des ADS le 02/07/2026 (6-K SEC du 01/07/2026).
 SECTORAL_FIRST_TRADE: dict[str, date] = {
     "IQMX": date(2026, 7, 2),
+    # PSQL : fusion avec Bleichroeder Acquisition Corp. II (BBCQ), closing 27/08/2026 ;
+    #        première cotation de l'action ordinaire le 28/08/2026 (6-K SEC du 27/08/2026).
+    #        149 séances fantômes du SPAC depuis le 28/01/2026 — toutes écartées ici.
+    "PSQL": date(2026, 8, 28),
 }
 
 # Seuil "année complète" : 252 séances ≈ 1 an de cotation.

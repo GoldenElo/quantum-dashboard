@@ -82,3 +82,13 @@ export function formatQty(value: number): string {
     maximumFractionDigits: 4,
   }).format(value);
 }
+
+/**
+ * Nombre d'ACTIONS — entier, séparateurs de milliers, jamais de décimale.
+ * Distinct de formatQty, qui sert aux quantités de portefeuille (fractionnaires
+ * par construction : « 19,7722 » actions GOOGL en PER). Afficher « 5 867 155 790,00 »
+ * actions donnerait une fausse précision au centième d'action.
+ */
+export function formatShares(value: number): string {
+  return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(value);
+}

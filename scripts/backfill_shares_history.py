@@ -58,7 +58,7 @@ BATCH_SIZE = 500
 
 # Périmètre C7 : le suivi sectoriel MOINS les deux géants diversifiés.
 DILUTION_TICKERS = [
-    "IONQ", "QBTS", "LAES", "INFQ", "RGTI", "QUBT", "QNT", "XNDU", "ARQQ", "HQ", "IQMX",
+    "IONQ", "QBTS", "LAES", "INFQ", "RGTI", "QUBT", "QNT", "XNDU", "ARQQ", "HQ", "IQMX", "PSQL",
 ]
 
 # Première cotation publique de la société OPÉRATIONNELLE — pas de la coquille.
@@ -78,6 +78,7 @@ TICKER_FIRST_LISTING: dict[str, date] = {
     "HQ":   date(2026, 3, 20),
     "QNT":  date(2026, 6, 4),
     "IQMX": date(2026, 7, 2),
+    "PSQL": date(2026, 8, 28),
 }
 
 

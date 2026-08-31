@@ -919,6 +919,190 @@ button { cursor: pointer; }
   cursor: help;
 }
 
+/* ══ D4 — vue mobile du tableau des capitalisations ══
+   Sous 960px le tableau à 8 colonnes cède la place à des fiches dépliables.
+   MÊME SEUIL que .etf-table (l'autre tableau à 8 colonnes du site) : une seule
+   règle « tableau large → fiches », pas deux conventions concurrentes.
+   Le défilement horizontal est écarté pour la raison déjà écrite plus bas —
+   il masque cinq colonnes sur huit à une audience majoritairement mobile.
+
+   Les deux arbres coexistent dans le DOM, le CSS choisit (idiome ThemeToggle) :
+   pas de flash d'hydratation, et `display:none` sort l'arbre inactif de l'ordre
+   de tabulation — aucun piège clavier. */
+.mcap-mobile { display: none; }
+
+@media (max-width: 960px) {
+  .mcap-desktop { display: none; }
+  .mcap-mobile { display: block; }
+}
+
+.mcap-m-head,
+.mcap-m-row {
+  display: grid;
+  grid-template-columns: 0.9rem minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.mcap-m-head {
+  padding: 0.55rem 1rem 0.35rem;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* La 1re colonne du head est la gouttière du chevron : rien n'y est écrit. */
+.mcap-m-head > span:first-child { grid-column: 2; }
+.mcap-m-head .right { text-align: right; }
+
+/* Affordance : un chevron seul n'annonce pas qu'il y a un détail à déplier. */
+.mcap-m-hint {
+  padding: 0 1rem 0.5rem;
+  font-size: 0.7rem;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.mcap-m-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mcap-m-item { border-top: 1px solid var(--border); }
+
+/* Toute la ligne est le déclencheur. min-height 44px = cible tactile
+   recommandée ; le padding porte le total à ~50px. */
+.mcap-m-row {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.6rem 1rem;
+  background: none;
+  border: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.mcap-m-row:hover { background: color-mix(in srgb, var(--accent-blue) 4%, transparent); }
+
+.mcap-m-row:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -2px;
+}
+
+.mcap-m-chevron {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.mcap-m-chevron.is-open { transform: rotate(90deg); }
+
+.mcap-m-society { min-width: 0; }
+
+.mcap-m-name {
+  display: block;
+  font-size: 0.88rem;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.mcap-m-sub {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  margin-top: 0.1rem;
+}
+
+.mcap-m-ticker {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--accent-blue);
+}
+
+.mcap-m-sub .tech-tag { font-size: 0.58rem; }
+
+.mcap-m-cap,
+.mcap-m-day {
+  text-align: right;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.mcap-m-day { min-width: 4.6rem; }
+
+/* ── Panneau déplié ──
+   Tout ce qui est un `title=` sur desktop y devient un TEXTE VISIBLE : le
+   survol n'existe pas au doigt, et une seconde divulgation à l'intérieur d'un
+   accordéon serait un piège. */
+.mcap-m-panel {
+  padding: 0.2rem 1rem 0.9rem 1.85rem;
+  background: color-mix(in srgb, var(--accent-blue) 4%, transparent);
+}
+
+.mcap-m-panel[hidden] { display: none; }
+
+.mcap-m-field { padding: 0.4rem 0; }
+
+.mcap-m-field + .mcap-m-field { border-top: 1px solid var(--border); }
+
+.mcap-m-field-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.mcap-m-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.mcap-m-value {
+  font-size: 0.85rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.mcap-m-note {
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.mcap-m-source {
+  margin-top: 0.15rem;
+  padding-bottom: 0.2rem;
+}
+
+/* Lien fiche : cible tactile pleine largeur, jamais un lien-texte à viser. */
+.mcap-m-fiche {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 0.7rem;
+  padding: 0 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-blue);
+  text-decoration: none;
+}
+
+.mcap-m-fiche:hover { border-color: var(--accent-blue); }
+
 /* ══ Slots publicitaires réservés (vides — hauteur 0, n'affectent pas le layout) ══ */
 .ad-slot { height: 0; }
 

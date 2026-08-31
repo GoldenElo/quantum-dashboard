@@ -1,11 +1,13 @@
 import type { MarketCapData, MarketCapRow } from '@/lib/api';
-import { formatMarketCap, formatDateCompact, formatPct, formatRatio } from '@/lib/format';
+import { formatMarketCap, formatPct } from '@/lib/format';
 import { t, TICKER_NOTES, TICKER_MODALITIES } from '@/i18n/t';
-import { isStale } from '@/lib/dilution';
+import { psPresentation, sharesFreshness, marketCapPresentation } from '@/lib/marketCapPresentation';
+import MarketCapMobileList from './MarketCapMobileList';
 
-// Seuil "données anciennes" (150 j ≈ 5 mois, ex. LAES au 31/12/2025) : importé
-// depuis src/lib/dilution.ts, SOURCE UNIQUE partagée avec les fiches et le
-// bloc liquidités C7.
+// Les règles d'affichage (états P/S, fraîcheur du nombre d'actions, seuil de
+// 150 j) vivent dans src/lib/marketCapPresentation.ts — SOURCE UNIQUE partagée
+// avec la vue mobile (D4). Ce fichier ne décide plus quoi dire, seulement
+// comment le baliser en `<td>`.
 
 // Cellule de variation : verte/rouge foncé, « — » si null. `alert` ajoute le ⚑
 // (variation exceptionnelle) avec infobulle anti-hype — visible mais discret.
@@ -28,41 +30,34 @@ function ChangeCell({ value, alert = false }: { value: number | null; alert?: bo
 //   ⚠ (valorisation extrême) sur données FIABLES ≠ ‡ (données incertaines).
 // Un P/S ferme normal s'affiche sans aucun marqueur. « n.s. » / « — » = pas de ratio.
 function PsCell({ row }: { row: MarketCapRow }) {
-  switch (row.ps_status) {
-    case 'none':
-      return <td className="right mono mcap-ps">—</td>;
-    case 'insignificant':
-      return (
-        <td className="right mono mcap-ps mcap-ps-ns" title={t.secteur.ps.insignifiantTooltip}>
-          {t.secteur.ps.insignifiant}
-        </td>
-      );
-    case 'firm':
-      return <td className="right mono mcap-ps">{formatRatio(row.ps_ratio)}</td>;
-    case 'firm_extreme':
-      return (
-        <td className="right mono mcap-ps">
-          {formatRatio(row.ps_ratio)}
-          <span className="mcap-ps-extreme" title={t.secteur.ps.extremeTooltip}>
-            {t.secteur.ps.extremeMarker}
-          </span>
-        </td>
-      );
-    case 'partial':
-    case 'unrecouped': {
-      const tip = row.ps_status === 'partial' ? t.secteur.ps.partielTooltip : t.secteur.ps.nonRecoupeTooltip;
-      return (
-        <td className="right mono mcap-ps mcap-ps-uncertain" title={tip}>
-          {formatRatio(row.ps_ratio)}
-          <span className="mcap-ps-marker">{t.secteur.ps.incertainMarker}</span>
-        </td>
-      );
-    }
-  }
+  const ps = psPresentation(row);
+  const stateClass =
+    ps.markerKind === 'uncertain'
+      ? ' mcap-ps-uncertain'
+      : ps.markerKind === 'insignificant'
+        ? ' mcap-ps-ns'
+        : '';
+  // Le ⚠ « valorisation extrême » porte SON infobulle sur le marqueur seul (la
+  // valeur, elle, est fiable) ; le ‡ et le « n.s. » qualifient la donnée entière
+  // et portent la leur sur la cellule. Placement identique à l'avant-D4.
+  const extreme = ps.markerKind === 'extreme';
+  return (
+    <td className={`right mono mcap-ps${stateClass}`} title={extreme ? undefined : ps.note ?? undefined}>
+      {ps.text}
+      {ps.marker && (
+        <span
+          className={extreme ? 'mcap-ps-extreme' : 'mcap-ps-marker'}
+          title={extreme ? ps.note ?? undefined : undefined}
+        >
+          {ps.marker}
+        </span>
+      )}
+    </td>
+  );
 }
 
 export default function MarketCapTable({ data }: { data: MarketCapData }) {
-  const { rows, pure_player_total_usd } = data;
+  const { rows, pure_player_total_usd, pure_player_excluded } = data;
 
   // Footnotes dans l'ordre d'apparition des lignes (tri market cap DESC)
   const footnoteTickers = rows.filter(r => TICKER_NOTES[r.ticker]).map(r => r.ticker);
@@ -73,72 +68,91 @@ export default function MarketCapTable({ data }: { data: MarketCapData }) {
 
       <div className="chart-container" style={{ padding: 0 }}>
 
-        {/* Encart total pure-players */}
+        {/* Encart total pure-players — HORS des deux vues : visible dans les deux */}
         <div className="mcap-summary">
           <span className="mcap-summary-label">{t.secteur.totalPurePlayers.libelle}</span>
           <span className="mcap-summary-value">{formatMarketCap(pure_player_total_usd)}</span>
-          <span className="mcap-summary-note">{t.secteur.totalPurePlayers.note}</span>
+          <span className="mcap-summary-note">
+            {t.secteur.totalPurePlayers.note}
+            {/* Un total qui tait ce qu'il n'a pas pu compter se présente comme
+                exhaustif sans l'être. Les exclus sont nommés, pas sous-entendus. */}
+            {pure_player_excluded.length > 0 && (
+              <>
+                {' · '}
+                {t.secteur.totalPurePlayers.exclusPrefix} {pure_player_excluded.join(' · ')}{' '}
+                {t.secteur.totalPurePlayers.exclusSuffixe}
+              </>
+            )}
+          </span>
         </div>
 
-        {/* Tableau des 12 sociétés */}
-        <div className="table-wrapper">
-          <table className="holdings-table">
-            <thead>
-              <tr>
-                <th>{t.secteur.colonnes.societe}</th>
-                <th>{t.secteur.colonnes.ticker}</th>
-                <th className="right">{t.secteur.colonnes.cours}</th>
-                <th className="right">{t.secteur.colonnes.capitalisation}</th>
-                <th className="right">{t.secteur.colonnes.ps}</th>
-                <th className="right">{t.secteur.colonnes.jour}</th>
-                <th className="right">{t.secteur.colonnes.semaine}</th>
-                <th className="right">{t.secteur.colonnes.mois}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(row => {
-                const stale = isStale(row.shares_date);
-                const note = TICKER_NOTES[row.ticker];
-                const modality = TICKER_MODALITIES[row.ticker];
-                // Fraîcheur du nb d'actions : déplacée en infobulle sur la market cap
-                const mcapTitle =
-                  `${t.secteur.actionsTooltip} ${formatDateCompact(row.shares_date)}` +
-                  (stale ? ` ${t.secteur.actionsTooltipStale}` : '');
-                const ficheHref = `/societe/${row.ticker.toLowerCase()}`;
-                return (
-                  <tr key={row.ticker}>
-                    <td className="name">
-                      <a
-                        href={ficheHref}
-                        className="mcap-fiche-link"
-                        aria-label={`${t.societe.lienFicheAria} ${row.name}`}
-                        data-umami-event="clic-fiche-societe"
-                        data-umami-event-ticker={row.ticker}
-                      >
-                        {row.name}
-                      </a>
-                      {modality && <span className="tech-tag">{modality}</span>}
-                      {note && <sup className="mcap-fn-marker">{note.marker}</sup>}
-                    </td>
-                    <td className="ticker">
-                      <a href={ficheHref} className="mcap-fiche-link" tabIndex={-1} aria-hidden="true">
-                        {row.ticker}
-                      </a>
-                    </td>
-                    <td className="right mono">${row.adj_close.toFixed(2)}</td>
-                    <td className="right mono mcap-mcap-cell" title={mcapTitle}>
-                      {stale && <span className="mcap-stale-icon" aria-hidden="true">⚠ </span>}
-                      {formatMarketCap(row.market_cap_usd)}
-                    </td>
-                    <PsCell row={row} />
-                    <ChangeCell value={row.change_1d} />
-                    <ChangeCell value={row.change_1w} alert={row.change_1w_extreme} />
-                    <ChangeCell value={row.change_1m} />
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        {/* D4 — deux arbres DOM, le CSS choisit lequel s'affiche (idiome déjà
+            retenu pour ThemeToggle). Aucun flash d'hydratation, et l'arbre caché
+            par `display:none` sort de l'ordre de tabulation : pas de piège clavier. */}
+        <div className="mcap-desktop">
+          <div className="table-wrapper">
+            <table className="holdings-table">
+              <thead>
+                <tr>
+                  <th>{t.secteur.colonnes.societe}</th>
+                  <th>{t.secteur.colonnes.ticker}</th>
+                  <th className="right">{t.secteur.colonnes.cours}</th>
+                  <th className="right">{t.secteur.colonnes.capitalisation}</th>
+                  <th className="right">{t.secteur.colonnes.ps}</th>
+                  <th className="right">{t.secteur.colonnes.jour}</th>
+                  <th className="right">{t.secteur.colonnes.semaine}</th>
+                  <th className="right">{t.secteur.colonnes.mois}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(row => {
+                  const { stale } = sharesFreshness(row);
+                  const mcap = marketCapPresentation(row);
+                  const note = TICKER_NOTES[row.ticker];
+                  const modality = TICKER_MODALITIES[row.ticker];
+                  const ficheHref = `/societe/${row.ticker.toLowerCase()}`;
+                  return (
+                    <tr key={row.ticker}>
+                      <td className="name">
+                        <a
+                          href={ficheHref}
+                          className="mcap-fiche-link"
+                          aria-label={`${t.societe.lienFicheAria} ${row.name}`}
+                          data-umami-event="clic-fiche-societe"
+                          data-umami-event-ticker={row.ticker}
+                        >
+                          {row.name}
+                        </a>
+                        {modality && <span className="tech-tag">{modality}</span>}
+                        {note && <sup className="mcap-fn-marker">{note.marker}</sup>}
+                      </td>
+                      <td className="ticker">
+                        <a href={ficheHref} className="mcap-fiche-link" tabIndex={-1} aria-hidden="true">
+                          {row.ticker}
+                        </a>
+                      </td>
+                      <td className="right mono">${row.adj_close.toFixed(2)}</td>
+                      <td className="right mono mcap-mcap-cell" title={mcap.note ?? undefined}>
+                        {stale && <span className="mcap-stale-icon" aria-hidden="true">⚠ </span>}
+                        {mcap.text}
+                        {mcap.marker && (
+                          <sup className="mcap-fn-marker" aria-hidden="true">{mcap.marker}</sup>
+                        )}
+                      </td>
+                      <PsCell row={row} />
+                      <ChangeCell value={row.change_1d} />
+                      <ChangeCell value={row.change_1w} alert={row.change_1w_extreme} />
+                      <ChangeCell value={row.change_1m} />
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="mcap-mobile">
+          <MarketCapMobileList rows={rows} />
         </div>
 
         {/* Notes de bas de tableau dynamiques */}

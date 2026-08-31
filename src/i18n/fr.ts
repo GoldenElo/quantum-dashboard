@@ -120,6 +120,29 @@ export const fr = {
     totalPurePlayers: {
       libelle: 'Capitalisation totale pure-players',
       note: 'Hors Alphabet · IBM (géants diversifiés)',
+      // Le total annonce ce qu'il n'a PAS pu compter — sinon il se présenterait
+      // comme exhaustif en ne l'étant pas. Suffixé de la liste des tickers exclus.
+      exclusPrefix: 'Hors',
+      exclusSuffixe: '— capitalisation non disponible',
+    },
+    // Société cotée dont AUCUN dépôt ne publie encore le décompte d'actions
+    // (fusion SPAC aux rachats non divulgués). La ligne reste affichée, avec la
+    // capitalisation et le P/S à « — » : on signale l'absence, on ne masque pas
+    // la société. Cas PSQL (Pasqal) depuis le 28/08/2026.
+    capiIndisponible: {
+      // ⚠ Le glyphe DOIT exister dans src/assets/fonts/IBMPlexSans-SemiBold.ttf :
+      // il est rendu dans les images OG, où satori n'a que cette police embarquée.
+      // Un glyphe absent déclenche un téléchargement réseau qui échoue au build
+      // (« Failed to download dynamic font. Status: 400 ») — c'est ce qui a écarté
+      // '◦' (U+25E6, non couvert). '¶' poursuit la série de renvois * † §.
+      marker: '¶',
+      note:
+        "Décompte d'actions post-fusion non encore publié — capitalisation indisponible. " +
+        "Le nombre d'actions retourné par les fournisseurs de données est une hypothèse de " +
+        "prospectus (scénario de rachat maximal), pas un relevé : il serait minoré de " +
+        "jusqu'à 13,7 %. Le chiffre sera publié dans un prochain dépôt 6-K ou 20-F.",
+      // Version courte, pour la légende sous le Mur et sous le tableau.
+      court: "capitalisation indisponible — décompte d'actions post-fusion non publié",
     },
     disclaimer: "Capitalisations indicatives, calculées sur le dernier nombre d'actions connu. À titre informatif.",
     // Infobulle sur la capitalisation : transparence sur la fraîcheur du nombre d'actions
@@ -128,6 +151,18 @@ export const fr = {
     // Infobulle sur une variation hebdomadaire exceptionnelle (anti-hype)
     variationExceptionnelle:
       'Variation exceptionnelle — forte volatilité, cotation récente (SPAC). À interpréter avec prudence.',
+    // ── D4 — vue mobile (sous 960px) : trois colonnes + détail au tap ──
+    // Les libellés du panneau réutilisent `colonnes.*` ; seuls les textes propres
+    // à l'interaction tactile vivent ici. Aucune infobulle sur mobile : ce qui est
+    // un `title=` sur desktop devient un texte visible dans le panneau déplié.
+    mobile: {
+      hint: 'Touchez une ligne pour afficher le détail',
+      // aria-label du bouton de ligne — le nom de la société est concaténé après.
+      detailAriaPrefix: 'Afficher le détail de',
+      actions: "Nombre d'actions",
+      actionsSourcePrefix: 'source :',
+      voirFiche: 'Voir la fiche →',
+    },
   },
   // Fiches sociétés /societe/[ticker] (C2) — pages SEO, destination des intégrations mi-vidéo.
   societe: {
@@ -165,6 +200,13 @@ export const fr = {
         'En l’absence d’historique du nombre d’actions, le nombre courant est appliqué rétroactivement — ' +
         'approximation à des fins de tendance, non un relevé historique du flottant.',
       insuffisant: 'Historique insuffisant pour tracer une courbe (cotation trop récente).',
+      // Motif DISTINCT de `insuffisant` : ici ce n'est pas l'historique de cours qui
+      // manque, c'est le décompte d'actions — donc la capitalisation elle-même n'est
+      // calculable à AUCUNE date. Afficher « cotation trop récente » désignerait la
+      // mauvaise cause et laisserait croire que le temps seul réglera la question.
+      sansActions:
+        'Capitalisation non calculable : le décompte d’actions postérieur à la fusion n’est '
+        + 'publié dans aucun dépôt à ce jour. La courbe apparaîtra dès sa publication.',
       serieLabel: 'Capitalisation',
     },
     // Bloc de curation éditoriale — mis en avant (différenciation).
@@ -536,6 +578,14 @@ export const TICKER_NOTES: Record<string, { marker: string; text: string }> = {
     marker: '†',
     text: 'profil à risque élevé — reverse split 25:1 (sept. 2024) pour conformité Nasdaq, voir analyse quantum washing',
   },
+  PSQL: {
+    marker: '¶',
+    text:
+      "cotée depuis le 28 août 2026 (fusion SPAC avec Bleichroeder Acquisition Corp. II) — " +
+      "le décompte d'actions postérieur à la fusion n'est publié dans aucun dépôt à ce jour, " +
+      "la capitalisation et le P/S ne sont donc pas calculés. Chiffre d'affaires de l'exercice " +
+      "2025 converti d'euros en dollars : ce n'est pas un TTM et il n'est pas recoupable",
+  },
   IQMX: {
     marker: '§',
     text:
@@ -568,6 +618,7 @@ export const TICKER_VIDEO_URL: Record<string, string> = {
   XNDU:  VIDEO_PLAYLIST_URL,
   HQ:    VIDEO_PLAYLIST_URL,
   ARQQ:  VIDEO_PLAYLIST_URL,
+  PSQL:  VIDEO_PLAYLIST_URL, // vidéo dédiée en préparation
 }
 
 // Modalités technologiques par ticker — badge affiché après le nom de société.
@@ -575,4 +626,5 @@ export const TICKER_VIDEO_URL: Record<string, string> = {
 export const TICKER_MODALITIES: Record<string, string> = {
   XNDU: 'photonique',
   IQMX: 'supraconducteur',
+  PSQL: 'atomes neutres',
 }

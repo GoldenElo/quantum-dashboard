@@ -164,6 +164,20 @@ Tâches à déclencher sur événement externe, pas sur une cadence. Une surchar
 **instantané** : elle ne vieillit pas toute seule, c'est à nous de la retirer quand la source
 automatique redevient fiable. Une surcharge oubliée fige un chiffre périmé sans jamais alerter.
 
+- **PSQL — décompte d'actions post-fusion : SURVEILLER CHAQUE 6-K, puis le 20-F.**
+  **Échéance sur événement, pas sur date** : le premier dépôt de Pasqal Holding SA publiant le
+  **capital social effectif** (nombre d'actions ordinaires en circulation après rachats) débloque
+  d'un coup la **capitalisation**, le **P/S** et la **tuile du Mur**. Surveiller
+  [EDGAR CIK 0002119292](https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0002119292&type=6-K&dateb=&owner=include&count=40).
+  Candidats : 6-K de résultats S1 2026, 6-K « total number of voting rights and shares », ou 20-F.
+  **CONTRÔLE DE COHÉRENCE OBLIGATOIRE — contre le PRIX D'OPÉRATION de 10,00 $, JAMAIS le cours.**
+  La valorisation annoncée (~2 Md$) est l'equity Pasqal au prix d'offre du SPAC : 200 000 000 ×
+  10 $ = 2,000 Md$. Un décompte plausible doit donner `actions × 10 $ ≈ 2,1–2,4 Md$`. Rapporté au
+  **cours**, le test échouerait sans que rien ne soit faux : le titre a clôturé à 19,11 $ le
+  premier jour (+91 % sur le prix d'opération), soit une capi de marché ~2× la valo d'opération.
+  Attendu dans **[209 583 333 ; 238 333 333]** — hors de cette fourchette, re-vérifier le dépôt
+  avant d'écrire quoi que ce soit. Retirer alors la note `¶` et `t.secteur.capiIndisponible`.
+
 - **IQMX — première publication de résultats (S1 2026, attendue ~août-septembre 2026).**
   Retirer la surcharge CA d'`_MANUAL_OVERRIDES` (`fetch_revenue.py`) **si et seulement si** les deux
   conditions sont réunies : (a) yfinance déclare enfin `financialCurrency`, et (b) 4 trimestres
@@ -176,9 +190,15 @@ automatique redevient fiable. Une surcharge oubliée fige un chiffre périmé sa
   rebalancement et fait **entrer QNT** (30 séances franchies le ~17/07) → 10 constituants. Rien à
   faire à la main ; **vérifier** le lendemain avec `cd scripts && python3 check_index.py` que la
   continuité est nulle et que les 4 contrôles durs passent.
-- **Indice TQW — rebalancement du 2026-11-02 (lundi).** **Entrée attendue d'IQMX** (21 séances au
-  31/07/2026, donc insuffisant en août ; le seuil de 30 sera franchi mi-août). Vérifier avec
-  `check_index.py` que la section « HORS UNIVERS » l'annonce bien éligible avant l'échéance.
+- **Indice TQW — rebalancement du 2026-11-02 (lundi). ⚠ DOUBLE ENTRÉE ATTENDUE : IQMX + PSQL.**
+  **IQMX** (21 séances au 31/07/2026, donc insuffisant en août ; seuil de 30 franchi mi-août) et
+  **PSQL** (cotée le 28/08/2026 → 30e séance vers la **mi-octobre 2026**) deviennent éligibles
+  ensemble. L'indice passerait de 10 à **12 constituants**. Vérifier avec `check_index.py` que la
+  section « HORS UNIVERS » les annonce bien éligibles avant l'échéance.
+  ⚠ **PSQL n'entre que si une ligne `shares_outstanding` existe à cette date** : la pondération est
+  par capitalisation totale, et `index_tqw.py` **exclut avec alerte** tout constituant sans actions
+  connues. Si le décompte n'est toujours pas publié le 02/11, PSQL est écartée du rebalancement —
+  comportement correct, à ne pas contourner par une valeur supposée.
 - **QNT — à chaque cron trimestriel.** La surcharge Up-C (322 M actions) est contredite en
   permanence par yfinance (~31 M, flottant Class A seul) : l'alerte est **normale**. Ne l'aligner
   sur yfinance sous aucun prétexte — ce serait diviser la capitalisation par dix.
@@ -260,7 +280,7 @@ Chaque colonne doit sommer à 100 % — vérifier par un test.
 **Ne jamais inclure QQQ dans les portefeuilles, les snapshots, ni les agrégats sectoriels futurs.**
 C'est une référence de marché d'affichage uniquement — en base : `asset.category = 'etf'`.
 
-## Univers sectoriel (suivi market cap — 13 sociétés)
+## Univers sectoriel (suivi market cap — 14 sociétés)
 
 Tickers suivis dans `price_daily` et `shares_outstanding` pour le tableau de market cap (S1/S4).
 Distinct des portefeuilles : aucune de ces sociétés ne peut être ajoutée à un portefeuille après l'inception.
@@ -280,6 +300,7 @@ Distinct des portefeuilles : aucune de ces sociétés ne peut être ajoutée à 
 | ARQQ | Arqit Quantum | pure_player | ⚠ **quantum washing documenté** — voir note ci-dessous |
 | HQ | Horizon Quantum Holdings | pure_player | fusion SPAC dMY Squared, cotation ~20/03/2026 |
 | IQMX | IQM Quantum Computers | pure_player | modalité SUPRACONDUCTEUR — fusion SPAC RAAQ, cotation 02/07/2026 — voir note ci-dessous |
+| PSQL | Pasqal | pure_player | modalité ATOMES NEUTRES — fusion SPAC Bleichroeder II, cotation 28/08/2026 — voir note ci-dessous |
 
 **NVDA (infrastructure)** : dans les portefeuilles, pas dans l'univers sectoriel pure-player.
 
@@ -303,6 +324,22 @@ La ligne 424B4 du 05/06 à 322 M **reste en base** (historique jamais supprimé,
 capitalisation et à C7) ; elle est simplement **supersédée** par l'`as_of_date` plus récente.
 Corollaire : l'écart yfinance ↔ surcharge passe de ~-90 % à **~-86 %** (flottant Class A ≈ 14 %) —
 l'alerte « contredit surcharge » reste **normale et permanente**, ne jamais l'aligner sur yfinance.
+
+**RÈGLE DURE — UNE SOCIÉTÉ COTÉE NE DISPARAÎT JAMAIS EN SILENCE (posée le 2026-08-31).**
+`fetchMarketCapsData` (api.ts) faisait `continue` sur toute société sans ligne
+`shares_outstanding` : elle sortait alors du tableau, du Mur, de l'agrégat pure-players et de
+l'image OG **sans un mot**. Tant que chaque ticker avait ses actions en base, le défaut était
+invisible ; PSQL l'a révélé. Désormais **seule l'absence totale de cours** exclut une ligne —
+sans cours il n'y a rien à dire. Un décompte d'actions manquant donne une ligne rendue avec
+capitalisation et P/S à « — », marqueur `¶` et note de méthode. Corollaires, tous à préserver :
+`MarketCapRow.shares/shares_date/shares_source/market_cap_usd` sont **nullables** ; le tri place
+les capitalisations inconnues en fin de liste (elles ne peuvent être ni classées, ni classées en
+tête) ; l'agrégat pure-players **nomme les sociétés qu'il n'a pas pu compter**
+(`pure_player_excluded`) au lieu de se présenter comme exhaustif ; la **treemap** les écarte du
+dessin — une tuile EST une surface, aucune taille ne peut être choisie sans mentir sur l'ordre de
+grandeur — mais les **nomme juste en dessous** ; l'image OG les compte dans le « + N autres
+pure-players » pour que la troncature reste annoncée. `marketCapPresentation()` est la **source
+unique** de cette décision (desktop et mobile), au même titre que `psPresentation`.
 
 **Note ARQQ — quantum washing :**
 Arqit Quantum (ARQQ, Nasdaq NCM) est un cas documenté de quantum washing — la chaîne lui consacre
@@ -338,6 +375,51 @@ ferme que le jour où 4 trimestres publiés sont recoupables.
 
 **Migration 006** (`supabase/migrations/006_add_xndu_arqq_hq.sql`) : ajoute XNDU, ARQQ, HQ dans
 `asset` (idempotent — ON CONFLICT DO NOTHING). À appliquer avant tout backfill de ces tickers.
+
+**Note PSQL — deux pièges documentés (société française, ex-SPAC) :**
+Pasqal Holding SA (Palaiseau), **deuxième** société européenne du quantique cotée sur une grande
+place US après IQMX. Fusion SPAC avec **Bleichroeder Acquisition Corp. II** (Nasdaq : BBCQ)
+approuvée le 25/08/2026, closing le 27/08, première cotation le **28/08/2026**. SEC CIK
+**0002119292**. Émetteur privé étranger → dépôts **6-K / 20-F**, jamais 10-Q/10-K.
+Titre coté = action ordinaire (par valeur 0,02 €), pas d'ADS. `PSQLW` (warrants) **hors périmètre**.
+⚠ **NE JAMAIS ÉCRIRE « IPO »** : c'est une fusion SPAC, le 6-K de clôture est explicite.
+
+1. **Historique fantôme** (identique à IQMX/RAAQ et HQ/dMY). yfinance sert sous `PSQL` les
+   **149 séances du SPAC Bleichroeder** depuis le 28/01/2026 (~9,95 $ = valeur de trust).
+   Borné par `TICKER_FIRST_TRADE['PSQL'] = 2026-08-28` (ingest.py, backfill.py,
+   backfill_shares_history.py) et `SECTORAL_FIRST_TRADE` (backfill_sectoral.py, qui **filtre à
+   l'écriture**). Vérifié au backfill du 31/08/2026 : **147 séances écartées**, base = 2 séances
+   (28/08 et 31/08), la plus ancienne au 28/08. Conséquence assumée : Semaine/Mois/Année à `—`.
+
+2. **⛔ LE NOMBRE D'ACTIONS yfinance EST UNE HYPOTHÈSE, PAS UN RELEVÉ — piège inédit.**
+   yfinance retourne `sharesOutstanding = 209 583 333`. Ce chiffre est repris **tel quel du
+   prospectus 424B3 du 05/08/2026**, où il désigne explicitement le **scénario de RACHAT MAXIMAL** :
+   « *…issued and outstanding immediately after the consummation… will be (i) assuming a no
+   redemption scenario, **238,333,333** and (ii) assuming a scenario of maximum redemptions…,
+   **209,583,333*** ». Le nombre réel dépend des rachats effectifs et vit dans
+   **[209 583 333 ; 238 333 333]** — amplitude **13,7 %**. **AUCUN document déposé ne le publie** :
+   le 6-K de clôture ne contient aucun décompte, les 425 des 21/24/25-08 ne publient aucun résultat
+   de rachat, et le XBRL du CIK ne contient que le namespace `ffd` (frais de dépôt).
+   → **AUCUNE ligne `shares_outstanding` n'est écrite.** Capitalisation et P/S affichés « — »,
+   marqueur `¶`, note de méthode. Écrire 209 583 333 publierait une capi **minorée de jusqu'à
+   13,7 %** en la présentant comme sourcée — c'est la faute QNT à l'envers, et elle survivrait à
+   la relecture. Ce n'est pas une donnée partielle, c'est une **hypothèse de prospectus**.
+
+**P/S PSQL non ferme (`‡`) et non calculable pour l'instant :** CA surchargé à **16 468 000 EUR**,
+exercice clos au 31/12/2025 (424B3 du 05/08/2026, MD&A « Total revenue € 16,468 » en milliers,
+recoupé par « *Pasqal's revenue was €16.4 million for the year ended December 31, 2025* »).
+`financialCurrency = None` et `totalRevenue = None` → `fetch_revenue.py` **refuse la ligne**
+(RÈGLE DEVISE) et la surcharge prend le relais, comme IQMX. `quarters_used = 0` → statut
+`unrecouped` → marqueur `‡`. Tant qu'il n'y a pas de capitalisation, le P/S reste « — » :
+la surcharge prépare le **dénominateur**, pas le ratio.
+
+**Liquidités PSQL — non publiables :** le communiqué de clôture annonce « *approximately
+$360 million of cash available at closing* » (EX-99.1 du 6-K). Aucun bilan déposé, aucun XBRL →
+le **contrôle croisé bloquant à ±10 %** de C7 est impossible → aucune ligne `company_financials`,
+aucun runway. Conforme à la doctrine (pas d'ancre, pas de publication).
+
+**Migration 014** (`supabase/migrations/014_add_psql.sql`) : ajoute PSQL dans `asset`
+(idempotent — ON CONFLICT DO NOTHING). À appliquer avant tout backfill de ce ticker.
 
 **Migration 009** (`supabase/migrations/009_add_iqmx.sql`) : ajoute IQMX dans `asset`
 (idempotent — ON CONFLICT DO NOTHING). À appliquer avant tout backfill de ce ticker.
@@ -458,6 +540,12 @@ ferme que le jour où 4 trimestres publiés sont recoupables.
     branché en étape 5 de `ingest.py`, backfill + tableau de contrôle, page `/indice` avec
     méthodologie publiée (`docs/methodologie-indice-tqw.fr.md`). **Voir la section C3 détaillée
     dans la Phase Croissance** pour les règles dures et le calendrier des rebalancements.
+
+**Univers sectoriel porté à 14 sociétés le 2026-08-31 : ajout de PSQL (Pasqal Holding SA) —
+migration 014, `TICKER_FIRST_TRADE`/`SECTORAL_FIRST_TRADE` contre l'historique fantôme Bleichroeder
+(147 séances écartées), surcharge CA en EUR (16 468 000 €), AUCUNE ligne `shares_outstanding` (le
+chiffre yfinance est une hypothèse de prospectus), événement C6 de cotation, entrée à l'indice
+reportée au rebalancement du 02/11/2026 conjointement avec IQMX.**
 
 **Univers sectoriel porté à 13 sociétés le 2026-07-22 : ajout d'IQMX (IQM Quantum Computers) —
 migration 009, `TICKER_FIRST_TRADE`/`SECTORAL_FIRST_TRADE` contre l'historique fantôme RAAQ,
@@ -728,10 +816,46 @@ la **sobriété est le moat**. Toute proposition visuelle qui « fait crypto » 
   pas là, mais dans les couleurs **codées en dur hors CSS** : Recharts (grilles, axes,
   infobulles, légendes), rampe de la treemap, couleurs de camembert, et les `#ffffff` posés sur
   les aplats teal. C'est là que se cachait le « mode sombre à moitié appliqué ».
-- **D4 — Refonte mobile du tableau (bloquant avant toute campagne d'audience).** Colonnes
-  essentielles + détail au tap, **remplace le swipe** actuel. **Prérequis dur** : ne lancer
-  aucune campagne d'audience (C5, intégrations mi-vidéo) tant que l'expérience mobile du tableau
-  n'est pas refaite — l'audience YouTube/X est majoritairement mobile.
+- **D4 — Refonte mobile du tableau.** ✅ **RÉALISÉE (2026-08-30).** Le tableau des
+  capitalisations bascule **sous 960 px** en fiches dépliables : trois colonnes essentielles
+  (Société · Capitalisation · Var. jour) et le reste **au tap** dans un panneau accordéon.
+  Le défilement horizontal est supprimé. Levait le **prérequis dur** qui bloquait toute campagne
+  d'audience (C5, intégrations mi-vidéo) — l'audience YouTube/X est majoritairement mobile.
+  Fichiers : `MarketCapMobileList.tsx` (seul composant client du lot),
+  `src/lib/marketCapPresentation.ts` (règles d'affichage partagées), `src/lib/umami.ts`.
+
+  **RÈGLES DURES — ne jamais « re-simplifier » :**
+  - **Le seuil est 960 px, et c'est celui d'`EtfTable`.** C'est le seul autre tableau à
+    8 colonnes du site, et il bascule déjà en fiches à 960 px avec le raisonnement écrit dans
+    `globals.css` (« un tableau qui se balaie latéralement masque la moitié des colonnes »).
+    **Une règle, deux tableaux.** À 900 px on aurait ouvert une bande 900–960 où l'un est en
+    fiches et l'autre en tableau, sans explication possible. Ne pas réintroduire un seuil propre.
+  - **Deux arbres DOM, le CSS choisit — pas de `matchMedia`.** Le `<table>` desktop et la liste
+    mobile coexistent ; `display:none` en masque un. Idiome déjà retenu pour `ThemeToggle`
+    (les deux icônes dans le DOM) : **aucun flash d'hydratation**, le HTML initial est juste dans
+    les deux cas, et l'arbre caché sort de l'ordre de tabulation → pas de piège clavier. Le
+    markup desktop est **strictement inchangé**, `clic-fiche-societe` compris.
+  - **AUCUNE infobulle sur mobile.** Le survol n'existe pas au doigt. Tout ce qui est un `title=`
+    sur desktop (états P/S ⚠/‡/n.s., variation exceptionnelle ⚑, fraîcheur des actions) devient
+    un **texte visible** dans le panneau. Pas de tap-to-reveal : une seconde divulgation à
+    l'intérieur d'un accordéon est un piège, et le panneau est déjà un geste explicite.
+  - **`src/lib/marketCapPresentation.ts` est la SOURCE UNIQUE des règles d'affichage.** Les six
+    états P/S et la fraîcheur du nombre d'actions y sont décidés une fois ; desktop et mobile ne
+    font que les baliser différemment. Sans ça la vue mobile aurait été une deuxième copie des
+    seuils — exactement la divergence que la centralisation d'`isStale` (C7) a évité.
+  - **Le ⚠ de fraîcheur est visible AVANT le dépliage**, sur la ligne repliée, à côté de la
+    capitalisation. Signaler sans masquer : un avertissement de qualité de donnée ne se cache pas
+    derrière une interaction. Son explication, elle, est dans le panneau.
+  - **Événement Umami `depli-ligne-mobile`** (propriété `ticker`), émis **à l'ouverture
+    SEULEMENT**. C'est la raison d'être du composant client : `<details name>` donnait
+    l'accordéon exclusif sans une ligne de JS, mais `data-umami-event` sur un `<summary>` se
+    déclenche aussi à la fermeture → métrique gonflée ~×2, **silencieusement**. Rejeté au titre
+    de « un chiffre faux est pire qu'un chiffre absent ». Seule exception à la convention de
+    nommage `clic-*` : déplier n'est pas un clic sortant.
+  - **`formatShares` ≠ `formatQty`.** Un nombre d'actions est un entier ; `formatQty` (2 à 4
+    décimales) sert aux quantités de portefeuille, fractionnaires par construction (19,7722
+    GOOGL en PER). « 5 867 155 790,00 actions » est une fausse précision au centième d'action.
+    La copie locale qu'en portait `DilutionSection` est supprimée au profit de `format.ts`.
 
 ### C1 — Mesure (prérequis de tout) — ✅ RÉALISÉE
 
@@ -759,6 +883,10 @@ justification commerciale de toutes les briques suivantes — c'est le prérequi
     (`SiteHeader.tsx`, `IndexHomeBanner.tsx`). Mesure l'attrait de l'IP propriétaire (C3).
   - `clic-theme` — bascule clair / sombre (`ThemeToggle.tsx`, D3). Mesure l'usage réel du
     mode sombre : sans ce chiffre, on ne saura jamais si la brique méritait son coût.
+  - `depli-ligne-mobile` — dépliage d'une ligne du tableau des capitalisations en vue mobile
+    (`MarketCapMobileList.tsx`, D4), propriété `ticker`. Émis **à l'ouverture seulement**.
+    Seul événement non préfixé `clic-` : ce n'est pas un clic sortant. Mesure quelles sociétés
+    intriguent assez, sur mobile, pour qu'on aille chercher le détail.
 - **RÈGLE DE CESSION (dure)** : **exporter les données Umami avant tout changement d'outil
   d'analytics**. La continuité de la courbe d'audience est un **actif du dossier de cession**
   (thèse d'acquisition — audience mesurée et possédée). Une rupture d'historique détruit
@@ -964,6 +1092,16 @@ Nom définitif : **Indice TQW** (le nom de travail « Indice IQ » est abandonn�
   librement** avec les cours et peuvent dépasser 25 %. C'est **voulu** : un indice qui réécrête en
   continu est un portefeuille géré, pas un indice. La page affiche les DEUX colonnes (poids au
   rebalancement / poids courant) côte à côte — l'écart doit être lisible, jamais dissimulé.
+- **⚠ `backfill_sectoral.py` EST UN VECTEUR DE RÉTROACTIVITÉ (constaté le 2026-08-31).** Il
+  **réécrit `adj_close` sur TOUT l'historique**, pas seulement les dates manquantes. Si yfinance
+  a révisé un cours passé, la révision entre en base et le recalcul de l'indice ne reproduit plus
+  la série publiée. Constaté après le backfill d'ajout de PSQL : dérive sur **2 séances sur 63**
+  (2026-08-06 : +2,00 point ; 2026-08-14 : +0,001), les 61 autres à l'identique. `index_daily`
+  n'a **pas** été touché et les 3 autres contrôles durs passent — le garde-fou a fonctionné comme
+  prévu : il **signale, il n'écrase pas**. **NE JAMAIS « corriger » par `backfill_index.py
+  --rebuild`** : ce serait réécrire une série publiée pour la faire coller à une donnée révisée,
+  exactement ce que la non-rétroactivité interdit. Le réflexe correct est d'identifier le cours
+  révisé AVANT de relancer un backfill complet, ou de se limiter aux dates manquantes.
 - **NON-RÉTROACTIVITÉ.** Une valeur publiée n'est **jamais** recalculée. Un split réécrit
   `adj_close` rétroactivement et une surcharge SEC peut être rétro-datée ; ni l'un ni l'autre ne
   doit altérer la série publiée. Les scripts n'écrivent que les dates manquantes ;
@@ -1004,7 +1142,7 @@ Nom définitif : **Indice TQW** (le nom de travail « Indice IQ » est abandonn�
 |---|---|
 | 2026-06-01 | Lancement — **9 constituants**, base 100, diviseur 3,47223e+08. Écrêtées : IONQ (47,94 % brut → 25 %), QBTS (19,87 % → 25 %) |
 | **2026-08-03** | Entrée de **QNT** (30 séances franchies le ~17/07) → 10 constituants. Le 1er août est un samedi |
-| **2026-11-02** | Entrée attendue d'**IQMX** (21 séances au 31/07, insuffisant en août) |
+| **2026-11-02** | **Double entrée attendue : IQMX + PSQL** (IQMX 21 séances au 31/07 ; PSQL cotée le 28/08, 30e séance ~mi-octobre) → 12 constituants. ⚠ PSQL n'entre que si son décompte d'actions est publié d'ici là |
 
 ⚠ **QNT n'était PAS au lancement** : son IPO (04/06/2026) est postérieure de 3 jours à la date de
 base. Aucune exception n'a été ajoutée — la règle des 30 séances produit ce résultat d'elle-même.
@@ -1062,6 +1200,15 @@ fidélité de la treemap** ; `/mur` reste la vue exacte. Conséquence : **C4 ne 
   **`satori` ne lit ni woff2 ni EOT.** Piège vécu : l'API CSS legacy de Google Fonts sert de l'**EOT**
   avec un User-Agent ancien — `file` annonce quand même « IBM Plex Sans SemiBold » et la génération
   échoue. Vérifier les octets de tête : `xxd -p -l4 fichier.ttf` doit donner `00010000`.
+- **Tout glyphe affiché sur une carte OG doit EXISTER dans la police embarquée.**
+  `IBMPlexSans-SemiBold.ttf` ne couvre que 895 points de code. Un glyphe absent ne dégrade pas :
+  satori tente un **téléchargement de police à la volée**, qui échoue au build
+  (« *Failed to download dynamic font. Status: 400* ») — exactement ce que l'embarquement en
+  fichier était censé éliminer. Les marqueurs de `TICKER_NOTES` sont rendus sur les fiches OG :
+  `*` `†` `§` `¶` `‡` `·` `•` `◊` `°` sont couverts ; **`◦` `∘` `‖` `⚠` `⚑` ne le sont pas**
+  (⚠ et ⚑ ne vivent que dans le HTML, jamais dans une image OG — ne pas les y introduire).
+  Vérifier avant d'ajouter un marqueur : lire la table `cmap` du `.ttf`, ne pas se fier à l'œil.
+  Attrapé au build lors de l'ajout de PSQL, où `◦` avait été retenu d'abord.
 - **`outputFileTracingIncludes` pour les trois routes** (`next.config.ts`) — sans quoi le `.ttf`
   n'est pas dans le bundle serverless Netlify (même raison que `docs/` pour `/indice`).
 - **Casse des params identique à la page.** Les URLs de fiches sont en **minuscules** : un
