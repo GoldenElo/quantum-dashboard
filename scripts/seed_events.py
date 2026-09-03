@@ -232,19 +232,34 @@ EVENTS = [
         "source_url": "https://www.globenewswire.com/news-release/2026/09/02/3355080/0/en/pasqal-and-true-nexus-open-a-new-quantum-frontier-for-the-global-protein-economy.html",
         "source_label": "Communiqué Pasqal du 02/09/2026",
     },
+    # ⚠ RENOMMAGE (2026-09-03) — le titre portait « Le 20-F publie enfin le capital
+    # social post-fusion ». La clé de conflit étant (ticker, event_date, title), ce
+    # changement de titre a laissé un ORPHELIN, supprimé par un DELETE SQL manuel :
+    #   delete from sector_event where ticker = 'PSQL' and event_date = '2026-09-02'
+    #     and title = 'Le 20-F publie enfin le capital social post-fusion';
+    # Motif du renommage : le chiffre dans le titre se lit directement dans la frise.
     {
         "ticker": "PSQL",
         "event_date": "2026-09-02",
+        # `autre` et non `resultats` : un 20-F publie bien des comptes, mais l'événement
+        # documenté ici est la parution d'un DÉCOMPTE D'ACTIONS, pas des résultats.
         "type": "autre",
-        "title": "Le 20-F publie enfin le capital social post-fusion",
+        "title": "Le 20-F publie le capital social : 212 293 691 actions",
         "description": (
             "212 293 691 actions ordinaires en circulation au 27 août 2026 (couverture et "
             "point 10.A du rapport annuel). C'est le PREMIER document déposé à publier ce "
             "chiffre : ni le 6-K de clôture, ni les communications relatives aux rachats ne "
             "le donnaient. Jusque-là, la seule valeur disponible (209 583 333) était "
             "l'hypothèse de rachat maximal du prospectus, la fourchette réelle montant à "
-            "238 333 333 — 13,7 % d'écart. La capitalisation et le ratio cours/chiffre "
-            "d'affaires de Pasqal deviennent calculables à compter de cette publication."
+            "238 333 333 — 13,7 % d'écart. "
+            "C'est pourquoi The Quantum Wall n'a affiché AUCUNE capitalisation pour Pasqal "
+            "du 28 août au 2 septembre : la société figurait dans le tableau, ses cours et "
+            "ses variations étaient publiés, mais capitalisation et ratio cours/chiffre "
+            "d'affaires restaient à « — », faute de source primaire. Reprendre la valeur "
+            "servie par les données de marché aurait affiché une capitalisation minorée, en "
+            "la présentant comme sourcée. L'écart s'est révélé être de 1,3 % seulement, mais "
+            "rien, au moment de choisir, ne permettait de le savoir. Les deux chiffres sont "
+            "calculés et publiés depuis le 3 septembre."
         ),
         "source_url": "https://www.sec.gov/Archives/edgar/data/2119292/000121390026096761/ea0303765-20f_pasqal.htm",
         "source_label": "Rapport annuel 20-F déposé le 02/09/2026",

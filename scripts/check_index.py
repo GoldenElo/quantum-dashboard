@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import os
 import sys
-from datetime import date
+from datetime import date, timedelta
 
 from dotenv import load_dotenv
 from supabase import create_client, Client
@@ -106,6 +106,23 @@ def _next_rebalance(after: date) -> date:
         if month in REBALANCE_MONTHS:
             return date(year, month, 1)
     raise RuntimeError("Calendrier de rebalancement introuvable.")
+
+
+def _remaining_weekdays(start: date, end: date) -> int:
+    """
+    Jours ouvrés entre `start` (exclu) et `end` (exclu) — MAJORANT du nombre de
+    séances encore à venir avant le rebalancement (les fériés US ne sont pas
+    déduits). Sert uniquement à distinguer « peut encore devenir éligible » de
+    « ne le sera pas » : un majorant est le bon sens de l'erreur, il ne promet
+    jamais une éligibilité, il refuse seulement de l'exclure à tort.
+    """
+    n = 0
+    d = start + timedelta(days=1)
+    while d < end:
+        if d.weekday() < 5:
+            n += 1
+        d += timedelta(days=1)
+    return n
 
 
 def main() -> None:
@@ -210,12 +227,25 @@ def main() -> None:
         print()
         print(f"  HORS UNIVERS — prochain rebalancement le 1er {next_reb.strftime('%m/%Y')} "
               f"(1re séance suivante)")
+        # ⚠ `sessions_before` compte les séances DÉJÀ EN BASE, pas celles que la
+        # société aura cotées au rebalancement. Pour une cotation récente, le
+        # compte continue de monter d'ici là : annoncer « non éligible » sur ce
+        # chiffre ferait lire comme acquis un verdict que seule la date du
+        # rebalancement peut rendre. On distingue donc trois états — et on nomme
+        # la date à laquelle le décompte est arrêté (cas PSQL, 03/09/2026 :
+        # 4 séances en base, ~30 franchies à la mi-octobre, rebalancement 02/11).
         for ticker in outsiders:
             n = sessions_before(prices.get(ticker) or {}, next_reb)
-            verdict = ("éligible" if n >= MIN_SESSIONS
-                       else f"non éligible — {MIN_SESSIONS - n} séance(s) manquante(s)")
+            missing = MIN_SESSIONS - n
+            if n >= MIN_SESSIONS:
+                verdict = "éligible"
+            elif missing <= _remaining_weekdays(latest, next_reb):
+                verdict = (f"{missing} séance(s) manquante(s) — atteignable d'ici "
+                           f"le rebalancement, à revérifier alors")
+            else:
+                verdict = f"non éligible — {missing} séance(s) manquante(s)"
             print(f"    {ticker:<7} {names.get(ticker, '?'):<24} "
-                  f"{n:>4} séances à cette date → {verdict}")
+                  f"{n:>4} séances en base au {latest} → {verdict}")
 
     # ── Contrôles ─────────────────────────────────────────────────────────────
     print()

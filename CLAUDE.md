@@ -1253,7 +1253,18 @@ Nom définitif : **Indice TQW** (le nom de travail « Indice IQ » est abandonn�
 |---|---|
 | 2026-06-01 | Lancement — **9 constituants**, base 100, diviseur 3,47223e+08. Écrêtées : IONQ (47,94 % brut → 25 %), QBTS (19,87 % → 25 %) |
 | **2026-08-03** | Entrée de **QNT** (30 séances franchies le ~17/07) → 10 constituants. Le 1er août est un samedi |
-| **2026-11-02** | **Double entrée attendue : IQMX + PSQL** (IQMX 21 séances au 31/07 ; PSQL cotée le 28/08, 30e séance ~mi-octobre) → 12 constituants. ⚠ PSQL n'entre que si son décompte d'actions est publié d'ici là |
+| **2026-11-02** | **Double entrée attendue : IQMX + PSQL** (IQMX : 44 séances en base au 02/09, déjà éligible ; PSQL cotée le 28/08, 30e séance ~mi-octobre) → 12 constituants. ✅ La réserve « si son décompte d'actions est publié » est **levée depuis le 2026-09-03** (20-F, 212 293 691 actions). Ne reste que le décompte de séances |
+
+⚠ **`check_index.py` compte les séances DÉJÀ EN BASE, pas celles à venir** (précision de
+lecture posée le 2026-09-03). La section « HORS UNIVERS » arrête son décompte à la dernière
+clôture ingérée : le 03/09, PSQL y apparaissait avec **4 séances** et un verdict « non
+éligible — 26 manquantes », ce qui se lisait comme un démenti de la double entrée du 02/11
+alors que le compte monte encore de ~40 séances d'ici là. Le libellé dit désormais
+« N séances **en base au <date>** » et distingue un troisième état — « atteignable d'ici le
+rebalancement, à revérifier alors » — calculé sur un **majorant** en jours ouvrés (fériés US
+non déduits). Le sens de l'erreur est délibéré : un majorant ne promet jamais une
+éligibilité, il refuse seulement de l'exclure à tort. Le verdict ferme reste celui du jour du
+rebalancement.
 
 ⚠ **QNT n'était PAS au lancement** : son IPO (04/06/2026) est postérieure de 3 jours à la date de
 base. Aucune exception n'a été ajoutée — la règle des 30 séances produit ce résultat d'elle-même.
