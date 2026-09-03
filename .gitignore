@@ -49,3 +49,7 @@ next-env.d.ts
 
 # Cache disque EDGAR (companyfacts ~1 Mo/société) — regénérable, jamais versionné
 scripts/.edgar_cache/
+
+# Documents personnels déposés à la racine du dépôt (CV, courriers…). Le dépôt
+# est public : rien de nominatif ne doit pouvoir y entrer par un `git add .`.
+/CV_*.pdf
