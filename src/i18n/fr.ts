@@ -683,7 +683,7 @@ export const TICKER_VIDEO_URL: Record<string, string> = {
   XNDU:  VIDEO_PLAYLIST_URL,
   HQ:    VIDEO_PLAYLIST_URL,
   ARQQ:  VIDEO_PLAYLIST_URL,
-  PSQL:  VIDEO_PLAYLIST_URL, // vidéo dédiée en préparation
+  PSQL:  'https://youtu.be/WOYd9sjEXaw',
 }
 
 // Modalités technologiques par ticker — badge affiché après le nom de société.
