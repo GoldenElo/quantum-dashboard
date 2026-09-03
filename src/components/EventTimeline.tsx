@@ -31,7 +31,22 @@ function sourceLabel(ev: SectorEvent): string {
   }
 }
 
-export default function EventTimeline({ events, ticker }: { events: SectorEvent[]; ticker: string }) {
+/**
+ * Un événement de frise. `ticker`/`name` ne sont lus que par /secteur, où la
+ * frise mélange les sociétés : sur une fiche, la société est déjà le sujet de la
+ * page, l'y répéter à chaque ligne serait du bruit.
+ */
+type TimelineEvent = SectorEvent & { ticker?: string | null; name?: string | null };
+
+type Props = {
+  events: TimelineEvent[];
+  /** Valeur de la propriété Umami `ticker` — 'GLOBAL' sur la chronologie sectorielle. */
+  ticker: string;
+  /** Affiche la société (ou « Secteur ») en tête de chaque événement. */
+  showScope?: boolean;
+};
+
+export default function EventTimeline({ events, ticker, showScope = false }: Props) {
   // Contrat d'appel : le parent n'affiche la frise que si events.length > 0
   // (sinon le placeholder "Bientôt" reste). Garde-fou défensif malgré tout.
   if (events.length === 0) return null;
@@ -53,6 +68,22 @@ export default function EventTimeline({ events, ticker }: { events: SectorEvent[
           <li key={ev.id} className={`evt-item${upcoming ? ' evt-item-upcoming' : ''}`}>
             <div className="evt-head">
               <span className="evt-date mono">{formatDateCompact(ev.event_date)}</span>
+              {showScope && (
+                ev.ticker ? (
+                  <a
+                    className="evt-scope evt-scope-societe"
+                    href={`/societe/${ev.ticker.toLowerCase()}`}
+                    data-umami-event="clic-fiche-societe"
+                    data-umami-event-ticker={ev.ticker}
+                  >
+                    {ev.name ?? ev.ticker}
+                  </a>
+                ) : (
+                  // Événement GLOBAL : aucune fiche ne peut l'accueillir, il n'est
+                  // rattaché à aucune société. Libellé neutre, jamais un ticker.
+                  <span className="evt-scope evt-scope-global">{t.evenements.portee.secteur}</span>
+                )
+              )}
               <span className={`evt-badge evt-badge-${family}`}>{typeLabel}</span>
               {upcoming && (
                 <span className="evt-badge evt-badge-upcoming" aria-label={t.evenements.aria.aVenir}>
@@ -69,7 +100,7 @@ export default function EventTimeline({ events, ticker }: { events: SectorEvent[
               rel="noopener noreferrer"
               aria-label={t.evenements.aria.lienSource}
               data-umami-event="clic-source-evenement"
-              data-umami-event-ticker={ticker}
+              data-umami-event-ticker={ev.ticker ?? ticker}
               data-umami-event-type={ev.type}
             >
               {t.evenements.sourcePrefix} {sourceLabel(ev)} ↗

@@ -912,6 +912,9 @@ justification commerciale de toutes les briques suivantes — c'est le prérequi
   - `clic-fiche-societe` — accès à une fiche société, propriété `data-umami-event-ticker`.
   - `clic-youtube-fiche` — lien vidéo en bas de fiche société, propriété `-ticker`.
   - `clic-source-evenement` — lien vers la source primaire d'un événement (C6).
+  - `clic-secteur` — accès à la chronologie sectorielle `/secteur` (lien nav du header,
+    propriété `source`). Mesure l'attrait de la base d'événements — l'actif par accumulation
+    de C6 : sans ce chiffre, on ne saura pas si la chronologie mérite qu'on l'alimente.
   - `clic-indice` — accès à l'Indice TQW : lien nav du header ET bandeau d'accueil
     (`SiteHeader.tsx`, `IndexHomeBanner.tsx`). Mesure l'attrait de l'IP propriétaire (C3).
   - `clic-theme` — bascule clair / sombre (`ThemeToggle.tsx`, D3). Mesure l'usage réel du
@@ -1445,32 +1448,71 @@ Lecture repliée dans `fetchCompanyData` (api.ts), **fallback gracieux** si la t
 encore (events=[]). Les **événements globaux (`ticker=null`) sont exclus des fiches** — réservés à
 une future page secteur / la newsletter (C5). i18n intégral `t.evenements.*`. ISR 24 h inchangé.
 
-**⚠ DETTE LATENTE — les événements globaux ne sont PAS idempotents (relevée le 2026-09-03).**
-`unique (ticker, event_date, title)` **ne dédoublonne pas** les lignes `ticker = null` : en SQL,
-`NULL ≠ NULL`, donc la contrainte ne s'applique jamais à un événement global et chaque relance
-de `seed_events.py` en **recréerait un doublon, en silence**. La dette n'a jamais mordu parce
-qu'aucun événement global n'a jamais été saisi. **Ne pas en écrire un seul avant de l'avoir
-corrigée** — l'erreur serait invisible jusqu'à ce qu'une page les affiche enfin, avec quatre
-copies. Correctif prévu quand le besoin se présentera : index unique sur
-`coalesce(ticker, '')` (ou index partiel `where ticker is null`), à livrer **avec** la page
-secteur qui rendra ces événements. Les écrire avant, c'est accumuler des doublons dans le noir.
+**✅ DETTE LEVÉE le 2026-09-03 — idempotence des événements globaux (migration 018).**
+`unique (ticker, event_date, title)` (migration 008) **ne dédoublonne pas** les lignes
+`ticker = null` : en SQL `NULL ≠ NULL`, la contrainte ne s'applique donc jamais à un événement
+global et chaque relance de `seed_events.py` en **aurait recréé un doublon, en silence**. La
+dette n'a jamais mordu parce qu'aucun événement global n'avait jamais été saisi — elle a été
+corrigée **avant la première écriture**, comme prévu, et livrée **avec** la page `/secteur` qui
+rend ces événements.
 
-**Matière éditoriale en attente (pas en base, volontairement) :**
-- **H.R. 10163 — American Quantum Competitiveness Act** (Langworthy, NY). Déposée le
-  **27/08/2026**, renvoyée à la commission Energy and Commerce ; communiqué du **31/08/2026**.
-  Désigne le **Department of Commerce** comme agence chef de file pour le quantique commercial
-  (stratégie nationale de compétitivité, chaînes d'approvisionnement, manufacturing).
-  Type C6 pertinent : `reglementaire`, `ticker = null`. Sources primaires :
-  [govinfo BILLS-119hr10163ih](https://www.govinfo.gov/app/details/BILLS-119hr10163ih) ·
-  [communiqué house.gov](https://langworthy.house.gov/media/press-releases/congressman-langworthy-introduces-american-quantum-competitiveness-act).
-  ⚠ Le communiqué cite IBM, Microsoft et Google **via la Quantum Industry Coalition**, qui
-  soutient le texte : ce sont des membres d'une coalition favorable, **pas l'objet de la loi**.
-  Rattacher ce texte à IBM ou GOOGL pour le rendre visible serait une éditorialisation — la
-  raison pour laquelle il attend la page secteur plutôt qu'une fiche.
+Le correctif est en **deux couches, et les deux sont nécessaires** :
+1. **Migration 018** — index unique **PARTIEL** `on sector_event (event_date, title) where
+   ticker is null`. Un index d'expression sur `coalesce(ticker, '')` a été écarté : il aurait
+   rendu redondante la contrainte de 008 **sans pouvoir servir d'arbitre** à
+   l'`on_conflict=ticker,event_date,title` de PostgREST, qui exige une unicité portant sur ces
+   colonnes exactes.
+2. **`seed_events.py` — `_seed_global()`**, select-puis-insert/update explicite. Corollaire de
+   l'index partiel : PostgREST ne sait pas non plus arbitrer un `on_conflict` dessus, l'upsert
+   ne peut donc pas servir pour ces lignes. Le script refuse d'écrire s'il trouve déjà plusieurs
+   exemplaires, et **revérifie après écriture** qu'il n'en existe qu'un — la seule preuve qui
+   vaille est le compte réel.
 
-**Mise en service (à faire manuellement) :** 1) appliquer `supabase/migrations/008_sector_events.sql`
-dans le dashboard Supabase ; 2) `cd scripts && python3 seed_events.py` (seede les 7 premiers
-événements réels). Tant que (1) n'est pas fait, toutes les fiches affichent « Bientôt » (fallback).
+Ceinture ET bretelles, volontairement : le script ne peut pas créer de doublon, l'index ne peut
+pas en laisser exister. **Vérifié en production** — deux exécutions consécutives de
+`seed_events.py` : « créé » puis « maj », une seule ligne globale en base.
+
+**Page `/secteur` — la chronologie annotée (livrée le 2026-09-03).**
+Server Component, ISR 24 h, aucun JS client : `fetchSectorTimeline()` (api.ts, lecture
+**paginée** — la base d'événements est faite pour franchir le plafond PostgREST de 1000 lignes)
+rend TOUS les événements, sociétés et secteur confondus, du plus récent au plus ancien.
+`EventTimeline` gagne un `showScope` : chaque ligne dit de quelle société elle parle (lien vers
+la fiche, `clic-fiche-societe`) — ou porte la mention neutre **« Secteur »** quand elle ne parle
+d'aucune. Libellés sous `t.pageSecteur.*`, namespace **distinct de `t.secteur`**, déjà occupé
+par le tableau des capitalisations de l'accueil. Lien de nav dans le header
+(`clic-secteur`), sitemap (priorité 0.9), et **`/secteur` ajoutée à la purge par défaut de
+`/api/revalidate`** — sans quoi un événement fraîchement saisi serait sur sa fiche mais pas sur
+la chronologie pendant 24 h.
+⚠ **C'est le SEUL rendu des événements globaux.** `fetchCompanyData` filtre sur
+`.eq('ticker', …)` : une fiche ne peut pas en afficher un, par construction.
+**Portée volontairement limitée à la chronologie** — le classement et les agrégats sectoriels
+(S4, `asset_meta`) s'ajouteront **sur cette même route** quand ils seront écrits. On ne
+préconstruit pas leurs sections vides (« prévoir la place sans construire prématurément »).
+
+**Premier événement global saisi (2026-09-03) — H.R. 10163, American Quantum Competitiveness
+Act** (Langworthy, NY). `ticker = null`, `type = reglementaire`, `event_date = 2026-08-27`.
+Déposée le 27/08/2026 et renvoyée à la commission Energy and Commerce. Le texte chargerait le
+**secrétaire au Commerce** d'être le conseiller principal du président sur la politique
+commerciale du quantique et de veiller à des « chaînes d'approvisionnement de confiance » ;
+il définit un « partenaire étranger de confiance » comme l'**UE** ou un membre de
+l'OTAN/UE/OCDE hors « nations couvertes », et prévoit une stratégie nationale à deux ans puis
+tous les trois ans. Source retenue : le **texte intégral sur govinfo** (GPO), pas le communiqué —
+[BILLS-119hr10163ih](https://www.govinfo.gov/app/details/BILLS-119hr10163ih).
+⚠ **Deux garde-fous rédigés dans la description elle-même, à ne pas retirer :**
+(1) le texte n'est **QUE déposé** — ni voté, ni promulgué, et une proposition renvoyée en
+commission peut n'aller nulle part ; (2) **aucune société cotée n'est visée**. Le
+[communiqué house.gov](https://langworthy.house.gov/media/press-releases/congressman-langworthy-introduces-american-quantum-competitiveness-act)
+cite IBM, Microsoft et Google **via la Quantum Industry Coalition** qui soutient le texte : ce
+sont des membres d'une coalition favorable, **pas l'objet de la loi**. Le rattacher à IBM ou
+GOOGL pour le rendre visible sur une fiche serait une éditorialisation — c'est précisément
+pourquoi il a attendu cette page. Avertissement répété en commentaire au-dessus de l'entrée
+dans `seed_events.py`.
+
+**Mise en service (à faire manuellement) :** appliquer, dans le dashboard Supabase,
+`008_sector_events.sql`, puis `015_sector_event_types.sql` (types `gouvernance` / `partenariat`),
+puis `018_sector_event_global_unique.sql` (idempotence des globaux) ; ensuite
+`cd scripts && python3 seed_events.py`. Tant que 008 n'est pas appliquée, toutes les fiches
+affichent « Bientôt » (fallback) et `/secteur` affiche son état vide.
 
 **Dépendances :** aucune (saisie manuelle) — démarre indépendamment, se déverse dans C2 et C5.
 
@@ -1490,7 +1532,7 @@ Ces dettes ne sont pas optionnelles : elles conditionnent la **cessibilité** de
   un export propre et autonome.
 - **(d) Migration `<a>` → `next/link` — PASSE DÉDIÉE, jamais au fil de l'eau.** Toute la navigation
   interne utilise des `<a href="…">` : `npm run lint` échoue en permanence sur
-  `@next/next/no-html-link-for-pages` (9 occurrences au 2026-08-06 — header, `/indice`,
+  `@next/next/no-html-link-for-pages` (10 occurrences au 2026-09-03 — header, `/indice`, `/secteur`,
   `/etf-quantiques`, `/grille-etf`, fiches sociétés, pages portefeuille). Conséquences : navigation
   client non préchargée (rechargement complet à chaque clic, pénalisant sur mobile) et **un lint
   rouge de référence, qui masque les vraies régressions** au moment d'une revue.
@@ -1503,7 +1545,12 @@ Ces dettes ne sont pas optionnelles : elles conditionnent la **cessibilité** de
 
 ### S4 — Classement et agrégats sectoriels
 
-**Ce qui est construit :** page `/secteur` avec :
+⚠ **La route `/secteur` EXISTE DÉJÀ depuis le 2026-09-03** — elle porte la chronologie
+annotée de C6. S4 vient **s'ajouter à cette page**, en sections supplémentaires ; ne pas créer
+une seconde route, et ne pas déplacer la chronologie ailleurs (elle est déjà indexée, dans le
+sitemap et dans la nav du header).
+
+**Ce qui est construit :** sur la page `/secteur`, en plus de la chronologie :
 - tableau classement par `market_cap_usd` décroissante (tous tickers + filtrable) ;
 - encart "Pure-players quantiques" : market cap totale agrégée + variation moyenne pondérée ;
 - colonne "Exposition quantique déclarée vs réelle" pour les ETF (QNTM.L et ajouts futurs) :

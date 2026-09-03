@@ -9,7 +9,9 @@ RÈGLE DE LA MAISON (dure) : source_url OBLIGATOIRE. Le script REFUSE d'écrire 
 que ce soit si un seul événement est invalide (source manquante, type hors liste,
 date non ISO) — jamais d'écriture partielle.
 
-Prérequis : migration 008 appliquée (Supabase dashboard).
+Prérequis : migrations 008, 015 et 018 appliquées (Supabase dashboard).
+  · 018 = index unique partiel sur les événements GLOBAUX (ticker is null),
+    que le unique (ticker, event_date, title) de 008 ne couvre pas.
 
 Usage :
     cd scripts && python seed_events.py
@@ -366,6 +368,43 @@ EVENTS = [
         "source_url": "https://www.sec.gov/Archives/edgar/data/1758009/000121390026087267/ea030143301ex99-1.htm",
         "source_label": "Communiqué de résultats T2 2026 — 8-K ex. 99.1 (SEC EDGAR)",
     },
+    # ─── ÉVÉNEMENT GLOBAL (ticker = None) — le premier du projet ───────────────
+    # Rendu par /secteur, JAMAIS par les fiches sociétés : `fetchCompanyData` filtre
+    # sur `.eq('ticker', upper)`, les globaux en sont exclus par construction.
+    # Prérequis d'écriture : migration 018 (index unique partiel). Avant elle, la
+    # contrainte de 008 ne s'appliquait pas à ces lignes et chaque relance en aurait
+    # créé un doublon silencieux — voir _seed_global().
+    #
+    # ⚠ NE PAS RATTACHER CE TEXTE À UN TICKER. Le communiqué de presse cite IBM,
+    # Microsoft et Google, mais en tant que membres de la Quantum Industry Coalition
+    # qui soutient le texte — pas comme objet de la loi. Le rattacher à IBM ou GOOGL
+    # pour le rendre visible sur une fiche serait une éditorialisation : c'est très
+    # exactement la raison pour laquelle il a attendu la page secteur.
+    {
+        "ticker": None,
+        "event_date": "2026-08-27",
+        "type": "reglementaire",
+        "title": "H.R. 10163 — American Quantum Competitiveness Act déposée à la Chambre",
+        "description": (
+            "Proposition de loi déposée le 27 août 2026 par le représentant Nick "
+            "Langworthy (NY) et renvoyée à la commission Energy and Commerce. Elle "
+            "chargerait le secrétaire au Commerce d'être le conseiller principal du "
+            "président sur la politique commerciale du quantique — fabrication, "
+            "déploiement et passage à l'échelle — et de veiller à des chaînes "
+            "d'approvisionnement dites « de confiance » : le texte définit un "
+            "« fournisseur de confiance » comme une entité domiciliée, ayant son siège "
+            "et constituée aux États-Unis ou chez un « partenaire étranger de "
+            "confiance », c'est-à-dire l'Union européenne ou un pays membre de l'OTAN, "
+            "de l'UE ou de l'OCDE hors « nations couvertes ». Le secrétaire devrait "
+            "publier une stratégie nationale dans les deux ans suivant une "
+            "promulgation, puis tous les trois ans. "
+            "À ce stade le texte n'est QUE déposé : ni voté, ni promulgué, et une "
+            "proposition renvoyée en commission peut n'aller nulle part. Aucune société "
+            "cotée n'est visée par le texte."
+        ),
+        "source_url": "https://www.govinfo.gov/app/details/BILLS-119hr10163ih",
+        "source_label": "Texte intégral H.R. 10163 (IH) — GPO / govinfo.gov",
+    },
 ]
 
 
@@ -395,9 +434,8 @@ def _validate(events: list[dict]) -> None:
         sys.exit(1)
 
 
-def seed_events(db: Client, events: list[dict]) -> None:
-    _validate(events)
-    rows = [{
+def _row(ev: dict) -> dict:
+    return {
         "ticker": ev["ticker"],
         "event_date": ev["event_date"],
         "type": ev["type"],
@@ -405,12 +443,75 @@ def seed_events(db: Client, events: list[dict]) -> None:
         "description": ev.get("description"),
         "source_url": ev["source_url"],
         "source_label": ev.get("source_label"),
-    } for ev in events]
+    }
 
-    logger.info("Upsert de %d événement(s) (on_conflict ticker,event_date,title)…", len(rows))
-    db.table("sector_event").upsert(rows, on_conflict="ticker,event_date,title").execute()
+
+def _seed_global(db: Client, events: list[dict]) -> None:
+    """
+    Écriture des événements GLOBAUX (ticker is null) — select-puis-insert/update.
+
+    ⛔ NE PAS remplacer par l'upsert des lignes à ticker. `unique (ticker,
+    event_date, title)` (migration 008) NE COUVRE PAS ces lignes : en SQL NULL
+    n'est égal à rien, pas même à NULL, donc la contrainte ne s'applique jamais et
+    chaque relance créerait un doublon EN SILENCE. La migration 018 pose un index
+    unique PARTIEL (`where ticker is null`) qui rend le doublon impossible en
+    base — mais PostgREST ne sait pas arbitrer un `on_conflict` sur un index
+    partiel, d'où cette lecture préalable côté script.
+
+    Ceinture ET bretelles, volontairement : le script ne peut pas créer de
+    doublon, l'index ne peut pas en laisser exister, et la vérification finale
+    (un seul enregistrement par clé) échoue bruyamment si l'un des deux a cédé —
+    typiquement parce que la migration 018 n'a pas encore été appliquée et qu'un
+    doublon antérieur traîne.
+    """
     for ev in events:
-        logger.info("  ✓ %-5s %s · %s", ev["ticker"] or "GLOB", ev["event_date"], ev["title"])
+        found = (db.table("sector_event")
+                   .select("id")
+                   .is_("ticker", "null")
+                   .eq("event_date", ev["event_date"])
+                   .eq("title", ev["title"])
+                   .execute().data)
+        if len(found) > 1:
+            logger.error(
+                "::error::GLOBAL %s · %s : %d exemplaires en base. Doublon antérieur "
+                "à la migration 018 — dédoublonner à la main avant de relancer.",
+                ev["event_date"], ev["title"], len(found))
+            sys.exit(1)
+        if found:
+            db.table("sector_event").update(_row(ev)).eq("id", found[0]["id"]).execute()
+            action = "maj"
+        else:
+            db.table("sector_event").insert(_row(ev)).execute()
+            action = "créé"
+        logger.info("  ✓ %-5s %s · %s (%s)", "GLOB", ev["event_date"], ev["title"], action)
+
+
+def seed_events(db: Client, events: list[dict]) -> None:
+    _validate(events)
+    scoped = [ev for ev in events if ev["ticker"]]
+    globals_ = [ev for ev in events if not ev["ticker"]]
+
+    logger.info("Upsert de %d événement(s) (on_conflict ticker,event_date,title)…", len(scoped))
+    db.table("sector_event").upsert([_row(ev) for ev in scoped],
+                                    on_conflict="ticker,event_date,title").execute()
+    for ev in scoped:
+        logger.info("  ✓ %-5s %s · %s", ev["ticker"], ev["event_date"], ev["title"])
+
+    if globals_:
+        logger.info("Écriture de %d événement(s) GLOBAL/GLOBAUX (select-puis-écriture)…",
+                    len(globals_))
+        _seed_global(db, globals_)
+        # Vérification a posteriori : la seule preuve qui vaille est le compte réel.
+        for ev in globals_:
+            n = len((db.table("sector_event").select("id")
+                       .is_("ticker", "null")
+                       .eq("event_date", ev["event_date"])
+                       .eq("title", ev["title"]).execute().data))
+            if n != 1:
+                logger.error("::error::GLOBAL %s · %s : %d exemplaires après écriture "
+                             "(attendu 1).", ev["event_date"], ev["title"], n)
+                sys.exit(1)
+
     logger.info("Seed des événements terminé.")
 
 

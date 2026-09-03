@@ -31,12 +31,16 @@ function handle(req: NextRequest) {
     return NextResponse.json({ ok: true, revalidated: [path] });
   }
 
-  // Par défaut : les fiches sociétés (toute la route dynamique) + l'accueil + l'indice.
-  // 'page' cible le segment de route, donc les 13 fiches d'un coup.
-  const paths = ['/societe/[ticker]', '/', '/indice'];
+  // Par défaut : les fiches sociétés (toute la route dynamique) + l'accueil +
+  // l'indice + la chronologie sectorielle. 'page' cible le segment de route, donc
+  // les 14 fiches d'un coup. /secteur est purgée ici parce que seed_events.py
+  // appelle cette route : sans elle, un événement fraîchement saisi n'apparaîtrait
+  // sur la chronologie qu'au bout de 24 h, alors qu'il serait déjà sur sa fiche.
+  const paths = ['/societe/[ticker]', '/', '/indice', '/secteur'];
   revalidatePath('/societe/[ticker]', 'page');
   revalidatePath('/');
   revalidatePath('/indice');
+  revalidatePath('/secteur');
 
   // Les images OG (C4) sont des entrées de cache DISTINCTES de leurs pages : purger
   // /indice ne rafraîchit pas /indice/opengraph-image. Sans ces trois lignes, une

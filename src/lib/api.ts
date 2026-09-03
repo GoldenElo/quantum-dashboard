@@ -172,6 +172,17 @@ export type SectorEvent = {
   source_label: string | null;
 };
 
+/**
+ * Un événement de la chronologie sectorielle (page /secteur) — même ligne que
+ * SectorEvent, augmentée de sa portée. `ticker` à null = événement GLOBAL, non
+ * rattaché à une société : il ne peut apparaître sur aucune fiche (elles filtrent
+ * sur leur propre ticker) et n'existe que sur cette page.
+ */
+export type SectorTimelineEvent = SectorEvent & {
+  ticker: string | null;
+  name: string | null;
+};
+
 export type CompanyData = {
   ticker: string;
   name: string;
@@ -1114,6 +1125,57 @@ export async function fetchLatestCloseDate(): Promise<string | null> {
     .limit(1)
     .maybeSingle();
   return data?.date ?? null;
+}
+
+// ─── Chronologie sectorielle (C6) ─────────────────────────────────────────────
+
+/**
+ * Tous les événements de la base, sociétés ET secteur, du plus récent au plus
+ * ancien — la chronologie annotée que rend /secteur.
+ *
+ * C'est le SEUL endroit du site où les événements GLOBAUX (ticker null) sont
+ * rendus : `fetchCompanyData` filtre sur `.eq('ticker', …)`, une fiche ne peut
+ * donc pas en afficher un. Rattacher un texte réglementaire à un ticker pour le
+ * rendre visible serait une éditorialisation — voir la note H.R. 10163.
+ *
+ * Lecture PAGINÉE : la base d'événements est un actif par accumulation, elle est
+ * faite pour franchir le plafond PostgREST de 1000 lignes. On pagine dès
+ * maintenant plutôt que de découvrir la troncature le jour où elle mordra.
+ *
+ * Dégradation gracieuse si la migration 008 n'est pas appliquée (table absente) :
+ * [] et une page qui le dit, jamais une erreur.
+ */
+export async function fetchSectorTimeline(): Promise<SectorTimelineEvent[]> {
+  const rows: Record<string, unknown>[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('sector_event')
+      .select('id, ticker, event_date, type, title, description, source_url, source_label')
+      .order('event_date', { ascending: false })
+      .order('id', { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) return [];
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) break;
+  }
+  if (rows.length === 0) return [];
+
+  // Noms de société — une seule lecture, jamais une par événement.
+  const { data: assets } = await supabase.from('asset').select('ticker, name');
+  const names = new Map((assets ?? []).map(a => [a.ticker as string, a.name as string]));
+
+  return rows.map(e => ({
+    id: Number(e.id),
+    ticker: (e.ticker as string | null) ?? null,
+    name: e.ticker ? names.get(e.ticker as string) ?? null : null,
+    event_date: e.event_date as string,
+    type: e.type as string,
+    title: e.title as string,
+    description: (e.description as string | null) ?? null,
+    source_url: e.source_url as string,
+    source_label: (e.source_label as string | null) ?? null,
+  }));
 }
 
 // ─── Fiche société (C2) ───────────────────────────────────────────────────────

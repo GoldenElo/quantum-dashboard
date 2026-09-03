@@ -556,6 +556,12 @@ export const fr = {
       lienSource: 'Ouvrir la source (nouvel onglet)',
       aVenir: 'Événement à venir',
     },
+    // Portée d'un événement sur la chronologie sectorielle. Un événement global
+    // n'est rattaché à AUCUNE société : le libellé doit rester neutre, jamais un
+    // ticker — c'est exactement ce que la note H.R. 10163 interdit d'inventer.
+    portee: {
+      secteur: 'Secteur',
+    },
     // Libellés des types — miroir de la liste fermée (CHECK migration 008).
     types: {
       ipo: 'IPO',
@@ -573,6 +579,35 @@ export const fr = {
       gouvernance: 'Gouvernance',
       partenariat: 'Partenariat',
     } as Record<string, string>,
+  },
+  // Page /secteur — chronologie annotée du secteur (C6). Namespace DISTINCT de
+  // `secteur`, déjà occupé par le tableau des capitalisations de l'accueil.
+  pageSecteur: {
+    navLabel: 'Chronologie',
+    metaTitle:
+      'Chronologie du quantique coté — IPO, dilutions, contrats, réglementation | The Quantum Wall',
+    titre: 'Chronologie du secteur',
+    soustitre:
+      'Tous les événements du quantique coté, datés et sourcés — introductions en bourse, ' +
+      'fusions SPAC, dilutions, contrats, gouvernance et textes réglementaires.',
+    retour: '← Retour au tableau de bord',
+    friseTitre: 'Les événements, du plus récent au plus ancien',
+    // Affiché tant que la migration 008 n'est pas appliquée, ou si la base est vide.
+    vide: 'Aucun événement en base pour l’instant.',
+    // Note de méthode — la règle de la maison, dite au lecteur.
+    note:
+      'Chaque événement porte le lien vers sa source primaire : dépôt réglementaire, ' +
+      'communiqué de la société ou texte officiel. Sélection éditoriale — cette ' +
+      'chronologie ne prétend pas à l’exhaustivité et s’enrichit au fil de la veille.',
+    compteur: '{n} événements',
+    compteurUn: '1 événement',
+    disclaimer:
+      'À titre informatif uniquement — ni conseil ni recommandation d’investissement. ' +
+      'Faits datés et sourcés, sans interprétation prédictive.',
+    aria: {
+      page: 'Chronologie du secteur quantique coté',
+      frise: 'Chronologie des événements du secteur',
+    },
   },
   // Images Open Graph auto-générées (C4) — cartes de partage social.
   // Contrainte de rédaction : LIBELLÉS COURTS. La carte est lue à ~300 px de large

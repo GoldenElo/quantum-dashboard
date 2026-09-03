@@ -1545,6 +1545,31 @@ button { cursor: pointer; }
 }
 /* Pastille creuse (pointillé) pour marquer un événement encore à venir sur le trait */
 .evt-item-upcoming::before { border-style: dashed; }
+/* Portée de l'événement — affichée UNIQUEMENT sur /secteur (showScope), où la
+   frise mélange les sociétés. Volontairement plus sobre que le badge de type :
+   c'est un repère de lecture, pas une catégorie. Aucune couleur en dur — la
+   règle vaut ici comme partout (cf. « Mode sombre » dans CLAUDE.md). */
+.evt-scope {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+a.evt-scope-societe {
+  color: var(--accent-blue);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-blue) 35%, transparent);
+}
+a.evt-scope-societe:hover { color: var(--accent-blue-hover); }
+/* Événement global : rattaché à aucune société, donc jamais cliquable. */
+.evt-scope-global {
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  font-size: 0.66rem;
+}
+.secteur-compteur { margin-bottom: 0.9rem; }
 .evt-title {
   font-size: 0.95rem;
   font-weight: 600;
