@@ -15,6 +15,10 @@ const TYPE_FAMILY: Record<string, string> = {
   reglementaire: 'grey',
   technologie: 'grey',
   autre: 'grey',
+  // Migration 015. 'partenariat' rejoint la famille business (teal) ; 'gouvernance'
+  // la famille institutionnelle (gris), aux côtés de 'reglementaire'.
+  partenariat: 'teal',
+  gouvernance: 'grey',
 };
 
 // Libellé de source : source_label si présent, sinon l'hôte de l'URL (sans www).

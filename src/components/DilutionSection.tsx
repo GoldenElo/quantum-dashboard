@@ -41,7 +41,9 @@ export default function DilutionSection({ data }: { data: CompanyData }) {
 
   // Rien à montrer nulle part : on garde le placeholder « bientôt ». On affiche
   // l'absence, on ne la comble pas (XNDU, HQ, IQMX — XBRL inexploitable).
-  if (series.length === 0 && !fin && data.filings.length === 0) {
+  // ⚠ MIROIR de `hasDilution` dans societe/[ticker]/page.tsx : les deux conditions
+  // doivent bouger ensemble, sinon un encart rend sous un titre « bientôt ».
+  if (series.length === 0 && !fin && data.filings.length === 0 && data.warrants.length === 0) {
     return <p className="company-soon">{d.bientot}</p>;
   }
 
@@ -180,6 +182,117 @@ export default function DilutionSection({ data }: { data: CompanyData }) {
               })}
             </a>
           </p>
+        </>
+      )}
+
+      {/* ── Résultat comptable vs trésorerie ──────────────────────────────
+          Distinction PÉDAGOGIQUE et FACTUELLE. On ne dit jamais que la perte
+          « ne compte pas » : on dit ce qu'elle contient. Chez IonQ au T2 2026,
+          1 649 115 k$ des 1 867 742 k$ de perte sont une revalorisation de
+          warrants — publier la perte seule laisserait lire une hémorragie de
+          trésorerie là où le runway ci-dessus est intact. ── */}
+      {fin?.net_loss != null && (
+        <>
+          <h3 className="dil-subtitle">{d.resultatTitre}</h3>
+          <p className="dil-meta">{d.resultatIntro}</p>
+          <div className="dil-metrics">
+            <div className="dil-metric">
+              <span className="stat-label">{d.resultatPerte}</span>
+              <span className="stat-value mono">
+                {fin.net_loss < 0 ? '−' : '+'}
+                {formatMarketCap(Math.abs(fin.net_loss) * 1000)}
+              </span>
+              {fin.period_start && fin.period_end && (
+                <span className="stat-label dil-meta">
+                  {fill(d.consommationDetail, {
+                    debut: formatDateCompact(fin.period_start),
+                    fin: formatDateCompact(fin.period_end),
+                  })}
+                </span>
+              )}
+            </div>
+
+            {fin.warrant_fv_change != null && (
+              <div className="dil-metric">
+                <span className="stat-label">{d.resultatNonCash}</span>
+                <span className="stat-value mono">
+                  {formatMarketCap(Math.abs(fin.warrant_fv_change) * 1000)}
+                </span>
+                <span className="stat-label dil-meta">{d.resultatNonCashDetail}</span>
+              </div>
+            )}
+
+            {fin.warrant_liability != null && (
+              <div className="dil-metric">
+                <span className="stat-label">{d.resultatPassif}</span>
+                <span className="stat-value mono">
+                  {formatMarketCap(fin.warrant_liability * 1000)}
+                </span>
+                <span className="stat-label dil-meta">{d.resultatPassifDetail}</span>
+              </div>
+            )}
+          </div>
+          <p className="dil-meta">{d.resultatExplication}</p>
+        </>
+      )}
+
+      {/* ── Instruments pouvant créer des actions nouvelles ────────────────
+          ⚠ RÈGLE §10 — AUCUN TOTAL, et ne jamais en ajouter un. Chez IonQ les
+          strikes vont de 11,50 $ à 155,00 $ : les sommer supposerait qu'ils
+          seront tous exercés, c'est-à-dire publier une projection de cours
+          déguisée en fait. Les lignes sont listées, jamais agrégées. ── */}
+      {data.warrants.length > 0 && (
+        <>
+          <h3 className="dil-subtitle">{d.instrumentsTitre}</h3>
+          <p className="dil-meta">{d.instrumentsIntro}</p>
+          <ul className="dil-instruments">
+            {data.warrants.map(w => (
+              <li key={w.series} className="dil-instrument">
+                <div className="dil-instrument-head">
+                  <span className="dil-instrument-label">{w.label}</span>
+                  <span className="dil-instrument-figures mono">
+                    {w.shares_callable != null
+                      ? formatShares(w.shares_callable)
+                      : d.instrumentNombreInconnu}
+                    {' · '}
+                    {w.strike_usd.toFixed(2).replace('.', ',')} $
+                  </span>
+                </div>
+                <p className="dil-meta">
+                  {w.expires_on
+                    ? `${d.instrumentsColonnes.echeance} : ${formatDateCompact(w.expires_on)}`
+                    : `${d.instrumentsColonnes.echeance} : ${d.instrumentSansEcheance}`}
+                  {' · '}
+                  {fill(d.instrumentReleve, { date: formatDateCompact(w.as_of_date) })}
+                </p>
+                {w.is_derived && w.derivation_note && (
+                  <p className="dil-meta dil-derived">
+                    <strong>{d.instrumentDerive} </strong>{w.derivation_note}
+                  </p>
+                )}
+                {w.note && <p className="dil-meta">{w.note}</p>}
+                <p className="dil-meta dil-source">
+                  <a href={w.source_url} target="_blank" rel="noopener noreferrer">
+                    {fill(d.sourceDepot, {
+                      form: w.source_form,
+                      date: formatDateCompact(w.source_filed),
+                    })}
+                  </a>
+                </p>
+              </li>
+            ))}
+          </ul>
+          {/* Repère de proportion — le nombre d'actions en circulation, à côté et
+              non additionné. Le lecteur rapporte lui-même chaque ligne à ce total. */}
+          {data.shares != null && data.shares_date && (
+            <p className="dil-meta">
+              {fill(d.instrumentPartRappel, {
+                societe: data.name,
+                actions: formatShares(data.shares),
+                date: formatDateCompact(data.shares_date),
+              })}
+            </p>
+          )}
         </>
       )}
 

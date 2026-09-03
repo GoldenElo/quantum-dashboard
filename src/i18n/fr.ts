@@ -128,7 +128,11 @@ export const fr = {
     // Société cotée dont AUCUN dépôt ne publie encore le décompte d'actions
     // (fusion SPAC aux rachats non divulgués). La ligne reste affichée, avec la
     // capitalisation et le P/S à « — » : on signale l'absence, on ne masque pas
-    // la société. Cas PSQL (Pasqal) depuis le 28/08/2026.
+    // la société.
+    // Cas d'origine : PSQL (Pasqal), du 28/08 au 02/09/2026 — RÉSOLU depuis que le
+    // 20-F publie le capital social. Le garde-fou RESTE : il ne se retire pas parce
+    // qu'un cas se résout, et la prochaine ex-SPAC le rencontrera à son tour.
+    // Aucun ticker ne le déclenche aujourd'hui.
     capiIndisponible: {
       // ⚠ Le glyphe DOIT exister dans src/assets/fonts/IBMPlexSans-SemiBold.ttf :
       // il est rendu dans les images OG, où satori n'a que cette police embarquée.
@@ -260,6 +264,58 @@ export const fr = {
         'consommation de trésorerie d’exploitation de la dernière période publiée — c’est ' +
         'une division, pas une prévision : elle suppose un rythme constant et ignore tout ' +
         'financement à venir.',
+
+      // ─── Instruments dilutifs (migration 016) ───────────────────────────────
+      // ⚠ AUCUN TOTAL n'est affiché, et il ne faut jamais en ajouter un : additionner
+      // des warrants dont les strikes vont de 11,50 $ à 155,00 $ supposerait qu'ils
+      // seront tous exercés — une projection de cours déguisée en fait (règle §10).
+      instrumentsTitre: 'Instruments pouvant créer des actions nouvelles',
+      instrumentsIntro:
+        'Warrants et titres convertibles en circulation, un instrument par ligne. Chacun ne ' +
+        'crée des actions que s’il est exercé, à son propre prix : ces lignes ne s’additionnent ' +
+        'pas, et aucun total de « dilution potentielle » n’est calculé ici — ce serait supposer ' +
+        'un cours futur.',
+      instrumentsColonnes: {
+        instrument: 'Instrument',
+        nombre: 'Actions appelables',
+        strike: 'Prix d’exercice',
+        echeance: 'Échéance',
+      },
+      instrumentNombreInconnu: 'Nombre non publié',
+      instrumentSansEcheance: 'non datée au dépôt',
+      instrumentReleve: 'Relevé au {date}',
+      instrumentDerive: 'Chiffre reconstitué —',
+      instrumentPartRappel:
+        'À titre de repère, {societe} compte {actions} actions en circulation au {date}.',
+
+      // ─── Résultat comptable vs trésorerie (migration 016) ───────────────────
+      // Distinction PÉDAGOGIQUE et FACTUELLE. On ne dit jamais que la perte « ne
+      // compte pas » : on dit ce qu'elle contient, et le lecteur tranche.
+      resultatTitre: 'Résultat comptable et trésorerie',
+      resultatIntro:
+        'Une partie de la perte publiée ne correspond à aucune sortie d’argent. La distinguer ' +
+        'ne la minimise pas : elle change seulement ce qu’on peut en déduire sur l’autonomie ' +
+        'financière.',
+      resultatPerte: 'Perte nette du trimestre',
+      resultatNonCash: 'dont revalorisation des warrants',
+      resultatNonCashDetail: 'charge comptable, sans sortie de trésorerie',
+      resultatPassif: 'Passif de warrants au bilan',
+      resultatPassifDetail: 'engagement valorisé au cours du jour, réévalué chaque trimestre',
+      resultatExplication:
+        'Les warrants émis lors des augmentations de capital sont comptabilisés en dette et ' +
+        'réévalués à chaque clôture : quand le cours monte, l’engagement grossit et la ' +
+        'différence passe en charge, sans qu’un dollar ne quitte la société. C’est pourquoi ' +
+        'la perte publiée et la consommation de trésorerie ci-dessus racontent deux choses ' +
+        'différentes, toutes deux exactes.',
+
+      // ─── Prix de référence du premier jour (migration 016) ──────────────────
+      referenceTitre: 'Première séance de cotation',
+      referenceOuverture: 'Ouverture',
+      referencePlusHaut: 'Plus haut',
+      referenceCloture: 'Clôture',
+      referenceOperation: 'Prix d’opération',
+      referenceLe: 'Le {date}',
+      referenceSource: 'Cours de séance : {form} du {date} ↗',
     },
     // Ligne d'acquisition vers la chaîne (conversion du trafic froid).
     // Deux formulations selon la cible (voir TICKER_VIDEO_URL) : vidéo dédiée à
@@ -512,6 +568,10 @@ export const fr = {
       reglementaire: 'Réglementaire',
       technologie: 'Technologie',
       autre: 'Autre',
+      // Ajoutés par la migration 015. 'partenariat' ≠ 'contrat' : un accord-cadre
+      // sans montant publié n'est pas une commande chiffrée.
+      gouvernance: 'Gouvernance',
+      partenariat: 'Partenariat',
     } as Record<string, string>,
   },
   // Images Open Graph auto-générées (C4) — cartes de partage social.
@@ -578,13 +638,18 @@ export const TICKER_NOTES: Record<string, { marker: string; text: string }> = {
     marker: '†',
     text: 'profil à risque élevé — reverse split 25:1 (sept. 2024) pour conformité Nasdaq, voir analyse quantum washing',
   },
+  // ⚠ 2026-09-03 — la capitalisation est redevenue calculable : le 20-F du 02/09
+  // publie 212 293 691 actions au 27/08 (couverture et point 10.A). Le marqueur ¶
+  // reste, mais il ne signale plus une capitalisation absente : il porte désormais
+  // la même réserve que IQMX sur le P/S. Le « ¶ » de t.secteur.capiIndisponible,
+  // lui, s'éteint tout seul dès que market_cap_usd cesse d'être null.
   PSQL: {
     marker: '¶',
     text:
       "cotée depuis le 28 août 2026 (fusion SPAC avec Bleichroeder Acquisition Corp. II) — " +
-      "le décompte d'actions postérieur à la fusion n'est publié dans aucun dépôt à ce jour, " +
-      "la capitalisation et le P/S ne sont donc pas calculés. Chiffre d'affaires de l'exercice " +
-      "2025 converti d'euros en dollars : ce n'est pas un TTM et il n'est pas recoupable",
+      "capitalisation sur le capital social publié au 20-F du 2 septembre 2026, seul document " +
+      "déposé à le donner. P/S estimé à partir du chiffre d'affaires de l'exercice 2025 " +
+      "converti d'euros en dollars : ce n'est pas un TTM et il n'est pas recoupable",
   },
   IQMX: {
     marker: '§',

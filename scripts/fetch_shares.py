@@ -35,7 +35,7 @@ TICKERS = ["GOOGL", "IBM", "IONQ", "QBTS", "LAES", "INFQ", "RGTI", "QUBT", "QNT"
 
 # Valeurs de référence pour les alertes (sources primaires vérifiées)
 _REF_SHARES: dict[str, tuple[int, str]] = {
-    "IONQ": (373_000_000, "10-Q Q1 2026 (31/03/2026)"),
+    "IONQ": (381_044_481, "10-Q Q2 2026 (30/06/2026)"),
 }
 _ALERT_THRESHOLD = 0.10  # ±10 % → AVERTISSEMENT (écart vs référence primaire connue)
 _VARIATION_ALERT = 0.15  # ±15 % → alerte CI (variation vs valeur précédente / contradiction surcharge)
@@ -85,6 +85,34 @@ _MANUAL_OVERRIDES: list[dict] = [
         # Remplace les 322 M du 424B4 (fully-diluted) — voir la ligne ci-dessus.
         # https://ir.quantinuum.com/news-releases/news-release-details/quantinuum-reports-second-quarter-2026-results
         "source":     "SEC 8-K 2026-08-11 (Q2 2026 — Class A + Class B outstanding au 30/06/2026)",
+    },
+    {
+        "ticker":     "PSQL",
+        "as_of_date": "2026-08-27",
+        "shares":     212_293_691,
+        # Capital social post-fusion, publié le 02/09/2026 par le 20-F (couverture
+        # et point 10.A) : « On August 27, 2026, the issuer had 212,293,691 Ordinary
+        # Shares […] outstanding ». PREMIER et SEUL document déposé à le donner.
+        # ⛔ NE JAMAIS RETOMBER SUR yfinance (209 583 333) : ce chiffre est repris tel
+        #    quel du 424B3 du 05/08, où il désigne le scénario de RACHAT MAXIMAL. La
+        #    fourchette du prospectus allait jusqu'à 238 333 333 — 13,7 % d'amplitude.
+        #    Ce n'était pas une donnée partielle, c'était une hypothèse.
+        # Contrôle de cohérence — contre le PRIX D'OPÉRATION de 10,00 $, jamais le
+        # cours : 212 293 691 × 10 $ = 2,123 Md$ ∈ [2,1 ; 2,4] Md$. ✔ Près de la borne
+        # basse, cohérent avec les 26 039 602 actions rachetées (8-K du 26/08).
+        "source":     "SEC 20-F 2026-08-27 (capital social post-fusion, couverture et Item 10.A)",
+    },
+    {
+        "ticker":     "IONQ",
+        "as_of_date": "2026-06-30",
+        "shares":     381_044_481,
+        # Bilan du 10-Q Q2 2026 (déposé le 10/08/2026), tag XBRL
+        # us-gaap:CommonStockSharesOutstanding. Progression ordinaire :
+        # 362 592 722 (31/12/2025) → 373 171 320 (31/03/2026) → 381 044 481 (30/06/2026).
+        # ⚠ NE PAS CONFONDRE avec la couverture du MÊME 10-Q, qui annonce 381 002 314
+        #   actions au 29/07/2026 : autre date, autre chiffre. C'est le décompte de
+        #   BILAN au 30/06 qui sert la capitalisation, par cohérence avec les cours.
+        "source":     "SEC 10-Q 2026-06-30",
     },
     {
         "ticker":     "IQMX",

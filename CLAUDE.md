@@ -164,19 +164,24 @@ Tâches à déclencher sur événement externe, pas sur une cadence. Une surchar
 **instantané** : elle ne vieillit pas toute seule, c'est à nous de la retirer quand la source
 automatique redevient fiable. Une surcharge oubliée fige un chiffre périmé sans jamais alerter.
 
-- **PSQL — décompte d'actions post-fusion : SURVEILLER CHAQUE 6-K, puis le 20-F.**
-  **Échéance sur événement, pas sur date** : le premier dépôt de Pasqal Holding SA publiant le
-  **capital social effectif** (nombre d'actions ordinaires en circulation après rachats) débloque
-  d'un coup la **capitalisation**, le **P/S** et la **tuile du Mur**. Surveiller
-  [EDGAR CIK 0002119292](https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0002119292&type=6-K&dateb=&owner=include&count=40).
-  Candidats : 6-K de résultats S1 2026, 6-K « total number of voting rights and shares », ou 20-F.
-  **CONTRÔLE DE COHÉRENCE OBLIGATOIRE — contre le PRIX D'OPÉRATION de 10,00 $, JAMAIS le cours.**
-  La valorisation annoncée (~2 Md$) est l'equity Pasqal au prix d'offre du SPAC : 200 000 000 ×
-  10 $ = 2,000 Md$. Un décompte plausible doit donner `actions × 10 $ ≈ 2,1–2,4 Md$`. Rapporté au
-  **cours**, le test échouerait sans que rien ne soit faux : le titre a clôturé à 19,11 $ le
-  premier jour (+91 % sur le prix d'opération), soit une capi de marché ~2× la valo d'opération.
-  Attendu dans **[209 583 333 ; 238 333 333]** — hors de cette fourchette, re-vérifier le dépôt
-  avant d'écrire quoi que ce soit. Retirer alors la note `¶` et `t.secteur.capiIndisponible`.
+- **PSQL — décompte d'actions post-fusion : ✅ LEVÉE le 2026-09-03 (20-F du 02/09/2026).**
+  L'échéance a fonctionné exactement comme écrite. Le **20-F** (période close au 27/08, déposé le
+  02/09) publie en couverture et en Item 10.A : « *On August 27, 2026, the issuer had
+  **212,293,691** Ordinary Shares, nominal value €0.02 per share, outstanding* ».
+  **Contrôle de cohérence — contre le PRIX D'OPÉRATION de 10,00 $, JAMAIS le cours** :
+  212 293 691 × 10 $ = **2,123 Md$** ∈ [2,1 ; 2,4] Md$ ✔ et 212 293 691 ∈
+  [209 583 333 ; 238 333 333] ✔ — près de la borne basse, cohérent avec les **26 039 602 actions
+  Class A rachetées** (8-K Bleichroeder du 26/08). Rapporté au **cours** (19,11 $ le premier jour,
+  +91 %), le test aurait échoué sans que rien ne soit faux : c'est précisément pourquoi l'ancre
+  est le prix d'opération. Surcharge écrite (migration 017 + `_MANUAL_OVERRIDES`), note `¶`
+  reconvertie en réserve sur le P/S (comme IQMX), capitalisation / P/S / tuile du Mur / image OG
+  débloqués.
+  **`t.secteur.capiIndisponible` N'EST PAS SUPPRIMÉ** — plus aucun ticker ne le déclenche
+  aujourd'hui, mais c'est le garde-fou générique « une société cotée ne disparaît jamais en
+  silence » : il ne se retire pas parce qu'un cas se résout, et la prochaine ex-SPAC le
+  rencontrera. La leçon retenue : **entre le 28/08 et le 02/09, ne rien écrire était la bonne
+  décision** — la valeur yfinance (209 583 333) aurait minoré la capitalisation de 1,3 % en la
+  présentant comme sourcée, et l'écart aurait pu monter à 13,7 %.
 
 - **IQMX — première publication de résultats (S1 2026, attendue ~août-septembre 2026).**
   Retirer la surcharge CA d'`_MANUAL_OVERRIDES` (`fetch_revenue.py`) **si et seulement si** les deux
@@ -195,10 +200,11 @@ automatique redevient fiable. Une surcharge oubliée fige un chiffre périmé sa
   **PSQL** (cotée le 28/08/2026 → 30e séance vers la **mi-octobre 2026**) deviennent éligibles
   ensemble. L'indice passerait de 10 à **12 constituants**. Vérifier avec `check_index.py` que la
   section « HORS UNIVERS » les annonce bien éligibles avant l'échéance.
-  ⚠ **PSQL n'entre que si une ligne `shares_outstanding` existe à cette date** : la pondération est
-  par capitalisation totale, et `index_tqw.py` **exclut avec alerte** tout constituant sans actions
-  connues. Si le décompte n'est toujours pas publié le 02/11, PSQL est écartée du rebalancement —
-  comportement correct, à ne pas contourner par une valeur supposée.
+  ✅ **Condition levée depuis le 2026-09-03** : PSQL a désormais sa ligne `shares_outstanding`
+  (212 293 691 au 27/08, 20-F). `index_tqw.py` exclut avec alerte tout constituant sans actions
+  connues — ce n'est plus le cas. La double entrée du 02/11 ne dépend donc plus que du décompte
+  de séances. **Ne jamais contourner cette exclusion par une valeur supposée** si un futur
+  constituant se présente sans décompte publié.
 - **QNT — à chaque cron trimestriel.** La surcharge Up-C (322 M actions) est contredite en
   permanence par yfinance (~31 M, flottant Class A seul) : l'alerte est **normale**. Ne l'aligner
   sur yfinance sous aucun prétexte — ce serait diviser la capitalisation par dix.
@@ -376,13 +382,20 @@ ferme que le jour où 4 trimestres publiés sont recoupables.
 **Migration 006** (`supabase/migrations/006_add_xndu_arqq_hq.sql`) : ajoute XNDU, ARQQ, HQ dans
 `asset` (idempotent — ON CONFLICT DO NOTHING). À appliquer avant tout backfill de ces tickers.
 
-**Note PSQL — deux pièges documentés (société française, ex-SPAC) :**
+**Note PSQL — deux pièges documentés (société française, ex-SPAC) — le 2ᵉ est levé depuis le 2026-09-03 :**
 Pasqal Holding SA (Palaiseau), **deuxième** société européenne du quantique cotée sur une grande
 place US après IQMX. Fusion SPAC avec **Bleichroeder Acquisition Corp. II** (Nasdaq : BBCQ)
 approuvée le 25/08/2026, closing le 27/08, première cotation le **28/08/2026**. SEC CIK
 **0002119292**. Émetteur privé étranger → dépôts **6-K / 20-F**, jamais 10-Q/10-K.
-Titre coté = action ordinaire (par valeur 0,02 €), pas d'ADS. `PSQLW` (warrants) **hors périmètre**.
+Titre coté = action ordinaire (par valeur 0,02 €), pas d'ADS.
 ⚠ **NE JAMAIS ÉCRIRE « IPO »** : c'est une fusion SPAC, le 6-K de clôture est explicite.
+
+**`PSQLW` — précision de doctrine (2026-09-03).** Le **titre** PSQLW reste **hors périmètre** :
+aucune série de cours, aucune capitalisation, il n'entre ni dans l'univers sectoriel ni dans
+l'indice. Cela n'interdit pas d'exposer, sur la fiche PSQL, le **nombre et le prix d'exercice**
+des warrants tels que publiés au 20-F — c'est un fait dilutif portant sur l'action PSQL, au même
+titre que le nombre d'actions. Les deux positions ne se contredisent pas : on ne suit pas un
+second actif coté, on documente ce qui peut créer des actions nouvelles (voir C7, `company_warrant`).
 
 1. **Historique fantôme** (identique à IQMX/RAAQ et HQ/dMY). yfinance sert sous `PSQL` les
    **149 séances du SPAC Bleichroeder** depuis le 28/01/2026 (~9,95 $ = valeur de trust).
@@ -400,18 +413,28 @@ Titre coté = action ordinaire (par valeur 0,02 €), pas d'ADS. `PSQLW` (warran
    **[209 583 333 ; 238 333 333]** — amplitude **13,7 %**. **AUCUN document déposé ne le publie** :
    le 6-K de clôture ne contient aucun décompte, les 425 des 21/24/25-08 ne publient aucun résultat
    de rachat, et le XBRL du CIK ne contient que le namespace `ffd` (frais de dépôt).
-   → **AUCUNE ligne `shares_outstanding` n'est écrite.** Capitalisation et P/S affichés « — »,
-   marqueur `¶`, note de méthode. Écrire 209 583 333 publierait une capi **minorée de jusqu'à
-   13,7 %** en la présentant comme sourcée — c'est la faute QNT à l'envers, et elle survivrait à
-   la relecture. Ce n'est pas une donnée partielle, c'est une **hypothèse de prospectus**.
+   → À l'époque, **aucune ligne `shares_outstanding` n'était écrite** : capitalisation et P/S
+   affichés « — », marqueur `¶`, note de méthode. Écrire 209 583 333 aurait publié une capi
+   **minorée de jusqu'à 13,7 %** en la présentant comme sourcée — la faute QNT à l'envers, et elle
+   aurait survécu à la relecture. Ce n'était pas une donnée partielle, c'était une **hypothèse de
+   prospectus**.
+
+   ✅ **RÉSOLU le 2026-09-03** — le **20-F du 02/09/2026** publie **212 293 691 actions au 27/08**
+   (couverture et Item 10.A). Surcharge sanctuarisée écrite (migration 017 + `_MANUAL_OVERRIDES`,
+   `source = 'SEC 20-F 2026-08-27 (…)'`). **L'attente avait raison** : l'écart réel avec la valeur
+   yfinance n'était « que » de 1,3 %, mais il aurait pu atteindre 13,7 % et rien, au moment de
+   choisir, ne permettait de le savoir. **⛔ NE JAMAIS RETOMBER SUR 209 583 333**, ni aligner la
+   surcharge sur yfinance : l'alerte « contredit surcharge » qui se déclenchera à chaque cron est
+   **normale**, comme pour QNT et IQMX.
 
 **P/S PSQL non ferme (`‡`) et non calculable pour l'instant :** CA surchargé à **16 468 000 EUR**,
 exercice clos au 31/12/2025 (424B3 du 05/08/2026, MD&A « Total revenue € 16,468 » en milliers,
 recoupé par « *Pasqal's revenue was €16.4 million for the year ended December 31, 2025* »).
 `financialCurrency = None` et `totalRevenue = None` → `fetch_revenue.py` **refuse la ligne**
 (RÈGLE DEVISE) et la surcharge prend le relais, comme IQMX. `quarters_used = 0` → statut
-`unrecouped` → marqueur `‡`. Tant qu'il n'y a pas de capitalisation, le P/S reste « — » :
-la surcharge prépare le **dénominateur**, pas le ratio.
+`unrecouped` → marqueur `‡`. **Depuis le 2026-09-03, le P/S est calculé** (la capitalisation
+existe) mais **reste marqué `‡`** : le CA est celui de l'exercice clos au 31/12/2025, ce n'est
+pas un TTM et il n'est pas recoupable — le passer en ratio ferme serait une régression.
 
 **Liquidités PSQL — non publiables :** le communiqué de clôture annonce « *approximately
 $360 million of cash available at closing* » (EX-99.1 du 6-K). Aucun bilan déposé, aucun XBRL →
@@ -540,6 +563,16 @@ aucun runway. Conforme à la doctrine (pas d'ancre, pas de publication).
     branché en étape 5 de `ingest.py`, backfill + tableau de contrôle, page `/indice` avec
     méthodologie publiée (`docs/methodologie-indice-tqw.fr.md`). **Voir la section C3 détaillée
     dans la Phase Croissance** pour les règles dures et le calendrier des rebalancements.
+
+**Mise à jour du 2026-09-03 (préparation Vendredi Quantique du 04/09) : le 20-F de PSQL publie le
+capital social (212 293 691 actions au 27/08) → capitalisation, P/S, tuile du Mur et image OG
+débloqués, PSQL éligible au rebalancement d'indice du 02/11 ; surcharge actions IONQ au 30/06/2026
+(381 044 481, 10-Q) ; migration 015 (types d'événements `gouvernance` et `partenariat`) ;
+migration 016 (`company_warrant`, `company_reference_price`, colonnes GAAP/non-cash sur
+`company_financials`) ; migration 017 (les deux surcharges d'actions) ; 8 nouveaux événements C6
+sur PSQL et IONQ. Aucune ligne écrite sans URL de source primaire — les seuls chiffres non issus
+d'un dépôt sont les cours de la première séance de PSQL, explicitement marqués « presse
+spécialisée ».**
 
 **Univers sectoriel porté à 14 sociétés le 2026-08-31 : ajout de PSQL (Pasqal Holding SA) —
 migration 014, `TICKER_FIRST_TRADE`/`SECTORAL_FIRST_TRADE` contre l'historique fantôme Bleichroeder
@@ -940,6 +973,40 @@ intégrations mi-vidéo** (§10) — le lien qu'on pose sous une vidéo pointe v
 - **Disclaimer** propre à la fiche (i18n, « ni conseil ni recommandation ») + horodatage
   « Données du [date], clôture US ». i18n intégral sous `t.societe.*` (`src/i18n/fr.ts`).
 
+**⛔ RÈGLE DURE — UNE PANNE DE DONNÉE N'EST JAMAIS UN 404 (posée le 2026-09-03, après
+incident de production de 3 jours).** Les 14 fiches ont renvoyé **404 en prod du 31/08 au
+03/09** pendant que l'accueil, `/indice` et les portefeuilles répondaient normalement.
+Mécanisme : `fetchCompanyData` retournait `null` **indistinctement** pour un ticker inconnu
+ET pour une erreur de lecture Supabase ; la page appelait `notFound()` ; avec
+`dynamicParams = false`, ce 404 est **prérendu au build** (`"status": 404` dans
+`.next/server/app/societe/<t>.meta`), servi statiquement et **jamais revalidé** — il ne se
+répare pas tout seul, seul un nouveau déploiement le lève. **Le build restait vert.**
+Reproduit à l'identique en lançant `next build` avec une base injoignable : **17 pages**
+baquées en 404 (les 14 fiches **et** les 3 portefeuilles, même piège) sans une ligne d'erreur.
+Cause probable de l'incident : une défaillance passagère de Supabase pendant le prerender —
+14 fiches × 9 requêtes en parallèle sur 15 workers, soit un pic de plusieurs centaines de
+requêtes concurrentes, quand `/portefeuille/[id]` n'en lance qu'une poignée et est passé.
+
+Corollaires, tous à préserver :
+- **Seul un ticker hors `SECTORAL_TICKERS` vaut un 404** — décision prise **sans la base**,
+  donc insensible à toute panne.
+- **Une erreur de lecture JETTE** : le build devient rouge. Un build rouge est un incident de
+  30 secondes ; 14 fiches en 404 silencieuses ont duré 3 jours et se voyaient depuis Google.
+  Même arbitrage que « un chiffre faux est pire qu'un chiffre absent », appliqué aux pages.
+- **Un ticker de l'univers absent de `asset` jette aussi** — c'est une migration ou un seed
+  manquant, pas une page inexistante. Ne jamais le dégrader en 404.
+- Même règle appliquée à `fetchPortfolioDetail` (`.single()` → `.maybeSingle()`, pour
+  distinguer « erreur de lecture » de « ligne absente »).
+- ⚠ **Les routes OG dégradent, elles, gracieusement** (`.catch(() => null)` → carte de marque) :
+  c'est voulu et **ne doit pas être aligné** sur la page. Corollaire piégeux : un
+  `/societe/<t>/opengraph-image` en **200 ne prouve pas** que la fiche va bien — pendant
+  l'incident, les images répondaient 200 en carte dégradée pendant que les pages étaient en 404.
+- **Diagnostic en une commande** — l'`age` figé et le statut prérendu signent le 404 de build :
+  ```bash
+  curl -s -D- -o /dev/null https://thequantumwall.com/societe/ionq | grep -i 'age:\|x-nextjs'
+  # age > revalidate (86400) + x-nextjs-prerender: 1  ⇒  404 prérendu, pas un souci de routage
+  ```
+
 ### C7 — Module Dilution
 
 **Positionnement :** après C2 — le module vit **principalement sur les fiches sociétés**
@@ -1061,6 +1128,50 @@ stocker le calculable » : ces chiffres se **lisent** dans un dépôt daté, ils
 même nature que `shares_outstanding` ou `sector_event`. Le **runway n'est pas stocké** : il se
 recalcule à la lecture, et sa mise en forme (plafond, suppression au-delà de 9 mois) est une
 décision d'affichage.
+
+**Migration 016 (2026-09-03) — instruments dilutifs, prix de référence, GAAP vs non-cash.**
+Trois objets, même doctrine que 013 : `source_form` / `source_filed` / `source_url` **NOT NULL**.
+
+- **`company_warrant`** — warrants et titres convertibles, **un instrument par ligne**
+  (`PK (ticker, series)`). `shares_callable` **nullable** : non publié ⇒ « — », jamais estimé.
+  `is_derived` + `derivation_note` (contrainte : l'un impose l'autre) publient le calcul au
+  lecteur quand un nombre est reconstitué plutôt que lu.
+  ⚠ **RÈGLE DURE — AUCUN TOTAL, NULLE PART.** Ni en base, ni dans `api.ts`, ni à l'affichage.
+  Chez IONQ les strikes vont de **11,50 $ à 155,00 $** (rapport de 1 à 13) : sommer ces lignes
+  supposerait qu'elles seront toutes exercées, c'est-à-dire publier une **projection de cours
+  déguisée en fait** — exactement ce qu'interdit la règle §10. Les lignes sont listées côte à
+  côte, et le nombre d'actions en circulation est rappelé **à côté**, jamais additionné, pour
+  que le lecteur fasse lui-même la proportion. La dilution n'est pas non plus colorée en
+  vert/rouge : c'est un fait, pas une performance.
+  Une **obligation convertible** y figure malgré le nom de la table (PSQL, 312,5 M$ à 12,00 $) :
+  lister les warrants en taisant un instrument plus lourd au même prix d'exercice donnerait une
+  image partielle — le reproche ne serait pas « vous avez trop dit », mais « vous avez omis ».
+- **`company_reference_price`** — prix de référence sourcés (première séance de cotation).
+  **`price_daily` n'a pas de colonne `open`** et ne peut pas l'acquérir rétroactivement : le
+  pipeline yfinance ne télécharge que close / adj_close / volume. Un prix de première séance est
+  ici une **donnée éditoriale datée**, pas une série de marché. La colonne **`reference_usd`
+  porte le PRIX D'OPÉRATION** (10,00 $ pour PSQL) — l'ancre de tout contrôle de cohérence
+  post-fusion, distincte des cours ; `reference_note` est obligatoire dès qu'elle est remplie,
+  sans quoi un prix d'opération se confondrait avec un cours.
+  ⚠ **Seule entrée du repo dont la source n'est pas un dépôt** : les cours de séance de PSQL
+  (16,98 / 20,10) ne figurent dans aucun document déposé. `source_form = 'presse spécialisée'`,
+  et c'est **dit tel quel** plutôt que maquillé en source primaire. La clôture (19,11 $) est,
+  elle, recoupée par notre propre `price_daily`.
+- **Trois colonnes sur `company_financials`** (`net_loss`, `warrant_fv_change`,
+  `warrant_liability`, en **milliers de dollars**) plutôt qu'une quatrième table : elles sortent
+  du **même dépôt** que la ligne de liquidités, à la même `as_of_date`. Motif : chez IONQ, la
+  perte T2 2026 de **1 867 742 k$** contient **1 649 115 k$** de seule revalorisation du passif
+  de warrants — une charge qui suit le cours de l'action et ne consomme **aucune trésorerie**.
+  Publier la perte sans cette décomposition donnerait à lire une hémorragie là où le runway est
+  intact. La distinction est **pédagogique et factuelle** : on ne dit jamais que la perte « ne
+  compte pas », on dit ce qu'elle contient. Garde-fou dans `seed_warrants.py` : une composante
+  qui excéderait le total qu'elle compose bloque toute écriture.
+
+Alimentation : **`scripts/seed_warrants.py`** (même contrat que `seed_events.py` — refus global
+si une seule ligne est invalide, upsert idempotent, purge ISR). Les colonnes GAAP sont un
+**UPDATE ciblé**, jamais un upsert : la ligne `company_financials` appartient à
+`fetch_financials.py`, seul détenteur du contrôle croisé bloquant à ±10 %. Si elle n'existe pas,
+le script le **dit** au lieu de fabriquer une ligne de liquidités incomplète.
 
 ### C3 — Indice TQW (indice propriétaire) — ✅ RÉALISÉE (2026-08-01)
 
@@ -1271,9 +1382,10 @@ create table sector_event (
   id            serial primary key,
   ticker        text references asset(ticker),   -- NULL = événement sectoriel GLOBAL
   event_date    date not null,
-  type          text not null check (type in (   -- liste FERMÉE
+  type          text not null check (type in (   -- liste FERMÉE — 12 valeurs (008 puis 015)
                   'ipo','spac','reverse_split','dilution','contrat',
-                  'resultats','acquisition','reglementaire','technologie','autre')),
+                  'resultats','acquisition','reglementaire','technologie','autre',
+                  'gouvernance','partenariat')),
   title         text not null,
   description   text,
   source_url    text not null,                    -- OBLIGATOIRE — règle de la maison
@@ -1288,20 +1400,62 @@ source primaire. Garanti en base (contrainte) ET revérifié par `seed_events.py
 si un seul événement est invalide : source manquante, type hors liste, date non ISO — jamais d'état
 partiel). `type` est une **liste fermée** (CHECK) ; les libellés vivent dans `t.evenements.types.*`.
 
+**QUATRE MIROIRS DE LA LISTE FERMÉE — les faire bouger ENSEMBLE** (une valeur ajoutée à l'un
+seulement dégrade en silence) : (1) le CHECK en base ; (2) `ALLOWED_TYPES` dans `seed_events.py`,
+qui **refuse toute écriture** si un type est hors liste ; (3) `t.evenements.types` (`fr.ts`),
+sinon le badge affiche la valeur brute de la base ; (4) `TYPE_FAMILY` (`EventTimeline.tsx`),
+sinon repli en gris. La **migration 015** (2026-09-03) porte la liste à **12 valeurs** en
+ajoutant `gouvernance` (conseil, dirigeants, vote d'actionnaires) et `partenariat`.
+⚠ **`partenariat` ≠ `contrat`** : un accord-cadre de recherche sans montant publié n'est pas une
+commande chiffrée. Les confondre laisserait lire un chiffre d'affaires là où il n'y en a pas
+(cas Pasqal × KACST, 31/08/2026 : aucun montant communiqué).
+
 **Saisie (pas d'interface d'admin — hors périmètre C6) :** SQL direct dans Supabase, ou
 `scripts/seed_events.py` — liste Python `EVENTS` lisible/éditable, upsert idempotent
 `on_conflict=(ticker,event_date,title)`. Une admin viendra plus tard ; en attendant, le script
-est la voie d'entrée. Prérequis : **migration 008 appliquée manuellement**.
+est la voie d'entrée. Prérequis : **migrations 008 puis 015 appliquées manuellement**.
+
+**Enrichir un événement existant, sans doublon :** l'upsert porte sur
+`(ticker, event_date, title)`. Éditer la `description`, le `source_url`, le `source_label` ou le
+`type` d'une entrée d'`EVENTS` et relancer **met la ligne à jour**. En revanche, changer le
+**titre** (ou la date, ou le ticker) crée une NOUVELLE ligne et laisse l'ancienne orpheline —
+il faut alors un `UPDATE`/`DELETE` SQL manuel. Convention : annoter la correction en commentaire
+daté au-dessus de la ligne (modèle : la correction QUBT du 16/08/2026, l'enrichissement PSQL du
+03/09/2026), plutôt que de réécrire en silence.
 
 **Affichage :** `EventTimeline.tsx` (Server Component, pas de JS client) remplace le placeholder
 « Événements » sur `/societe/[ticker]` : frise verticale des événements **du ticker** (event_date
 DESC), badge type coloré discret (familles charte claire : or IPO/SPAC · teal contrat/résultats/
-acquisition · rouge dilution/reverse_split · gris réglementaire/techno/autre), titre, description,
+acquisition · **teal partenariat** · rouge dilution/reverse_split · gris réglementaire/techno/
+autre · **gris gouvernance**), titre, description,
 lien source « Source : [label] ↗ » (`data-umami-event="clic-source-evenement"` +
 `data-umami-event-ticker`/`-type`). **0 événement → le placeholder « Bientôt » reste.**
 Lecture repliée dans `fetchCompanyData` (api.ts), **fallback gracieux** si la table n'existe pas
 encore (events=[]). Les **événements globaux (`ticker=null`) sont exclus des fiches** — réservés à
 une future page secteur / la newsletter (C5). i18n intégral `t.evenements.*`. ISR 24 h inchangé.
+
+**⚠ DETTE LATENTE — les événements globaux ne sont PAS idempotents (relevée le 2026-09-03).**
+`unique (ticker, event_date, title)` **ne dédoublonne pas** les lignes `ticker = null` : en SQL,
+`NULL ≠ NULL`, donc la contrainte ne s'applique jamais à un événement global et chaque relance
+de `seed_events.py` en **recréerait un doublon, en silence**. La dette n'a jamais mordu parce
+qu'aucun événement global n'a jamais été saisi. **Ne pas en écrire un seul avant de l'avoir
+corrigée** — l'erreur serait invisible jusqu'à ce qu'une page les affiche enfin, avec quatre
+copies. Correctif prévu quand le besoin se présentera : index unique sur
+`coalesce(ticker, '')` (ou index partiel `where ticker is null`), à livrer **avec** la page
+secteur qui rendra ces événements. Les écrire avant, c'est accumuler des doublons dans le noir.
+
+**Matière éditoriale en attente (pas en base, volontairement) :**
+- **H.R. 10163 — American Quantum Competitiveness Act** (Langworthy, NY). Déposée le
+  **27/08/2026**, renvoyée à la commission Energy and Commerce ; communiqué du **31/08/2026**.
+  Désigne le **Department of Commerce** comme agence chef de file pour le quantique commercial
+  (stratégie nationale de compétitivité, chaînes d'approvisionnement, manufacturing).
+  Type C6 pertinent : `reglementaire`, `ticker = null`. Sources primaires :
+  [govinfo BILLS-119hr10163ih](https://www.govinfo.gov/app/details/BILLS-119hr10163ih) ·
+  [communiqué house.gov](https://langworthy.house.gov/media/press-releases/congressman-langworthy-introduces-american-quantum-competitiveness-act).
+  ⚠ Le communiqué cite IBM, Microsoft et Google **via la Quantum Industry Coalition**, qui
+  soutient le texte : ce sont des membres d'une coalition favorable, **pas l'objet de la loi**.
+  Rattacher ce texte à IBM ou GOOGL pour le rendre visible serait une éditorialisation — la
+  raison pour laquelle il attend la page secteur plutôt qu'une fiche.
 
 **Mise en service (à faire manuellement) :** 1) appliquer `supabase/migrations/008_sector_events.sql`
 dans le dashboard Supabase ; 2) `cd scripts && python3 seed_events.py` (seede les 7 premiers

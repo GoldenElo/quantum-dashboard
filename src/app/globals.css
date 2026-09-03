@@ -1421,6 +1421,29 @@ button { cursor: pointer; }
 .dil-filing-form { font-weight: 600; }
 .dil-methode { margin-top: 1.4rem; }
 
+/* Instruments dilutifs (C7 / migration 016) — une carte par instrument.
+   Les lignes sont VOLONTAIREMENT séparées et jamais alignées en tableau
+   totalisable : additionner des strikes de 11,50 $ à 155,00 $ serait une
+   projection, pas un fait (règle §10). Aucune couleur vert/rouge non plus —
+   la dilution est un fait, pas une performance. */
+.dil-instruments { list-style: none; padding: 0; margin: 0.6rem 0 0; }
+.dil-instrument {
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--border);
+}
+.dil-instrument:first-child { border-top: none; }
+.dil-instrument .dil-meta { margin: 0.25rem 0 0; }
+.dil-instrument-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.9rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.dil-instrument-label { font-weight: 600; }
+.dil-instrument-figures { color: var(--text); white-space: nowrap; }
+.dil-derived { color: var(--or); }
+
 @media (max-width: 600px) {
   .dil-bar-row { grid-template-columns: 2.4rem 1fr; }
   /* Sur mobile la valeur passe sous la barre plutôt que de l'écraser. */

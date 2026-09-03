@@ -30,10 +30,18 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-# Types autorisés — miroir EXACT du CHECK de la migration 008.
+# Types autorisés — miroir EXACT du CHECK, migration 008 puis 015.
+# 'gouvernance' et 'partenariat' ajoutés par la migration 015 (septembre 2026) :
+#   · gouvernance — conseil, dirigeants, vote d'actionnaires ;
+#   · partenariat — accord de recherche ou de déploiement SANS montant publié.
+#     Distinct de 'contrat', qui suppose une commande chiffrée : les confondre
+#     laisserait croire à un chiffre d'affaires là où il n'y a qu'un accord-cadre.
+# Trois autres miroirs à tenir : t.evenements.types (fr.ts), TYPE_FAMILY
+# (EventTimeline.tsx), et le bloc SQL de CLAUDE.md §C6.
 ALLOWED_TYPES = {
     "ipo", "spac", "reverse_split", "dilution", "contrat",
     "resultats", "acquisition", "reglementaire", "technologie", "autre",
+    "gouvernance", "partenariat",
 }
 
 # ─── Événements réels, sourcés ─────────────────────────────────────────────────
@@ -128,6 +136,11 @@ EVENTS = [
         "source_url": "https://thequantumwall.com/societe/hq",
         "source_label": "Données de marché — The Quantum Wall",
     },
+    # ⚠ ENRICHISSEMENT (2026-09-03) — PAS un doublon. L'événement existait déjà avec
+    # la clôture du premier jour ; on y ajoute l'ouverture et le plus haut de séance,
+    # et le décompte d'actions publié depuis par le 20-F. Le TITRE est inchangé : la
+    # clé de conflit étant (ticker, event_date, title), l'upsert MET À JOUR la ligne
+    # au lieu d'en créer une seconde. Modifier le titre laisserait un orphelin.
     {
         "ticker": "PSQL",
         "event_date": "2026-08-28",
@@ -137,15 +150,149 @@ EVENTS = [
             "Deuxième société européenne du quantique cotée sur une grande place américaine, "
             "après IQM. Fusion avec Bleichroeder Acquisition Corp. II approuvée par les "
             "actionnaires le 25 août 2026 et finalisée le 27 août ; l'action ordinaire cote "
-            "depuis le 28 août sous le symbole PSQL (les warrants, sous PSQLW, ne sont pas "
-            "suivis ici). Clôture du premier jour à 19,11 $, soit +91 % au-dessus du prix "
-            "d'opération de 10,00 $. L'opération valorisait Pasqal environ 2 Md$ et apporte "
-            "environ 360 M$ de trésorerie à la clôture selon le communiqué. Technologie à "
-            "atomes neutres, siège à Palaiseau (France)."
+            "depuis le 28 août sous le symbole PSQL (le titre PSQLW, qui porte les warrants, "
+            "n'est pas suivi ici comme actif coté). Première séance : ouverture à 16,98 $, "
+            "plus haut à 20,10 $, clôture à 19,11 $, soit +91 % au-dessus du prix d'opération "
+            "de 10,00 $. L'opération valorisait Pasqal environ 2 Md$ et apporte environ "
+            "360 M$ de trésorerie à la clôture selon le communiqué. Le capital social "
+            "post-fusion — 212 293 691 actions ordinaires au 27 août — n'a été publié que le "
+            "2 septembre, avec le 20-F. Technologie à atomes neutres, siège à Palaiseau "
+            "(France)."
         ),
         # Lien profond vers l'exhibit 99.1 du 6-K de closing (communiqué conjoint officiel).
         "source_url": "https://www.sec.gov/Archives/edgar/data/2119292/000121390026094393/ea030366701ex99-1.htm",
         "source_label": "Communiqué de closing — 6-K SEC du 27/08/2026",
+    },
+    {
+        "ticker": "PSQL",
+        "event_date": "2026-08-25",
+        "type": "gouvernance",
+        "title": "Les actionnaires de Bleichroeder approuvent la fusion",
+        "description": (
+            "Assemblée générale extraordinaire du SPAC : 24 086 739 actions représentées sur "
+            "38 333 333 en circulation (62,8 %, quorum atteint). La fusion est approuvée par "
+            "21 467 865 voix contre 2 616 196, ainsi que les neuf administrateurs de la "
+            "société combinée et les plans d'intéressement. Le même dépôt indique que les "
+            "porteurs de 26 039 602 actions Class A ont demandé le rachat de leurs titres — "
+            "c'est ce niveau de rachats qui explique que le capital social final "
+            "(212,3 M actions) se situe près de la borne basse de la fourchette du "
+            "prospectus [209,6 M ; 238,3 M]."
+        ),
+        "source_url": "https://www.sec.gov/Archives/edgar/data/2088295/000121390026094046/ea0303286-8k425_bleich2.htm",
+        "source_label": "8-K SEC du 26/08/2026 (points 5.07 et 8.01)",
+    },
+    {
+        "ticker": "PSQL",
+        "event_date": "2026-08-27",
+        "type": "gouvernance",
+        "title": "Conseil d'administration de neuf membres, présidé par Alain Aspect",
+        "description": (
+            "Le conseil de Pasqal Holding SA est présidé, à titre NON EXÉCUTIF, par Alain "
+            "Aspect, cofondateur de Pasqal et prix Nobel de physique 2022. Wasiq Bokhari est "
+            "directeur général et administrateur ; Michel Combes (Lambda, Brightspeed, "
+            "ex-SoftBank International, Sprint, Altice, Alcatel-Lucent) est administrateur "
+            "référent indépendant. La présidence et la direction générale sont donc séparées : "
+            "c'est un fait de gouvernance, rapporté sans appréciation."
+        ),
+        "source_url": "https://www.globenewswire.com/news-release/2026/08/27/3352409/0/en/pasqal-announces-the-board-of-directors-of-the-combined-company-following-its-nasdaq-listing.html",
+        "source_label": "Communiqué Pasqal du 27/08/2026",
+    },
+    {
+        "ticker": "PSQL",
+        "event_date": "2026-08-31",
+        "type": "partenariat",
+        "title": "Accord de recherche pluriannuel avec la KACST (Arabie saoudite)",
+        "description": (
+            "Accord de collaboration signé avec la King Abdulaziz City for Science and "
+            "Technology, représentée par son National Center for Quantum Technologies (NCQT), "
+            "annoncé à Riyad au King Salman Science Oasis. Les travaux portent d'abord sur la "
+            "cryptographie résistante au quantique et associent les processeurs à atomes "
+            "neutres et les services cloud de Pasqal à l'infrastructure de recherche de la "
+            "KACST. AUCUN MONTANT N'EST PUBLIÉ : c'est un accord-cadre de recherche, pas une "
+            "commande — le porter au chiffre d'affaires serait une inférence."
+        ),
+        # Communiqué d'origine sur le fil de l'émetteur. Les reprises (HPCwire et autres
+        # titres spécialisés) sont écartées au profit de la source première.
+        "source_url": "https://www.globenewswire.com/news-release/2026/08/31/3353273/0/en/pasqal-and-kacst-launch-strategic-quantum-research-collaboration-as-pasqal-expands-presence-in-saudi-arabia.html",
+        "source_label": "Communiqué Pasqal du 31/08/2026",
+    },
+    {
+        "ticker": "PSQL",
+        "event_date": "2026-09-02",
+        "type": "technologie",
+        "title": "Structures de gélation protéique encodées sur QPU, avec True Nexus",
+        "description": (
+            "Avec True Nexus, Pasqal annonce avoir encodé sur ses processeurs à atomes neutres "
+            "des structures protéiques liées aux mécanismes de gélation — le passage du "
+            "liquide au gel qui donne leur texture aux aliments. Travaux soutenus par le "
+            "ministère saoudien des Communications et des Technologies de l'information. "
+            "Étape de recherche annoncée par les partenaires : ni produit commercialisé, ni "
+            "avantage quantique démontré."
+        ),
+        "source_url": "https://www.globenewswire.com/news-release/2026/09/02/3355080/0/en/pasqal-and-true-nexus-open-a-new-quantum-frontier-for-the-global-protein-economy.html",
+        "source_label": "Communiqué Pasqal du 02/09/2026",
+    },
+    {
+        "ticker": "PSQL",
+        "event_date": "2026-09-02",
+        "type": "autre",
+        "title": "Le 20-F publie enfin le capital social post-fusion",
+        "description": (
+            "212 293 691 actions ordinaires en circulation au 27 août 2026 (couverture et "
+            "point 10.A du rapport annuel). C'est le PREMIER document déposé à publier ce "
+            "chiffre : ni le 6-K de clôture, ni les communications relatives aux rachats ne "
+            "le donnaient. Jusque-là, la seule valeur disponible (209 583 333) était "
+            "l'hypothèse de rachat maximal du prospectus, la fourchette réelle montant à "
+            "238 333 333 — 13,7 % d'écart. La capitalisation et le ratio cours/chiffre "
+            "d'affaires de Pasqal deviennent calculables à compter de cette publication."
+        ),
+        "source_url": "https://www.sec.gov/Archives/edgar/data/2119292/000121390026096761/ea0303765-20f_pasqal.htm",
+        "source_label": "Rapport annuel 20-F déposé le 02/09/2026",
+    },
+    {
+        "ticker": "IONQ",
+        "event_date": "2026-08-24",
+        "type": "gouvernance",
+        "title": "Deux administrateurs supplémentaires : Eric R. Ball et Timothy E. Baxter",
+        "description": (
+            "Le conseil crée deux sièges et élit Eric R. Ball (classe II, mandat jusqu'à "
+            "l'assemblée 2029) et Timothy E. Baxter (classe III, mandat jusqu'à l'assemblée "
+            "2027), avec effet au 24 août 2026. Aucun départ n'est déclaré : le conseil "
+            "s'élargit."
+        ),
+        # Le 8-K est daté du 28/08 mais porte la date d'effet du 24/08 — c'est cette
+        # dernière qui fait foi pour la frise (« effective August 24, 2026 »).
+        "source_url": "https://www.sec.gov/Archives/edgar/data/1824920/000119312526374694/ionq-20260824.htm",
+        "source_label": "8-K SEC du 28/08/2026 (point 5.02)",
+    },
+    {
+        "ticker": "IONQ",
+        "event_date": "2026-09-08",
+        "type": "autre",
+        "title": "Journée investisseurs au NYSE",
+        "description": (
+            "Journée investisseurs annoncée à l'occasion de la clôture de l'acquisition de "
+            "SkyWater Technology. Aucun chiffre n'est communiqué par avance ; ce qui y sera "
+            "dit relèvera de la communication de la société, pas d'un dépôt réglementaire."
+        ),
+        "source_url": "https://www.sec.gov/Archives/edgar/data/1824920/000119312526327127/ionq-ex99_1.htm",
+        "source_label": "Communiqué IonQ du 31/07/2026 — 8-K SEC",
+    },
+    {
+        "ticker": "IONQ",
+        "event_date": "2026-09-30",
+        "type": "dilution",
+        "title": "Expiration des warrants publics à 11,50 $",
+        "description": (
+            "Les warrants publics issus de la fusion SPAC de 2021 expirent le 30 septembre "
+            "2026 ; ils cessent de coter au NYSE sous le symbole IONQ WS avant l'ouverture du "
+            "29 septembre. Il en restait 1 065 043 au 30 juin 2026, chacun donnant droit à "
+            "une action à 11,50 $ (10-Q du 10/08/2026). Ce qui n'aura pas été exercé d'ici là "
+            "s'éteint : à la différence des warrants Series A et Series B, cette ligne a une "
+            "date de fin."
+        ),
+        "source_url": "https://www.sec.gov/Archives/edgar/data/1824920/000119312526374694/ionq-20260824.htm",
+        "source_label": "8-K SEC du 28/08/2026 (point 8.01)",
     },
     {
         "ticker": "IQMX",

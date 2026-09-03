@@ -104,7 +104,12 @@ export default async function CompanyPage({ params }: Props) {
   // La section Dilution garde l'habillage « placeholder » tant qu'elle n'a rien
   // à montrer — miroir de la condition de repli du composant.
   const hasDilution =
-    data.sharesHistory.length > 0 || data.financials != null || data.filings.length > 0;
+    data.sharesHistory.length > 0 || data.financials != null || data.filings.length > 0
+    || data.warrants.length > 0;
+  // Première séance de cotation — repère de valorisation d'une ex-SPAC. Les cours
+  // du jour ne vivent pas dans price_daily (qui ne porte que la clôture) : c'est
+  // une donnée éditoriale sourcée, pas une série de marché.
+  const firstDay = data.referencePrices.find(r => r.kind === 'first_trading_day') ?? null;
   // IPO récente : historique présent mais pas d'offset annuel calculable.
   const depuisCotation = data.hasHistory && data.change_1y == null;
   // Ligne d'acquisition : vidéo dédiée à la société, ou playlist générale à défaut.
@@ -187,6 +192,55 @@ export default async function CompanyPage({ params }: Props) {
           <p className="chart-note">{t.societe.capChart.methode}</p>
         )}
       </section>
+
+      {/* Première séance de cotation — placée juste après la capitalisation :
+          c'est là que la question « à partir de quel prix ? » se pose. Le prix
+          d'OPÉRATION est affiché à côté des cours, parce que c'est contre lui,
+          jamais contre le cours, que se contrôle une valorisation post-fusion. */}
+      {firstDay && (
+        <section className="section" aria-label={t.societe.dilution.referenceTitre}>
+          <h2 className="section-title">{t.societe.dilution.referenceTitre}</h2>
+          <div className="dil-metrics">
+            {firstDay.open_usd != null && (
+              <div className="dil-metric">
+                <span className="stat-label">{t.societe.dilution.referenceOuverture}</span>
+                <span className="stat-value mono">{`$${firstDay.open_usd.toFixed(2)}`}</span>
+              </div>
+            )}
+            {firstDay.high_usd != null && (
+              <div className="dil-metric">
+                <span className="stat-label">{t.societe.dilution.referencePlusHaut}</span>
+                <span className="stat-value mono">{`$${firstDay.high_usd.toFixed(2)}`}</span>
+              </div>
+            )}
+            {firstDay.close_usd != null && (
+              <div className="dil-metric">
+                <span className="stat-label">{t.societe.dilution.referenceCloture}</span>
+                <span className="stat-value mono">{`$${firstDay.close_usd.toFixed(2)}`}</span>
+              </div>
+            )}
+            {firstDay.reference_usd != null && (
+              <div className="dil-metric">
+                <span className="stat-label">{t.societe.dilution.referenceOperation}</span>
+                <span className="stat-value mono">{`$${firstDay.reference_usd.toFixed(2)}`}</span>
+              </div>
+            )}
+          </div>
+          <p className="dil-meta">
+            {t.societe.dilution.referenceLe.replace('{date}', formatDateCompact(firstDay.price_date))}
+          </p>
+          {firstDay.reference_note && (
+            <p className="dil-meta">{firstDay.reference_note}</p>
+          )}
+          <p className="dil-meta dil-source">
+            <a href={firstDay.source_url} target="_blank" rel="noopener noreferrer">
+              {t.societe.dilution.referenceSource
+                .replace('{form}', firstDay.source_form)
+                .replace('{date}', formatDateCompact(firstDay.source_filed))}
+            </a>
+          </p>
+        </section>
+      )}
 
       {/* Notes de la rédaction — curation différenciante, mise en avant */}
       {notes.length > 0 && (

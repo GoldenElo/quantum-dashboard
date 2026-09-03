@@ -206,6 +206,11 @@ export type CompanyData = {
   financials: CompanyFinancials | null;
   // Dépôts déclarés (shelf / prospectus), du plus récent au plus ancien.
   filings: CompanyFiling[];
+  // Instruments dilutifs (migration 016), du strike le plus bas au plus haut.
+  // [] si la table n'existe pas encore — la fiche rend quand même.
+  warrants: CompanyWarrant[];
+  // Prix de référence sourcés, du plus récent au plus ancien.
+  referencePrices: CompanyReferencePrice[];
 };
 
 /**
@@ -224,6 +229,56 @@ export type CompanyFinancials = {
   period_start: string | null;       // période RÉELLE du flux publié
   period_end: string | null;
   period_days: number | null;
+  source_form: string;
+  source_filed: string;
+  source_url: string;
+  // GAAP vs non-cash (migration 016) — nullables : les colonnes ne sont
+  // renseignées que là où la décomposition change la lecture du résultat.
+  // Montants EN MILLIERS de dollars, comme publiés au dépôt.
+  net_loss: number | null;
+  warrant_fv_change: number | null;   // négatif = charge, SANS effet de trésorerie
+  warrant_liability: number | null;
+};
+
+/**
+ * Instrument dilutif — warrant ou obligation convertible (migration 016).
+ *
+ * ⚠ RÈGLE §10 : ces lignes ne sont JAMAIS additionnées, ni ici ni à l'affichage.
+ * Chez IonQ les strikes vont de 11,50 $ à 155,00 $ : un « total de dilution
+ * potentielle » supposerait qu'ils seront tous exercés — une projection de cours
+ * déguisée en fait. On expose des instruments, pas une prévision.
+ */
+export type CompanyWarrant = {
+  series: string;
+  label: string;
+  shares_callable: number | null;     // null = non publié → « — », jamais estimé
+  strike_usd: number;
+  as_of_date: string;
+  expires_on: string | null;
+  issued_on: string | null;
+  is_derived: boolean;
+  derivation_note: string | null;
+  note: string | null;
+  source_form: string;
+  source_filed: string;
+  source_url: string;
+};
+
+/**
+ * Prix de référence sourcé (migration 016) — distinct de `price_daily`, qui ne
+ * porte que la clôture. `reference_usd` est le PRIX D'OPÉRATION d'une fusion
+ * SPAC : c'est contre lui, jamais contre le cours, que se contrôle la cohérence
+ * d'une valorisation post-fusion.
+ */
+export type CompanyReferencePrice = {
+  price_date: string;
+  kind: string;
+  open_usd: number | null;
+  high_usd: number | null;
+  low_usd: number | null;
+  close_usd: number | null;
+  reference_usd: number | null;
+  reference_note: string | null;
   source_form: string;
   source_filed: string;
   source_url: string;
@@ -490,12 +545,20 @@ function resolveAsset(pos: RawPosition): RawAsset | null {
 }
 
 export async function fetchPortfolioDetail(id: string): Promise<PortfolioDetail | null> {
-  const { data: portfolio } = await supabase
+  const { data: portfolio, error } = await supabase
     .from('portfolio')
     .select('id, name, description, inception_date, initial_capital_usd')
     .eq('id', id)
-    .single();
+    .maybeSingle();
 
+  // Même règle dure que fetchCompanyData : les trois profils sont prerendus depuis
+  // une liste en dur, donc un `null` ici se fige en 404 au build sans casser le build.
+  // Une erreur de lecture casse le build ; seul un id inconnu vaut un 404.
+  if (error) {
+    throw new Error(
+      `fetchPortfolioDetail(${id}) : lecture de « portfolio » impossible — ${error.message}.`
+    );
+  }
   if (!portfolio) return null;
 
   const [snapshotsResult, positionsResult] = await Promise.all([
@@ -1063,7 +1126,7 @@ export async function fetchCompanyData(ticker: string): Promise<CompanyData | nu
   const upper = ticker.toUpperCase();
   if (!SECTORAL_TICKERS.includes(upper as (typeof SECTORAL_TICKERS)[number])) return null;
 
-  const [assetRes, sharesRes, revenueRes, priceRes, eventsRes, finRes, filingsRes] = await Promise.all([
+  const [assetRes, sharesRes, revenueRes, priceRes, eventsRes, finRes, filingsRes, warrantsRes, refPriceRes] = await Promise.all([
     supabase.from('asset').select('ticker, name, category').eq('ticker', upper).maybeSingle(),
     // Tout l'historique des actions (ASC) → step-function pour la courbe de capi.
     supabase
@@ -1097,7 +1160,7 @@ export async function fetchCompanyData(ticker: string): Promise<CompanyData | nu
       .from('company_financials')
       // Littéral en une seule chaîne : une concaténation casse l'inférence de
       // types de supabase-js, qui analyse la sélection à la compilation.
-      .select('as_of_date, cash, invest_current, invest_noncurrent, liquidity, burn_per_quarter, period_start, period_end, period_days, source_form, source_filed, source_url')
+      .select('as_of_date, cash, invest_current, invest_noncurrent, liquidity, burn_per_quarter, period_start, period_end, period_days, source_form, source_filed, source_url, net_loss, warrant_fv_change, warrant_liability')
       .eq('ticker', upper)
       .order('as_of_date', { ascending: false })
       .limit(1),
@@ -1107,9 +1170,44 @@ export async function fetchCompanyData(ticker: string): Promise<CompanyData | nu
       .eq('ticker', upper)
       .order('filed', { ascending: false })
       .limit(5),
+    // Instruments dilutifs (C7, migration 016) — table optionnelle. Absente ⇒ [].
+    // Lecture bornée par ticker (une poignée de lignes) : aucune pagination requise.
+    // Tri par strike croissant — l'ordre de lecture naturel va du plus proche du
+    // cours au plus lointain ; ils ne sont jamais sommés, seulement listés.
+    supabase
+      .from('company_warrant')
+      .select('series, label, shares_callable, strike_usd, as_of_date, expires_on, issued_on, is_derived, derivation_note, note, source_form, source_filed, source_url')
+      .eq('ticker', upper)
+      .order('strike_usd', { ascending: true }),
+    // Prix de référence sourcés (migration 016) — table optionnelle. Absente ⇒ [].
+    supabase
+      .from('company_reference_price')
+      .select('price_date, kind, open_usd, high_usd, low_usd, close_usd, reference_usd, reference_note, source_form, source_filed, source_url')
+      .eq('ticker', upper)
+      .order('price_date', { ascending: false }),
   ]);
 
-  if (assetRes.error || !assetRes.data) return null;
+  // ⚠ RÈGLE DURE — UNE PANNE DE DONNÉE N'EST JAMAIS UN 404 (posée le 2026-09-03).
+  // Cette fonction alimente une page `dynamicParams = false` : un `null` y devient
+  // un `notFound()`, PRERENDU AU BUILD avec le statut 404 et jamais revalidé. Le
+  // build reste vert et les 14 fiches disparaissent de la production en silence,
+  // jusqu'au déploiement suivant — constaté du 31/08 au 03/09/2026 (voir CLAUDE.md).
+  // Seul le ticker hors univers (décidé plus haut, SANS la base) mérite un 404.
+  // Une erreur de lecture doit CASSER le build, pas produire une page fantôme.
+  if (assetRes.error) {
+    throw new Error(
+      `fetchCompanyData(${upper}) : lecture de « asset » impossible — ` +
+      `${assetRes.error.message}. Aucune fiche n'est rendue plutôt qu'un 404 figé.`
+    );
+  }
+  if (!assetRes.data) {
+    // Ticker de l'univers absent de `asset` : incohérence de seed/migration, pas
+    // une page inexistante. On le dit fort (cf. migration à appliquer avant backfill).
+    throw new Error(
+      `fetchCompanyData(${upper}) : ticker de l'univers sectoriel absent de la table ` +
+      `« asset ». Migration ou seed manquant — appliquer la migration avant de déployer.`
+    );
+  }
   const asset = assetRes.data;
 
   // Série de prix triée par date CROISSANTE.
@@ -1197,6 +1295,9 @@ export async function fetchCompanyData(ticker: string): Promise<CompanyData | nu
         source_form: finRow.source_form as string,
         source_filed: finRow.source_filed as string,
         source_url: finRow.source_url as string,
+        net_loss: finRow.net_loss != null ? Number(finRow.net_loss) : null,
+        warrant_fv_change: finRow.warrant_fv_change != null ? Number(finRow.warrant_fv_change) : null,
+        warrant_liability: finRow.warrant_liability != null ? Number(finRow.warrant_liability) : null,
       }
     : null;
 
@@ -1206,6 +1307,42 @@ export async function fetchCompanyData(ticker: string): Promise<CompanyData | nu
         form: f.form as string,
         filed: f.filed as string,
         url: f.url as string,
+      }));
+
+  // Même dégradation gracieuse que sector_event et company_financials : migration
+  // 016 non appliquée ⇒ [] ⇒ les encarts ne rendent pas, la fiche rend toujours.
+  const warrants: CompanyWarrant[] = warrantsRes.error
+    ? []
+    : (warrantsRes.data ?? []).map(w => ({
+        series: w.series as string,
+        label: w.label as string,
+        shares_callable: w.shares_callable != null ? Number(w.shares_callable) : null,
+        strike_usd: Number(w.strike_usd),
+        as_of_date: w.as_of_date as string,
+        expires_on: (w.expires_on as string | null) ?? null,
+        issued_on: (w.issued_on as string | null) ?? null,
+        is_derived: Boolean(w.is_derived),
+        derivation_note: (w.derivation_note as string | null) ?? null,
+        note: (w.note as string | null) ?? null,
+        source_form: w.source_form as string,
+        source_filed: w.source_filed as string,
+        source_url: w.source_url as string,
+      }));
+
+  const referencePrices: CompanyReferencePrice[] = refPriceRes.error
+    ? []
+    : (refPriceRes.data ?? []).map(r => ({
+        price_date: r.price_date as string,
+        kind: r.kind as string,
+        open_usd: r.open_usd != null ? Number(r.open_usd) : null,
+        high_usd: r.high_usd != null ? Number(r.high_usd) : null,
+        low_usd: r.low_usd != null ? Number(r.low_usd) : null,
+        close_usd: r.close_usd != null ? Number(r.close_usd) : null,
+        reference_usd: r.reference_usd != null ? Number(r.reference_usd) : null,
+        reference_note: (r.reference_note as string | null) ?? null,
+        source_form: r.source_form as string,
+        source_filed: r.source_filed as string,
+        source_url: r.source_url as string,
       }));
 
   return {
@@ -1231,6 +1368,8 @@ export async function fetchCompanyData(ticker: string): Promise<CompanyData | nu
     sharesHistory,
     financials,
     filings,
+    warrants,
+    referencePrices,
   };
 }
 

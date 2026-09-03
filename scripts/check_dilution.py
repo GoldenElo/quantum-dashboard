@@ -83,7 +83,7 @@ _RUNWAY_CAP_QUARTERS = 20
 
 # Ancres de validation fournies par la rédaction (chiffres vérifiés à la main).
 _ANCHORS = {
-    "IONQ": {"2025-12-31": 362_592_722, "_latest_approx": 373_200_000},
+    "IONQ": {"2025-12-31": 362_592_722, "_latest_approx": 381_044_481},
 }
 
 # ═══════════ CONTRÔLE CROISÉ DES LIQUIDITÉS — communiqués de résultats ═══════
