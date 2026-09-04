@@ -1250,12 +1250,15 @@ export async function fetchCompanyData(ticker: string): Promise<CompanyData | nu
   ]);
 
   // ⚠ RÈGLE DURE — UNE PANNE DE DONNÉE N'EST JAMAIS UN 404 (posée le 2026-09-03).
-  // Cette fonction alimente une page `dynamicParams = false` : un `null` y devient
-  // un `notFound()`, PRERENDU AU BUILD avec le statut 404 et jamais revalidé. Le
-  // build reste vert et les 14 fiches disparaissent de la production en silence,
-  // jusqu'au déploiement suivant — constaté du 31/08 au 03/09/2026 (voir CLAUDE.md).
-  // Seul le ticker hors univers (décidé plus haut, SANS la base) mérite un 404.
-  // Une erreur de lecture doit CASSER le build, pas produire une page fantôme.
+  // Un `null` renvoyé ici devient un `notFound()` sur la fiche : le build resterait
+  // vert et la page disparaîtrait de la production en silence. Seul le ticker hors
+  // univers (décidé plus haut, SANS la base) mérite un 404 ; une erreur de lecture
+  // doit CASSER le build, pas produire une page fantôme.
+  // ⚠ Ce garde-fou est NÉCESSAIRE MAIS N'A PAS SUFFI : les 404 du 31/08 et du 03/09
+  // venaient en réalité du `dynamicParams = false` de la page (routeur à
+  // `fallback: false` vidé par `revalidatePath(..., 'page')`), qui refusait les
+  // fiches sans jamais exécuter cette fonction. Voir le commentaire en tête de
+  // `src/app/societe/[ticker]/page.tsx` — ne pas rétablir cette directive.
   if (assetRes.error) {
     throw new Error(
       `fetchCompanyData(${upper}) : lecture de « asset » impossible — ` +

@@ -10,8 +10,21 @@ import EventTimeline from '@/components/EventTimeline';
 import DilutionSection from '@/components/DilutionSection';
 
 export const revalidate = 86400;
-// Seules les 12 fiches existent — tout autre ticker renvoie un 404 propre.
-export const dynamicParams = false;
+// ⛔ NE JAMAIS REMETTRE `dynamicParams = false` ICI (retiré le 2026-09-04).
+// C'était la cause RÉELLE des 404 de production sur les 14 fiches — pas la
+// panne de lecture corrigée la veille dans `fetchCompanyData`. Mécanisme :
+// `dynamicParams = false` pose `"fallback": false` dans le prerender-manifest ;
+// un chemin absent de la liste prérendue est alors refusé par le ROUTEUR, sans
+// que la page soit jamais exécutée. Or `seed_events.py` appelle
+// `/api/revalidate`, qui fait `revalidatePath('/societe/[ticker]', 'page')` :
+// l'invalidation vide la liste, et les 14 fiches deviennent introuvables jusqu'au
+// déploiement suivant. Les deux incidents (31/08 et 03/09) suivent chacun un seed.
+// Preuve par comparaison, le jour de l'incident : `/portefeuille/[id]` et
+// `/societe/[ticker]/opengraph-image` (fallback `null`, régénération à la demande)
+// répondaient 200 quand les fiches, seule route à `fallback: false`, étaient en 404.
+// Sans cette ligne, un chemin non prérendu est rendu à la demande — et le 404
+// légitime du ticker inconnu reste garanti par `fetchCompanyData`, qui teste
+// l'appartenance à SECTORAL_TICKERS SANS toucher à la base.
 
 // isStale vit désormais dans src/lib/dilution.ts — SOURCE UNIQUE du seuil de
 // 150 j. Cette page et le tableau des caps en portaient chacun une copie ; une

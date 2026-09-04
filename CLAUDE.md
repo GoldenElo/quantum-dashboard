@@ -1004,10 +1004,40 @@ Corollaires, tous à préserver :
   c'est voulu et **ne doit pas être aligné** sur la page. Corollaire piégeux : un
   `/societe/<t>/opengraph-image` en **200 ne prouve pas** que la fiche va bien — pendant
   l'incident, les images répondaient 200 en carte dégradée pendant que les pages étaient en 404.
-- **Diagnostic en une commande** — l'`age` figé et le statut prérendu signent le 404 de build :
+- **Diagnostic en une commande** :
   ```bash
   curl -s -D- -o /dev/null https://thequantumwall.com/societe/ionq | grep -i 'age:\|x-nextjs'
-  # age > revalidate (86400) + x-nextjs-prerender: 1  ⇒  404 prérendu, pas un souci de routage
+  # x-nextjs-date ≈ l'instant de la requête ⇒ la page vient d'être (re)générée en 404 :
+  # ce n'est PAS un 404 figé au build, c'est le routeur qui refuse le chemin (voir ci-dessous)
+  ```
+
+**⛔ COROLLAIRE — LA CAUSE RÉELLE : `dynamicParams = false` (identifiée le 2026-09-04, après
+une SECONDE récidive, le correctif de la veille déployé).** Le garde-fou ci-dessus est
+nécessaire mais **n'a jamais été le mécanisme** de l'incident : les fiches sont retombées en
+404 dès le lendemain, avec le code corrigé en production. `dynamicParams = false` pose
+`"fallback": false` dans le prerender-manifest — un chemin absent de la liste prérendue est
+alors **refusé par le ROUTEUR, sans que la page soit jamais exécutée**. Or `seed_events.py`
+appelle `/api/revalidate`, qui fait `revalidatePath('/societe/[ticker]', 'page')` : cette
+invalidation vide la liste, et les **14 fiches deviennent introuvables jusqu'au déploiement
+suivant**. Les deux incidents (31/08 et 03/09) suivent chacun un seed d'événements — ce n'est
+pas une coïncidence, c'est le déclencheur.
+- **La directive est RETIRÉE de `src/app/societe/[ticker]/page.tsx` — ne jamais la rétablir.**
+  Elle n'apportait rien : le 404 du ticker inconnu est déjà garanti par `fetchCompanyData`,
+  qui teste l'appartenance à `SECTORAL_TICKERS` **sans toucher à la base**. Vérifié après
+  correctif : `/societe/zzzz` → 404, les 14 fiches → 200, `fallback` passé à `null`.
+- **`/portefeuille/[id]` n'a jamais eu la directive** — et n'a jamais été touché par
+  l'incident, alors que sa `fetchPortfolioDetail` partage le même risque de lecture. Toute
+  route SSG dont les chemins peuvent être invalidés à chaud doit rester en régénération à la
+  demande.
+- **La preuve était sous les yeux, mal lue** : pendant l'incident, `/societe/<t>/opengraph-image`
+  répondait 200. On l'avait mis sur le compte de la dégradation gracieuse ; c'était surtout la
+  seule route voisine à `fallback: null`. **Un 404 qui frappe une route entière et épargne sa
+  sœur imbriquée est un problème de ROUTAGE, pas de donnée.**
+- **Contrôle en une commande, à faire à chaque build touchant une route SSG paramétrée :**
+  ```bash
+  node -e "const m=require('./.next/prerender-manifest.json');\
+  for(const k in m.dynamicRoutes)console.log(k,'fallback=',JSON.stringify(m.dynamicRoutes[k].fallback))"
+  # « fallback= false » sur une route de contenu = 404 en attente du prochain revalidatePath
   ```
 
 ### C7 — Module Dilution
